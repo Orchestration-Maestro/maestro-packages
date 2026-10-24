@@ -1,0 +1,11 @@
+too-many-arguments-threshold = 5
+max-fn-params-bools = 1
+too-many-lines-threshold = 60
+cognitive-complexity-threshold = 15
+excessive-nesting-threshold = 4
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true
+disallowed-methods = [
+    { path = "serde_json::map::Map::remove", reason = "Use shift_remove to preserve key order, or swap_remove only when order cannot escape." },
+]

@@ -1,0 +1,30 @@
+[workspace]
+resolver = "2"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/Orchestration-Maestro/maestro-extensions"
+
+[workspace.dependencies]
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = { version = "=1.0.151", features = ["preserve_order", "float_roundtrip"] }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+forbidden_lint_groups = "forbid"
+
+[workspace.lints.clippy]
+pedantic = { level = "forbid", priority = -1 }
+missing_docs_in_private_items = "forbid"
+redundant_clone = "forbid"
+too_many_arguments = "forbid"
+fn_params_excessive_bools = "forbid"
+too_many_lines = "forbid"
+cognitive_complexity = "forbid"
+excessive_nesting = "forbid"
+unwrap_used = "forbid"
+expect_used = "forbid"
+panic = "forbid"

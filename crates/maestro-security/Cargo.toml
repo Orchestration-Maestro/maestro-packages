@@ -1,0 +1,23 @@
+[package]
+name = "maestro-security"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Maestro's unified security framework: one pipeline, five agents, extension and MCP surfaces."
+
+[lib]
+name = "maestro_security"
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "maestro-security-mcp"
+path = "src/bin/maestro-security-mcp.rs"
+
+[dependencies]
+maestro-extensions-wasm = { git = "https://github.com/Orchestration-Maestro/maestro" }
+serde.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true
