@@ -6,7 +6,7 @@ members = ["crates/*"]
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
-repository = "https://github.com/Orchestration-Maestro/maestro-extensions"
+repository = "https://github.com/Orchestration-Maestro/maestro-packages"
 
 [workspace.dependencies]
 serde = { version = "=1.0.229", features = ["derive"] }

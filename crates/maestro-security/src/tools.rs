@@ -11,8 +11,8 @@ pub const EVIDENCE: &str = "security_evidence";
 /// Description of the assessment tool.
 pub const ASSESS_DESCRIPTION: &str = "Run the unified security pipeline (recon, target \
 model, hypothesis sweep, verify, deepen, report) against a target through the \
-Kali box runner and the bridge model. Pick an agent: maestro.pentester \
-(default, full offensive pipeline), maestro.probe (evidence capture), \
+analysis sandbox runner and the bridge model. Pick an agent: maestro.security \
+(default, full review pipeline), maestro.probe (evidence capture), \
 maestro.proof (independent verification), maestro.rebuild (target \
 reconstruction), maestro.cyber (threat model and hardening).";
 
@@ -31,13 +31,13 @@ pub fn assess_schema() -> String {
             "agent": {
                 "type": "string",
                 "enum": [
-                    "maestro.pentester",
+                    "maestro.security",
                     "maestro.probe",
                     "maestro.proof",
                     "maestro.rebuild",
                     "maestro.cyber"
                 ],
-                "description": "Agent role (default maestro.pentester)"
+                "description": "Agent role (default maestro.security)"
             },
             "model": {
                 "type": "string",

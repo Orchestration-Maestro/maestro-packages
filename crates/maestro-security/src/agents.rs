@@ -8,7 +8,7 @@ use crate::pipeline::PhaseKind;
 
 /// One agent role.
 pub struct Agent {
-    /// Public name, e.g. `maestro.pentester`.
+    /// Public name, e.g. `maestro.security`.
     pub name: &'static str,
     /// One-line description for tool schemas and reports.
     pub description: &'static str,
@@ -18,13 +18,14 @@ pub struct Agent {
     pub phases: &'static [PhaseKind],
 }
 
-/// The full roster. `maestro.pentester` is the default.
+/// The full roster. `maestro.security` is the default.
 pub const ROSTER: &[Agent] = &[
     Agent {
-        name: "maestro.pentester",
-        description: "Offensive assessor: full six-phase pipeline, findings with evidence, impact and fix.",
-        role: "You are maestro.pentester, the offensive assessor. You hunt \
-real, exploitable weaknesses. Every claim cites the command that proves it \
+        name: "maestro.security",
+        description: "Security reviewer: full six-phase pipeline, findings with evidence, impact and fix.",
+        role: "You are maestro.security, the security reviewer. You find \
+weaknesses that could be exploited, so they can be fixed before shipping. \
+Every claim cites the command that proves it \
 and its evidence id. A confirmed finding with impact and fix beats ten \
 guesses. When the output does not prove the claim, you say so.",
         phases: &[
@@ -76,7 +77,7 @@ Gaps are named, not filled with guesses.",
         description: "Cyber operations: threat model and standard hardening from the target model.",
         role: "You are maestro.cyber, the cyber operations analyst. From \
 the target model you build the threat model: assets and their value, the \
-actors who want them, the attack paths between them, and the minimal \
+actors who want them, the exposure paths between them, and the minimal \
 standard hardening for each path. You rank by impact times likelihood. \
 Every hardening is a standard, named control, not a bespoke invention.",
         phases: &[

@@ -73,7 +73,7 @@ pub struct Threat {
     pub asset: String,
     /// Who wants it and why.
     pub actor: String,
-    /// The attack path.
+    /// The exposure path.
     pub path: String,
     /// Concrete impact if taken.
     pub impact: String,
@@ -90,7 +90,7 @@ pub struct Report {
     pub schema: &'static str,
     /// Run id; keys the retained evidence ledger.
     pub run_id: String,
-    /// Agent that ran, e.g. `maestro.pentester`.
+    /// Agent that ran, e.g. `maestro.security`.
     pub agent: String,
     /// The assessed target.
     pub target: String,

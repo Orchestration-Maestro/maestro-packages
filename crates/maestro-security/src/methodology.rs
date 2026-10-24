@@ -111,7 +111,7 @@ pub fn hypothesis_prompt(target_model: &str, max: usize) -> String {
 Run the phase-3 HYPOTHESES sweep now. Return JSON: {schema}.\n\
 At most {max} hypotheses. Prefer breadth: distinct classes over repeated \
 attempts on one class. Every command must be non-destructive and runnable \
-in a Kali shell with nmap, httpx, nuclei, sqlmap, gobuster, ffuf, nikto, \
+in the analysis sandbox shell with nmap, httpx, nuclei, sqlmap, gobuster, ffuf, nikto, \
 curl, python3, jq available."
     )
 }

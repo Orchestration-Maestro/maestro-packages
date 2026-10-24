@@ -1,4 +1,4 @@
-//! Client for the Kali box runner service: the execution plane for every
+//! Client for the analysis sandbox runner service: the execution plane for every
 //! command the pipeline generates.
 
 use crate::net;

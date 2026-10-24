@@ -97,7 +97,7 @@ impl Config {
 pub struct AssessParams {
     /// Target to assess: host, IP, or URL.
     pub target: String,
-    /// Agent role name; defaults to `maestro.pentester`.
+    /// Agent role name; defaults to `maestro.security`.
     pub agent: Option<String>,
     /// Optional model override; defaults to the first model the bridge serves.
     pub model: Option<String>,
@@ -552,12 +552,12 @@ mod tests {
         assert!(!id.contains(':') && !id.contains('/') && !id.contains('?'));
     }
 
-    /// Unknown agent names fall back to the default pentester.
+    /// Unknown agent names fall back to the default reviewer.
     #[test]
     fn unknown_agent_falls_back_to_the_default() {
         assert_eq!(
             crate::agents::resolve_agent(Some("nope")).name,
-            "maestro.pentester"
+            "maestro.security"
         );
     }
 }

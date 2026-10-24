@@ -2,7 +2,7 @@
 //!
 //! One pipeline (recon, target model, hypothesis sweep, verify, deepen,
 //! threat, report) with five agents, driven by a model resolved at run
-//! time from the bridge and executed through the Kali box runner. Every
+//! time from the bridge and executed through the analysis sandbox runner. Every
 //! step is ledgered under a sequential evidence id and the full,
 //! untruncated outputs are retained in one ledger file per run.
 //!
