@@ -18,12 +18,12 @@ pub struct ExecResult {
 
 /// A configured runner client.
 #[derive(Clone)]
-pub struct Runner {
-    /// Runner base URL.
+pub struct Sandbox {
+    /// Sandbox base URL.
     base_url: String,
 }
 
-impl Runner {
+impl Sandbox {
     /// Client pointed at the local runner defaults.
     #[must_use]
     pub fn local() -> Self {
@@ -90,7 +90,7 @@ fn parse_ndjson(raw: &[u8]) -> Result<ExecResult, String> {
                 }
             }
             Some("exit") => {
-                let code = value.get("code").and_then(|c| c.as_i64()).unwrap_or(0);
+                let code = value.get("code").and_then(serde_json::Value::as_i64).unwrap_or(0);
                 exit_code = i32::try_from(code).unwrap_or(0);
             }
             // Tool banners and heartbeat lines carry no payload we need.

@@ -14,69 +14,78 @@ use crate::tools;
 const PROTOCOL_VERSION: &str = "2025-06-18";
 
 /// Serve MCP over stdio until the client closes the stream.
+///
+/// # Errors
+/// Fails if writing a response to stdout fails.
 pub fn serve() -> Result<(), String> {
     let stdin = io::stdin();
     let mut out = io::stdout();
     for line in stdin.lock().lines() {
-        let line = match line {
-            Ok(line) => line,
-            Err(_) => break, // client closed the stream
-        };
-        let line = line.trim().to_string();
-        if line.is_empty() {
-            continue;
-        }
-        let request: Value = match serde_json::from_str(&line) {
-            Ok(value) => value,
-            Err(error) => {
-                write_error(&mut out, &Value::Null, -32700, &format!("parse error: {error}"))?;
-                continue;
-            }
-        };
-        let method = request.get("method").and_then(|m| m.as_str()).unwrap_or("");
-        let id = request.get("id").cloned().unwrap_or(Value::Null);
-        let is_notification = request.get("id").is_none();
-        match method {
-            "initialize" => write_result(
-                &mut out,
-                &id,
-                &json!({
-                    "protocolVersion": PROTOCOL_VERSION,
-                    "capabilities": { "tools": {} },
-                    "serverInfo": {
-                        "name": "maestro-security",
-                        "version": env!("CARGO_PKG_VERSION"),
-                    }
-                }),
-            )?,
-            "tools/list" => {
-                if !is_notification {
-                    write_result(&mut out, &id, &json!({ "tools": tool_list() }))?;
-                }
-            }
-            "tools/call" => {
-                if !is_notification {
-                    write_result(&mut out, &id, &call_tool(&request))?;
-                }
-            }
-            "ping" => {
-                if !is_notification {
-                    write_result(&mut out, &id, &json!({}))?;
-                }
-            }
-            _ => {
-                if !is_notification {
-                    write_error(
-                        &mut out,
-                        &id,
-                        -32601,
-                        &format!("method not found: {method}"),
-                    )?;
-                }
-            }
-        }
+        // The client closed the stream.
+        let Ok(line) = line else { break };
+        handle_request(&line, &mut out)?;
     }
     Ok(())
+}
+
+/// Dispatch one request line; blank lines are ignored.
+///
+/// # Errors
+/// Fails if writing a response to stdout fails.
+fn handle_request(line: &str, out: &mut impl Write) -> Result<(), String> {
+    let line = line.trim();
+    if line.is_empty() {
+        return Ok(());
+    }
+    let request: Value = match serde_json::from_str(line) {
+        Ok(value) => value,
+        Err(error) => {
+            write_error(out, &Value::Null, -32700, &format!("parse error: {error}"))?;
+            return Ok(());
+        }
+    };
+    let method = request.get("method").and_then(Value::as_str).unwrap_or("");
+    let id = request.get("id").cloned().unwrap_or(Value::Null);
+    let is_notification = request.get("id").is_none();
+    match method {
+        "initialize" => write_result(out, &id, &initialize_payload()),
+        "tools/list" => {
+            if !is_notification {
+                write_result(out, &id, &json!({ "tools": tool_list() }))?;
+            }
+            Ok(())
+        }
+        "tools/call" => {
+            if !is_notification {
+                write_result(out, &id, &call_tool(&request))?;
+            }
+            Ok(())
+        }
+        "ping" => {
+            if !is_notification {
+                write_result(out, &id, &json!({}))?;
+            }
+            Ok(())
+        }
+        _ => {
+            if !is_notification {
+                write_error(out, &id, -32601, &format!("method not found: {method}"))?;
+            }
+            Ok(())
+        }
+    }
+}
+
+/// The initialize response payload.
+fn initialize_payload() -> Value {
+    json!({
+        "protocolVersion": PROTOCOL_VERSION,
+        "capabilities": { "tools": {} },
+        "serverInfo": {
+            "name": "maestro-security",
+            "version": env!("CARGO_PKG_VERSION"),
+        }
+    })
 }
 
 /// The two tools, with their shared schemas.
@@ -99,7 +108,7 @@ fn tool_list() -> Value {
 fn call_tool(request: &Value) -> Value {
     let name = request
         .pointer("/params/name")
-        .and_then(|n| n.as_str())
+        .and_then(Value::as_str)
         .unwrap_or("");
     let arguments = request
         .pointer("/params/arguments")
@@ -134,7 +143,7 @@ fn run_assess(arguments: &Value) -> Result<String, String> {
 fn run_evidence(arguments: &Value) -> Result<String, String> {
     let run_id = arguments
         .get("run_id")
-        .and_then(|v| v.as_str())
+        .and_then(Value::as_str)
         .ok_or("run_id is required")?;
     evidence_for(run_id).map_err(|error| format!("evidence lookup failed: {error}"))
 }

@@ -1,6 +1,7 @@
 //! The wasm extension surface: registers the framework's tools with the
 //! Maestro host.
 
+use std::fmt::Write;
 use std::rc::Rc;
 
 use maestro_extensions_wasm::{
@@ -10,7 +11,7 @@ use maestro_extensions_wasm::{
 use serde::Deserialize;
 
 use crate::pipeline::{assess, evidence_for, AssessParams};
-use crate::report::Report;
+use crate::report::Assessment;
 use crate::tools;
 
 /// Parameters of the evidence tool.
@@ -38,7 +39,7 @@ fn assess_tool() -> ToolDefinition {
             Box::pin(async move {
                 let params: AssessParams =
                     serde_json::from_value(params).map_err(|error| error.to_string())?;
-                let report: Report =
+                let report: Assessment =
                     assess(&params).map_err(|error| format!("assessment failed: {error}"))?;
                 let details =
                     serde_json::to_string(&report).map_err(|error| error.to_string())?;
@@ -89,36 +90,32 @@ fn evidence_tool() -> ToolDefinition {
 }
 
 /// One-screen human rendering of the finished report.
-fn human_summary(report: &Report) -> String {
+fn human_summary(report: &Assessment) -> String {
     let mut out = String::new();
-    out.push_str(&format!(
-        "Security run {} ({}): {} (model {})\n",
+    let _ = writeln!(
+        out,
+        "Security run {} ({}): {} (model {})",
         report.run_id, report.agent, report.target, report.model
-    ));
-    out.push_str(&format!("Findings: {}\n", report.findings.len()));
+    );
+    let _ = writeln!(out, "Findings: {}", report.findings.len());
     for finding in &report.findings {
-        out.push_str(&format!(
-            "- [{}] {} ({}, {})\n",
+        let _ = writeln!(
+            out,
+            "- [{}] {} ({}, {})",
             finding.severity.to_uppercase(),
             finding.title,
             finding.class,
             finding.evidence_level
-        ));
+        );
     }
     if !report.threats.is_empty() {
-        out.push_str(&format!("Threats: {}\n", report.threats.len()));
+        let _ = writeln!(out, "Threats: {}", report.threats.len());
     }
     if !report.unknown.is_empty() {
-        out.push_str(&format!(
-            "Unknown (looked for, not proven): {}\n",
-            report.unknown.len()
-        ));
+        let _ = writeln!(out, "Unknown (looked for, not proven): {}", report.unknown.len());
     }
-    out.push_str(&format!(
-        "Refuted hypotheses (coverage): {}\n",
-        report.refuted.len()
-    ));
-    out.push_str(&format!("Summary: {}\n", report.summary));
+    let _ = writeln!(out, "Refuted hypotheses (coverage): {}", report.refuted.len());
+    let _ = writeln!(out, "Summary: {}", report.summary);
     out.push_str("Full report with evidence ids in details.\n");
     out
 }

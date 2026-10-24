@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::report::Phase;
 
 /// Schema tag for the retained ledger document.
-pub const EVIDENCE_SCHEMA: &str = "maestro-security/evidence/1";
+pub const SCHEMA: &str = "maestro-security/evidence/1";
 
 /// One retained step of a run.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -66,8 +66,11 @@ pub struct LlmCall {
 /// The in-run ledger: assigns sequential evidence ids and accumulates
 /// entries for retention.
 pub struct Ledger {
+    /// The next sequential evidence number.
     next: u32,
+    /// The phases run so far, in order.
     phases: Vec<crate::report::Phase>,
+    /// Every retained entry.
     entries: Vec<Entry>,
 }
 
@@ -179,7 +182,7 @@ impl Ledger {
         std::fs::create_dir_all(&dir).map_err(|error| format!("evidence dir: {error}"))?;
         let path = dir.join(format!("{run_id}.json"));
         let doc = LedgerDoc {
-            schema: EVIDENCE_SCHEMA,
+            schema: SCHEMA,
             run_id: run_id.into(),
             target: target.into(),
             agent: agent.into(),

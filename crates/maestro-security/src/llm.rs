@@ -16,16 +16,16 @@ pub const DEFAULT_KEY: &str =
     "3648e45e792d925d2bf138156fb820e491a5f89f3c5d33f2d6963920b170592f";
 
 /// A configured bridge client. The model is never stored here: it is resolved
-/// per run from [`Llm::available_models`] or supplied by the caller.
+/// per run from [`Client::available_models`] or supplied by the caller.
 #[derive(Clone)]
-pub struct Llm {
+pub struct Client {
     /// Bridge base URL including the audience segment.
     base_url: String,
     /// Bridge capability key.
     key: String,
 }
 
-impl Llm {
+impl Client {
     /// Client pointed at the local bridge defaults.
     #[must_use]
     pub fn local() -> Self {
@@ -122,7 +122,7 @@ impl Llm {
         value
             .pointer("/choices/0/message/content")
             .and_then(|c| c.as_str())
-            .map(|s| s.to_string())
+            .map(str::to_string)
             .ok_or_else(|| "bridge returned no message content".into())
     }
 }

@@ -3,6 +3,7 @@
 //! Both peers are loopback HTTP servers with no TLS, so a hand-rolled request
 //! writer and read-until-close reader is the whole transport.
 
+use std::fmt::Write as _;
 use std::io::{Read, Write};
 use std::net::TcpStream;
 
@@ -53,7 +54,7 @@ pub fn request(
         body.len()
     );
     for (name, value) in headers {
-        head.push_str(&format!("{name}: {value}\r\n"));
+        let _ = write!(head, "{name}: {value}\r\n");
     }
     head.push_str("\r\n");
     stream
@@ -65,11 +66,11 @@ pub fn request(
     stream
         .read_to_end(&mut raw)
         .map_err(|e| format!("read: {e}"))?;
-    parse_response(raw)
+    parse_response(&raw)
 }
 
 /// Parse a response head + body from raw bytes (read-until-close framing).
-fn parse_response(raw: Vec<u8>) -> Result<Response, String> {
+fn parse_response(raw: &[u8]) -> Result<Response, String> {
     let sep = raw
         .windows(4)
         .position(|w| w == b"\r\n\r\n")

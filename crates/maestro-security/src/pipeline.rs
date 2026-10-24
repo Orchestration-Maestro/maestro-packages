@@ -1,4 +1,4 @@
-//! Pipeline orchestration: the unified methodology, run per agent.
+//! Engine orchestration: the unified methodology, run per agent.
 //!
 //! Recon executes deterministically through the runner; every other phase
 //! is one bridge call whose output is ledgered with a sequential evidence
@@ -9,10 +9,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::agents::Agent;
 use crate::evidence::Ledger;
-use crate::llm::Llm;
+use crate::llm::Client;
 use crate::methodology;
-use crate::report::{Evidence, Finding, Refuted, Report, Threat, REPORT_SCHEMA};
-use crate::runner::Runner;
+use crate::report::{Evidence, Finding, Refuted, Assessment, Threat, SCHEMA};
+use crate::runner::Sandbox;
 
 /// The canonical phase order.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -44,14 +44,14 @@ const CANONICAL: [PhaseKind; 7] = [
     PhaseKind::Report,
 ];
 
-/// Pipeline endpoints and limits.
+/// Engine endpoints and limits.
 #[derive(Clone)]
 pub struct Config {
     /// Bridge base URL including the audience segment.
     pub bridge: String,
     /// Bridge capability key.
     pub bridge_key: String,
-    /// Runner base URL.
+    /// Sandbox base URL.
     pub runner: String,
     /// Maximum hypotheses verified per run.
     pub max_hypotheses: usize,
@@ -241,23 +241,23 @@ pub(crate) struct ModelCtx {
 }
 
 /// The unified pipeline bound to one configuration.
-pub struct Pipeline {
+pub struct Engine {
     /// The bridge client.
-    pub(crate) llm: Llm,
+    pub(crate) llm: Client,
     /// The runner client.
-    pub(crate) runner: Runner,
+    pub(crate) runner: Sandbox,
     /// Endpoints and limits.
     pub(crate) config: Config,
 }
 
-impl Pipeline {
+impl Engine {
     /// Build a pipeline from a configuration.
     #[must_use]
     pub fn new(config: Config) -> Self {
-        let llm = Llm::local()
+        let llm = Client::local()
             .with_base_url(config.bridge.clone())
             .with_key(config.bridge_key.clone());
-        let runner = Runner::local().with_base_url(config.runner.clone());
+        let runner = Sandbox::local().with_base_url(config.runner.clone());
         Self {
             llm,
             runner,
@@ -275,7 +275,7 @@ impl Pipeline {
         agent: &Agent,
         target: &str,
         model: Option<&str>,
-    ) -> Result<Report, String> {
+    ) -> Result<Assessment, String> {
         let run_id = new_run_id(target);
         self.runner
             .health()
@@ -303,7 +303,7 @@ impl Pipeline {
     ) -> Result<(), String> {
         match phase {
             PhaseKind::Recon => {
-                state.recon = self.phase_recon(&state.target, &mut state.ledger)?
+                state.recon = self.phase_recon(&state.target, &mut state.ledger)?;
             }
             PhaseKind::Model => {
                 state.target_model = self.phase_target_model(
@@ -311,17 +311,17 @@ impl Pipeline {
                     &state.target,
                     &state.recon,
                     &mut state.ledger,
-                )?
+                )?;
             }
             PhaseKind::Hypotheses => {
                 state.hypotheses =
-                    self.phase_hypotheses(ctx, &state.target_model, &mut state.ledger)
+                    self.phase_hypotheses(ctx, &state.target_model, &mut state.ledger);
             }
-            PhaseKind::Verify => self.phase_verify(ctx, state)?,
-            PhaseKind::Deepen => self.phase_deepen(ctx, state)?,
+            PhaseKind::Verify => self.phase_verify(ctx, state),
+            PhaseKind::Deepen => self.phase_deepen(ctx, state),
             PhaseKind::Threat => {
                 state.threats =
-                    self.phase_threat(ctx, &state.target_model, &mut state.ledger)
+                    self.phase_threat(ctx, &state.target_model, &mut state.ledger);
             }
             PhaseKind::Report => {}
         }
@@ -335,7 +335,7 @@ impl Pipeline {
         agent: &Agent,
         ctx: &ModelCtx,
         state: &mut RunState,
-    ) -> Result<Report, String> {
+    ) -> Result<Assessment, String> {
         let unknown = collect_unknown(&state.verifications);
         let (summary, mechanics) = if agent.phases.contains(&PhaseKind::Report) {
             let data = serde_json::json!({
@@ -352,8 +352,8 @@ impl Pipeline {
                 Vec::new(),
             )
         };
-        let report = Report {
-            schema: REPORT_SCHEMA,
+        let report = Assessment {
+            schema: SCHEMA,
             run_id: run_id.into(),
             agent: agent.name.into(),
             target: state.target.clone(),
@@ -388,7 +388,7 @@ impl Pipeline {
 ///
 /// # Errors
 /// Fails if the target is empty or the pipeline run fails.
-pub fn assess(params: &AssessParams) -> Result<Report, String> {
+pub fn assess(params: &AssessParams) -> Result<Assessment, String> {
     if params.target.trim().is_empty() {
         return Err("target is required".into());
     }
@@ -397,7 +397,7 @@ pub fn assess(params: &AssessParams) -> Result<Report, String> {
         config.max_hypotheses = n;
     }
     let agent = crate::agents::resolve_agent(params.agent.as_deref());
-    let pipeline = Pipeline::new(config);
+    let pipeline = Engine::new(config);
     pipeline.run(agent, &params.target, params.model.as_deref())
 }
 
@@ -421,8 +421,7 @@ fn system_prompt(agent: &Agent) -> String {
 fn new_run_id(target: &str) -> String {
     let secs = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
+        .map_or(0, |d| d.as_secs());
     let slug: String = target
         .chars()
         .take(24)
@@ -460,7 +459,7 @@ pub(crate) fn shallow_finding(target: &str, v: &Verification, id: u32) -> Findin
         evidence: Evidence {
             command: v.command.clone(),
             output: v.output.clone(),
-            evidence_id: v.evidence_id.clone(),
+            id: v.evidence_id.clone(),
         },
         impact: v.reasoning.clone(),
         fix: String::new(),
@@ -473,14 +472,12 @@ pub(crate) fn default_summary_for(report_data: &str) -> String {
     let value: serde_json::Value = serde_json::from_str(report_data).unwrap_or_default();
     let findings = value
         .get("findings")
-        .and_then(|f| f.as_array())
-        .map(Vec::len)
-        .unwrap_or(0);
+        .and_then(serde_json::Value::as_array)
+        .map_or(0, Vec::len);
     let refuted = value
         .get("refuted")
-        .and_then(|r| r.as_array())
-        .map(Vec::len)
-        .unwrap_or(0);
+        .and_then(serde_json::Value::as_array)
+        .map_or(0, Vec::len);
     format!(
         "Assessment finished. {findings} findings, {refuted} hypotheses refuted. \
 See the findings list for evidence ids."
@@ -504,7 +501,7 @@ See the findings list for evidence ids.",
 /// Pull the outermost JSON object out of a model response.
 pub(crate) fn extract_json(raw: &str) -> String {
     let start = raw.find('{').unwrap_or(0);
-    let end = raw.rfind('}').map(|i| i + 1).unwrap_or(raw.len());
+    let end = raw.rfind('}').map_or(raw.len(), |i| i + 1);
     if start < end {
         raw[start..end].to_string()
     } else {

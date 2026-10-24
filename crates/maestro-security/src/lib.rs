@@ -27,8 +27,8 @@ pub mod mcp;
 
 pub use agents::{resolve_agent, Agent, ROSTER};
 pub use evidence::{Ledger, LedgerDoc};
-pub use pipeline::{assess, evidence_for, AssessParams, Config, Pipeline};
-pub use report::{Report, REPORT_SCHEMA};
+pub use pipeline::{assess, evidence_for, AssessParams, Config, Engine};
+pub use report::{Assessment, SCHEMA};
 
 #[cfg(target_arch = "wasm32")]
 maestro_extensions_wasm::export_extension!(extension::factory);

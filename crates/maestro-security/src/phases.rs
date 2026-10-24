@@ -1,6 +1,8 @@
 //! The pipeline's phases: recon through the runner, every model phase
 //! through the bridge, each step ledgered with a sequential evidence id.
 
+use std::fmt::Write;
+
 use crate::evidence::{Ledger, LlmCall};
 use crate::methodology;
 use crate::pipeline::{
@@ -9,7 +11,7 @@ use crate::pipeline::{
 };
 use crate::report::{Refuted, Threat};
 
-impl crate::pipeline::Pipeline {
+impl crate::pipeline::Engine {
     /// Phase 1: deterministic recon through the runner, raw and ledgered.
     pub(crate) fn phase_recon(
         &self,
@@ -20,11 +22,12 @@ impl crate::pipeline::Pipeline {
         for (command, timeout) in methodology::recon_commands(target) {
             let result = self.runner.exec(&command, timeout)?;
             let id = ledger.record_exec("recon", &command, &result.output, result.exit_code);
-            recon.push_str(&format!(
+            let _ = write!(
+                recon,
                 "\n=== {command} [{id}] exit={} ===\n{}\n",
                 result.exit_code,
                 truncate(&result.output, 8000)
-            ));
+            );
         }
         Ok(recon)
     }
@@ -95,7 +98,7 @@ impl crate::pipeline::Pipeline {
     }
 
     /// Phase 4: verify every hypothesis, then split findings from refuted.
-    pub(crate) fn phase_verify(&self, ctx: &ModelCtx, state: &mut RunState) -> Result<(), String> {
+    pub(crate) fn phase_verify(&self, ctx: &ModelCtx, state: &mut RunState) {
         let target_model = state.target_model.clone();
         let hypotheses = std::mem::take(&mut state.hypotheses);
         for hypothesis in &hypotheses {
@@ -119,7 +122,6 @@ impl crate::pipeline::Pipeline {
             }
         }
         state.verifications = verifications;
-        Ok(())
     }
 
     /// One hypothesis through plan, act, observe, reflect, counterevidence.
@@ -209,7 +211,7 @@ impl crate::pipeline::Pipeline {
     }
 
     /// Phase 5: deepen each verified finding in place.
-    pub(crate) fn phase_deepen(&self, ctx: &ModelCtx, state: &mut RunState) -> Result<(), String> {
+    pub(crate) fn phase_deepen(&self, ctx: &ModelCtx, state: &mut RunState) {
         let verifications = std::mem::take(&mut state.verifications);
         for verification in &verifications {
             if verification.level == "REFUTED" || verification.level == "POSSIBLE" {
@@ -218,7 +220,7 @@ impl crate::pipeline::Pipeline {
             let Some(finding) = state
                 .findings
                 .iter_mut()
-                .find(|f| f.evidence.evidence_id == verification.evidence_id)
+                .find(|f| f.evidence.id == verification.evidence_id)
             else {
                 continue;
             };
@@ -232,7 +234,6 @@ impl crate::pipeline::Pipeline {
             }
         }
         state.verifications = verifications;
-        Ok(())
     }
 
     /// Phase 5: one deepening call per verified finding.
@@ -314,9 +315,8 @@ impl crate::pipeline::Pipeline {
         ledger: &mut Ledger,
     ) -> (String, Vec<String>) {
         let prompt = methodology::report_prompt(truncate(report_data, 20000));
-        let raw = match self.llm.chat(&ctx.model, &ctx.system, &prompt, 1024) {
-            Ok(raw) => raw,
-            Err(_) => return (default_summary_for(report_data), Vec::new()),
+        let Ok(raw) = self.llm.chat(&ctx.model, &ctx.system, &prompt, 1024) else {
+            return (default_summary_for(report_data), Vec::new());
         };
         ledger.record_llm(
             "report",
@@ -330,9 +330,8 @@ impl crate::pipeline::Pipeline {
         let value: serde_json::Value = serde_json::from_str(&extract_json(&raw)).unwrap_or_default();
         let summary = value
             .get("summary")
-            .and_then(|s| s.as_str())
-            .map(str::to_string)
-            .unwrap_or_else(|| default_summary_for(report_data));
+            .and_then(serde_json::Value::as_str)
+            .map_or_else(|| default_summary_for(report_data), str::to_string);
         let mechanics: Vec<String> = value
             .get("runtime_mechanics")
             .and_then(|m| m.as_array())
