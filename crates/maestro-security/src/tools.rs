@@ -9,7 +9,9 @@ pub const ASSESS: &str = "security_assess";
 pub const EVIDENCE: &str = "security_evidence";
 
 /// Description of the assessment tool.
-pub const ASSESS_DESCRIPTION: &str = "Run the unified security pipeline (recon, target \
+pub const ASSESS_DESCRIPTION: &str = "Understand the target's program and network \
+behaviour, find security issues and their root causes through the unified \
+pipeline (recon, target \
 model, hypothesis sweep, verify, deepen, report) against a target through the \
 analysis sandbox runner and the bridge model. Pick an agent: maestro.security \
 (default, full review pipeline), maestro.probe (evidence capture), \
