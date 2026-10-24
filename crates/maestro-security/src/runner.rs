@@ -84,7 +84,7 @@ fn parse_ndjson(raw: &[u8]) -> Result<ExecResult, String> {
         let value: serde_json::Value =
             serde_json::from_str(line).map_err(|e| format!("runner ndjson: {e}"))?;
         match value.get("type").and_then(|t| t.as_str()) {
-            Some("stdout") | Some("stderr") => {
+            Some("stdout" | "stderr") => {
                 if let Some(data) = value.get("data").and_then(|d| d.as_str()) {
                     output.push_str(data);
                 }

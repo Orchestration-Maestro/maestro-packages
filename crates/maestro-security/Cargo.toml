@@ -4,7 +4,7 @@ version = "0.1.0"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Maestro's unified security framework: one pipeline, five agents, extension and MCP surfaces."
+description = "Helps Maestro agents understand program and network behaviour, find security issues with root-cause analysis, and write better code. One pipeline, five agents, extension and MCP surfaces."
 
 [lib]
 name = "maestro_security"

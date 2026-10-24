@@ -22,7 +22,7 @@ untruncated outputs of every step) for a finished run, by run id.";
 
 /// JSON schema for the assessment tool parameters.
 #[must_use]
-pub fn assess_schema() -> String {
+pub fn assess_schema() -> serde_json::Value {
     json!({
         "type": "object",
         "required": ["target"],
@@ -49,12 +49,11 @@ pub fn assess_schema() -> String {
             }
         }
     })
-    .to_string()
 }
 
 /// JSON schema for the evidence tool parameters.
 #[must_use]
-pub fn evidence_schema() -> String {
+pub fn evidence_schema() -> serde_json::Value {
     json!({
         "type": "object",
         "required": ["run_id"],
@@ -65,5 +64,4 @@ pub fn evidence_schema() -> String {
             }
         }
     })
-    .to_string()
 }

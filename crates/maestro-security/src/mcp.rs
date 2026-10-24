@@ -85,12 +85,12 @@ fn tool_list() -> Value {
         {
             "name": tools::ASSESS,
             "description": tools::ASSESS_DESCRIPTION,
-            "inputSchema": serde_json::from_str(&tools::assess_schema()).unwrap_or(Value::Null),
+            "inputSchema": tools::assess_schema(),
         },
         {
             "name": tools::EVIDENCE,
             "description": tools::EVIDENCE_DESCRIPTION,
-            "inputSchema": serde_json::from_str(&tools::evidence_schema()).unwrap_or(Value::Null),
+            "inputSchema": tools::evidence_schema(),
         },
     ])
 }

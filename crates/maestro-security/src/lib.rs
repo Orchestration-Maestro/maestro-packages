@@ -1,4 +1,4 @@
-//! Maestro's unified security framework.
+//! Maestro.s unified security framework: understand program and network behaviour, find security issues with root-cause analysis, and write better code.
 //!
 //! One pipeline (recon, target model, hypothesis sweep, verify, deepen,
 //! threat, report) with five agents, driven by a model resolved at run
