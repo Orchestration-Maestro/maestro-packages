@@ -8,6 +8,11 @@ setup:
 # Formatting, lint, public documentation and tests.
 check:
     cargo fmt --all
+    python3 guard-lints.py
+    cargo clippy --workspace --all-targets --locked -- -D warnings
+    RUSTDOCFLAGS="-D warnings -D missing_docs" cargo doc --workspace --no-deps --locked
+check:
+    cargo fmt --all
     cargo clippy --workspace --all-targets --locked -- -D warnings
     RUSTDOCFLAGS="-D warnings -D missing_docs" cargo doc --workspace --no-deps --locked
 
