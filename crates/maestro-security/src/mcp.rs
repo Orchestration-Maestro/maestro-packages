@@ -1,196 +1,166 @@
-//! The MCP stdio surface: the same two tools as JSON-RPC 2.0 over stdio.
+//! The MCP stdio surface: the shared tool runners behind the rmcp server.
 //!
-//! Implements the MCP tool-server subset: initialize, tools/list,
-//! tools/call, ping. Line-delimited JSON, one request per line.
+//! One handler serves the full security tool registry over the Model Context
+//! Protocol on stdio. The extension surface exposes the same runners as
+//! Maestro tools, so both surfaces stay in lockstep.
 
-use std::io::{self, BufRead, Write};
+use std::future::Future;
 
-use serde_json::{json, Value};
+use rmcp::handler::server::ServerHandler;
+use rmcp::model::{
+    CallToolRequestParams, CallToolResponse, CallToolResult, ContentBlock, Implementation,
+    JsonObject, ListToolsResult, PaginatedRequestParams, ServerCapabilities, ServerConfig, Tool,
+};
+use rmcp::service::{serve_server, RequestContext, RoleServer};
+use rmcp::transport::stdio;
+use rmcp::ErrorData as McpError;
 
-use crate::pipeline::{assess, evidence_for, AssessParams};
 use crate::tools;
 
-/// The protocol version this server speaks.
-const PROTOCOL_VERSION: &str = "2025-06-18";
+/// The MCP server: one handler for the full security tool registry.
+pub struct SecurityServer;
 
-/// Serve MCP over stdio until the client closes the stream.
-pub fn serve() -> Result<(), String> {
-    let stdin = io::stdin();
-    let mut out = io::stdout();
-    for line in stdin.lock().lines() {
-        let line = match line {
-            Ok(line) => line,
-            Err(_) => break, // client closed the stream
-        };
-        let line = line.trim().to_string();
-        if line.is_empty() {
-            continue;
-        }
-        let request: Value = match serde_json::from_str(&line) {
-            Ok(value) => value,
-            Err(error) => {
-                write_error(&mut out, &Value::Null, -32700, &format!("parse error: {error}"))?;
-                continue;
-            }
-        };
-        let method = request.get("method").and_then(|m| m.as_str()).unwrap_or("");
-        let id = request.get("id").cloned().unwrap_or(Value::Null);
-        let is_notification = request.get("id").is_none();
-        match method {
-            "initialize" => write_result(
-                &mut out,
-                &id,
-                &json!({
-                    "protocolVersion": PROTOCOL_VERSION,
-                    "capabilities": { "tools": {} },
-                    "serverInfo": {
-                        "name": "maestro-security",
-                        "version": env!("CARGO_PKG_VERSION"),
-                    }
-                }),
-            )?,
-            "tools/list" => {
-                if !is_notification {
-                    write_result(&mut out, &id, &json!({ "tools": tool_list() }))?;
-                }
-            }
-            "tools/call" => {
-                if !is_notification {
-                    write_result(&mut out, &id, &call_tool(&request))?;
-                }
-            }
-            "ping" => {
-                if !is_notification {
-                    write_result(&mut out, &id, &json!({}))?;
-                }
-            }
-            _ => {
-                if !is_notification {
-                    write_error(
-                        &mut out,
-                        &id,
-                        -32601,
-                        &format!("method not found: {method}"),
-                    )?;
-                }
-            }
+impl SecurityServer {
+    /// The tool registry, built from the shared names and schemas.
+    fn registry() -> Vec<Tool> {
+        [
+            (tools::ASSESS, tools::ASSESS_DESCRIPTION, tools::assess_schema()),
+            (
+                tools::EVIDENCE,
+                tools::EVIDENCE_DESCRIPTION,
+                tools::evidence_schema(),
+            ),
+            (
+                tools::WORKSPACE,
+                tools::WORKSPACE_DESCRIPTION,
+                tools::workspace_schema(),
+            ),
+            (tools::DOCTOR, tools::DOCTOR_DESCRIPTION, serde_json::json!({})),
+            (tools::ROUTE, tools::ROUTE_DESCRIPTION, tools::route_schema()),
+            (
+                tools::REPORT_PAGE,
+                tools::REPORT_PAGE_DESCRIPTION,
+                tools::page_schema(),
+            ),
+            (
+                tools::EVIDENCE_PAGE,
+                tools::EVIDENCE_PAGE_DESCRIPTION,
+                tools::page_schema(),
+            ),
+            (tools::VALIDATE, tools::VALIDATE_DESCRIPTION, tools::page_schema()),
+            (
+                tools::DISCLOSE,
+                tools::DISCLOSE_DESCRIPTION,
+                tools::disclose_schema(),
+            ),
+        ]
+        .into_iter()
+        .map(|(name, description, schema)| Tool::new(name, description, schema_object(&schema)))
+        .collect()
+    }
+
+    /// Dispatch one call to the shared runner; tool errors are results, not
+    /// protocol errors.
+    fn call(name: &str, arguments: &serde_json::Value) -> Result<String, String> {
+        match name {
+            tools::ASSESS => tools::run_assess(arguments),
+            tools::EVIDENCE => tools::run_evidence(arguments),
+            tools::WORKSPACE => tools::run_workspace(arguments),
+            tools::DOCTOR => tools::run_doctor(),
+            tools::ROUTE => tools::run_route(arguments),
+            tools::REPORT_PAGE => tools::run_report_page(arguments),
+            tools::EVIDENCE_PAGE => tools::run_evidence_page(arguments),
+            tools::VALIDATE => tools::run_validate(arguments),
+            tools::DISCLOSE => tools::run_disclose(arguments),
+            other => Err(format!("unknown tool: {other}")),
         }
     }
-    Ok(())
 }
 
-/// The two tools, with their shared schemas.
-fn tool_list() -> Value {
-    json!([
-        {
-            "name": tools::ASSESS,
-            "description": tools::ASSESS_DESCRIPTION,
-            "inputSchema": serde_json::from_str(&tools::assess_schema()).unwrap_or(Value::Null),
-        },
-        {
-            "name": tools::EVIDENCE,
-            "description": tools::EVIDENCE_DESCRIPTION,
-            "inputSchema": serde_json::from_str(&tools::evidence_schema()).unwrap_or(Value::Null),
-        },
-    ])
+/// The object form of a schema value; schemas are always objects.
+fn schema_object(schema: &serde_json::Value) -> JsonObject {
+    schema.as_object().cloned().unwrap_or_default()
 }
 
-/// Dispatch one tools/call request; tool errors are results, not protocol errors.
-fn call_tool(request: &Value) -> Value {
-    let name = request
-        .pointer("/params/name")
-        .and_then(|n| n.as_str())
-        .unwrap_or("");
-    let arguments = request
-        .pointer("/params/arguments")
-        .cloned()
-        .unwrap_or(Value::Null);
-    let outcome = match name {
-        tools::ASSESS => run_assess(&arguments),
-        tools::EVIDENCE => run_evidence(&arguments),
-        other => Err(format!("unknown tool: {other}")),
-    };
-    match outcome {
-        Ok(text) => json!({
-            "content": [{ "type": "text", "text": text }],
-            "isError": false,
-        }),
-        Err(message) => json!({
-            "content": [{ "type": "text", "text": message }],
-            "isError": true,
-        }),
+impl ServerHandler for SecurityServer {
+    /// The server identity and capabilities.
+    fn get_info(&self) -> ServerConfig {
+        ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
+            .with_server_info(Implementation::new("maestro-security", env!("CARGO_PKG_VERSION")))
+    }
+
+    /// The full tool registry.
+    fn list_tools(
+        &self,
+        _request: Option<PaginatedRequestParams>,
+        _context: RequestContext<RoleServer>,
+    ) -> impl Future<Output = Result<ListToolsResult, McpError>> {
+        std::future::ready(Ok(ListToolsResult::with_all_items(Self::registry())))
+    }
+
+    /// One tool call; a failed run is an error result the caller can read.
+    fn call_tool(
+        &self,
+        request: CallToolRequestParams,
+        _context: RequestContext<RoleServer>,
+    ) -> impl Future<Output = Result<CallToolResponse, McpError>> {
+        let arguments = request
+            .arguments
+            .map(serde_json::Value::Object)
+            .unwrap_or_default();
+        let outcome = Self::call(&request.name, &arguments);
+        let result = match outcome {
+            Ok(text) => CallToolResult::success(vec![ContentBlock::text(text)]),
+            Err(message) => CallToolResult::error(vec![ContentBlock::text(message)]),
+        };
+        std::future::ready(Ok(result.into()))
     }
 }
 
-/// One assessment run, returned as the report JSON.
-fn run_assess(arguments: &Value) -> Result<String, String> {
-    let params: AssessParams =
-        serde_json::from_value(arguments.clone()).map_err(|error| error.to_string())?;
-    let report = assess(&params).map_err(|error| format!("assessment failed: {error}"))?;
-    serde_json::to_string(&report).map_err(|error| error.to_string())
-}
-
-/// The retained evidence ledger for one finished run.
-fn run_evidence(arguments: &Value) -> Result<String, String> {
-    let run_id = arguments
-        .get("run_id")
-        .and_then(|v| v.as_str())
-        .ok_or("run_id is required")?;
-    evidence_for(run_id).map_err(|error| format!("evidence lookup failed: {error}"))
-}
-
-/// Write one JSON-RPC result line.
-fn write_result(out: &mut impl Write, id: &Value, result: &Value) -> Result<(), String> {
-    let message = json!({ "jsonrpc": "2.0", "id": id, "result": result });
-    writeln!(out, "{message}").map_err(|error| format!("stdout: {error}"))?;
-    out.flush().map_err(|error| format!("stdout: {error}"))
-}
-
-/// Write one JSON-RPC error line.
-fn write_error(out: &mut impl Write, id: &Value, code: i64, message: &str) -> Result<(), String> {
-    let response = json!({
-        "jsonrpc": "2.0",
-        "id": id,
-        "error": { "code": code, "message": message },
-    });
-    writeln!(out, "{response}").map_err(|error| format!("stdout: {error}"))?;
-    out.flush().map_err(|error| format!("stdout: {error}"))
+/// Serve the MCP server on stdio until the client disconnects.
+///
+/// # Errors
+/// Fails if the peer never completes the initialize handshake or the
+/// service task panics.
+pub async fn serve() -> Result<(), String> {
+    let running = serve_server(SecurityServer, stdio())
+        .await
+        .map_err(|error| format!("mcp initialize: {error}"))?;
+    running
+        .waiting()
+        .await
+        .map(|_| ())
+        .map_err(|error| format!("mcp serve: {error}"))
 }
 
 #[cfg(test)]
 mod tests {
     //! Unit tests for the MCP surface.
 
-    use super::{call_tool, tool_list};
-    use serde_json::json;
+    use super::SecurityServer;
 
-    /// `tools/list` exposes exactly the two shared tools.
+    /// The registry exposes the full nine-tool set, assess first.
     #[test]
-    fn tool_list_has_both_tools() {
-        let tools = tool_list();
-        let arr = tools.as_array().expect("array");
-        assert_eq!(arr.len(), 2);
-        assert_eq!(arr[0]["name"], "security_assess");
-        assert_eq!(arr[1]["name"], "security_evidence");
+    fn registry_has_the_full_set() {
+        let registry = SecurityServer::registry();
+        assert_eq!(registry.len(), 9);
+        assert_eq!(registry[0].name, "security_assess");
+        assert_eq!(registry[8].name, "security_disclose");
     }
 
     /// Calling an unknown tool is a tool error, not a protocol error.
     #[test]
-    fn unknown_tool_is_an_error_result() {
-        let request = json!({ "params": { "name": "nope", "arguments": {} } });
-        let result = call_tool(&request);
-        assert_eq!(result["isError"], true);
+    fn unknown_tool_is_an_error() {
+        let outcome = SecurityServer::call("nope", &serde_json::json!({}));
+        let err = outcome.unwrap_err();
+        assert!(err.contains("unknown tool"), "unexpected error: {err}");
     }
 
     /// `security_evidence` without a run id reports the missing parameter.
     #[test]
-    fn evidence_without_run_id_is_an_error_result() {
-        let request = json!({ "params": { "name": "security_evidence", "arguments": {} } });
-        let result = call_tool(&request);
-        assert_eq!(result["isError"], true);
-        assert!(result["content"][0]["text"]
-            .as_str()
-            .unwrap_or_default()
-            .contains("run_id"));
+    fn evidence_without_run_id_is_an_error() {
+        let outcome = SecurityServer::call("security_evidence", &serde_json::json!({}));
+        let err = outcome.unwrap_err();
+        assert!(err.contains("run_id"), "unexpected error: {err}");
     }
 }

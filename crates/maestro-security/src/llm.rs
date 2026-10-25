@@ -5,27 +5,26 @@
 //! so swapping models never touches this code. A per-run override is still
 //! possible via the tool parameter.
 
-use crate::net;
 use serde_json::json;
 
-/// Default bridge base URL (loopback, WASM-visible). The audience segment is
-/// part of the wiring, not the model choice.
-pub const DEFAULT_BASE_URL: &str = "http://127.0.0.1:8001/heretic/v1";
+/// Default bridge base URL (loopback, WASM-visible): the local model router,
+/// which serves every registered model directly, no capability key needed.
+pub const DEFAULT_BASE_URL: &str = "http://127.0.0.1:8080/v1";
 /// Default capability key (machine-local; also in /work/tools/pi-bridge.env).
 pub const DEFAULT_KEY: &str =
     "3648e45e792d925d2bf138156fb820e491a5f89f3c5d33f2d6963920b170592f";
 
 /// A configured bridge client. The model is never stored here: it is resolved
-/// per run from [`Llm::available_models`] or supplied by the caller.
+/// per run from [`Client::available_models`] or supplied by the caller.
 #[derive(Clone)]
-pub struct Llm {
+pub struct Client {
     /// Bridge base URL including the audience segment.
     base_url: String,
     /// Bridge capability key.
     key: String,
 }
 
-impl Llm {
+impl Client {
     /// Client pointed at the local bridge defaults.
     #[must_use]
     pub fn local() -> Self {
@@ -56,7 +55,7 @@ impl Llm {
     /// model list.
     pub fn available_models(&self) -> Result<Vec<String>, String> {
         let url = format!("{}/models", self.base_url);
-        let resp = net::request(
+        let resp = maestro_http::request(
             "GET",
             &url,
             &[("authorization", &format!("Bearer {}", self.key))],
@@ -93,7 +92,7 @@ impl Llm {
         system: &str,
         user: &str,
         max_tokens: u32,
-    ) -> Result<String, String> {
+    ) -> Result<ChatReply, String> {
         let body = json!({
             "model": model,
             "max_tokens": max_tokens,
@@ -104,7 +103,7 @@ impl Llm {
         })
         .to_string();
         let url = format!("{}/chat/completions", self.base_url);
-        let resp = net::request(
+        let resp = maestro_http::request(
             "POST",
             &url,
             &[
@@ -119,12 +118,35 @@ impl Llm {
         }
         let value: serde_json::Value =
             serde_json::from_slice(&resp.body).map_err(|e| format!("bridge json: {e}"))?;
-        value
+        let content = value
             .pointer("/choices/0/message/content")
             .and_then(|c| c.as_str())
-            .map(|s| s.to_string())
-            .ok_or_else(|| "bridge returned no message content".into())
+            .unwrap_or_default()
+            .to_string();
+        if content.trim().is_empty() {
+            // Thinking models spend tokens on reasoning before answering; an
+            // empty answer means the budget ran out mid-thought, which the
+            // phase layer retries.
+            return Err("bridge returned no message content".into());
+        }
+        let tokens_out = value
+            .pointer("/usage/completion_tokens")
+            .and_then(serde_json::Value::as_u64)
+            .unwrap_or(0);
+        Ok(ChatReply {
+            content,
+            tokens_out,
+        })
     }
+}
+
+/// One chat completion result: the content plus what it cost.
+#[derive(Debug, Clone)]
+pub struct ChatReply {
+    /// The model's message content.
+    pub content: String,
+    /// Output tokens reported by the bridge; 0 when it reports none.
+    pub tokens_out: u64,
 }
 
 /// Cap a string for error messages.

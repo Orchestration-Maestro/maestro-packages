@@ -4,7 +4,7 @@ version = "0.1.0"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Maestro's unified security framework: one pipeline, five agents, extension and MCP surfaces."
+description = "Helps Maestro agents understand program and network behaviour, find security issues with root-cause analysis, and write better code. One pipeline, five agents, extension and MCP surfaces."
 
 [lib]
 name = "maestro_security"
@@ -16,7 +16,17 @@ path = "src/bin/maestro-security-mcp.rs"
 
 [dependencies]
 maestro-extensions-wasm = { git = "https://github.com/Orchestration-Maestro/maestro" }
+maestro-http = { path = "../maestro-http" }
 serde.workspace = true
+serde_json.workspace = true
+
+# The MCP stdio surface is host-only: tokio's stdio/net transports do not
+# exist on wasm, and the WASM surface is the extension.
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+rmcp = { version = "=3.7.0", features = ["transport-io"] }
+tokio.workspace = true
+
+[dev-dependencies]
 serde_json.workspace = true
 
 [lints]

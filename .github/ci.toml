@@ -1,0 +1,14 @@
+wasm_crates = ["maestro-security"]
+browser_test_crates = []
+test_tools = true
+test_inputs = {}
+reserved_ports = []
+spelling_words = ["temH"]
+check_targets = [
+    "aarch64-unknown-linux-gnu",
+    "x86_64-apple-darwin",
+    "aarch64-apple-darwin",
+    "x86_64-pc-windows-msvc",
+]
+advisory_exceptions = []
+license_exceptions = []

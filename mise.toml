@@ -1,0 +1,16 @@
+# Development tools are pinned here; Rust is managed by rustup.
+[settings]
+lockfile = true
+
+[tool_alias]
+prek = "github:j178/prek"
+
+[tools]
+# Runs the shared development recipes.
+just = "1.58.0"
+# Installs and runs commit hooks.
+prek = "0.5.4"
+# Refuses a secret in the staged change before it is committed.
+gitleaks = "8.30.1"
+# Runs ordinary tests in isolated processes.
+"aqua:nextest-rs/nextest/cargo-nextest" = "0.9.148"

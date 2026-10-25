@@ -1,4 +1,4 @@
-//! Pipeline orchestration: the unified methodology, run per agent.
+//! Engine orchestration: the unified methodology, run per agent.
 //!
 //! Recon executes deterministically through the runner; every other phase
 //! is one bridge call whose output is ledgered with a sequential evidence
@@ -7,12 +7,14 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::agents::Agent;
+use crate::agents::{Agent, Pattern};
 use crate::evidence::Ledger;
-use crate::llm::Llm;
+use crate::llm::Client;
 use crate::methodology;
-use crate::report::{Evidence, Finding, Refuted, Report, Threat, REPORT_SCHEMA};
-use crate::runner::Runner;
+use crate::report::{
+    Evidence, Execution, Finding, Refuted, Verdict, Assessment, Threat, SCHEMA,
+};
+use crate::runner::Sandbox;
 
 /// The canonical phase order.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -44,15 +46,18 @@ const CANONICAL: [PhaseKind; 7] = [
     PhaseKind::Report,
 ];
 
-/// Pipeline endpoints and limits.
+/// Engine endpoints and limits.
 #[derive(Clone)]
 pub struct Config {
     /// Bridge base URL including the audience segment.
     pub bridge: String,
     /// Bridge capability key.
     pub bridge_key: String,
-    /// Runner base URL.
+    /// Sandbox base URL.
     pub runner: String,
+    /// Default model when a run does not name one; used only if the bridge
+    /// actually serves it, otherwise the bridge's first model.
+    pub default_model: String,
     /// Maximum hypotheses verified per run.
     pub max_hypotheses: usize,
 }
@@ -63,6 +68,7 @@ impl Default for Config {
             bridge: crate::llm::DEFAULT_BASE_URL.into(),
             bridge_key: crate::llm::DEFAULT_KEY.into(),
             runner: crate::runner::DEFAULT_RUNNER_URL.into(),
+            default_model: "qwythos".into(),
             max_hypotheses: 8,
         }
     }
@@ -77,6 +83,7 @@ impl Config {
             ("MAESTRO_SECURITY_BRIDGE", &mut config.bridge),
             ("MAESTRO_SECURITY_BRIDGE_KEY", &mut config.bridge_key),
             ("MAESTRO_SECURITY_RUNNER", &mut config.runner),
+            ("MAESTRO_SECURITY_MODEL", &mut config.default_model),
         ] {
             if let Ok(value) = std::env::var(key) && !value.is_empty() {
                 *field = value;
@@ -97,12 +104,30 @@ impl Config {
 pub struct AssessParams {
     /// Target to assess: host, IP, or URL.
     pub target: String,
-    /// Agent role name; defaults to `maestro.pentester`.
+    /// Agent role name; defaults to `maestro.security`.
     pub agent: Option<String>,
     /// Optional model override; defaults to the first model the bridge serves.
     pub model: Option<String>,
     /// Maximum hypotheses to verify (default 8).
     pub max_hypotheses: Option<usize>,
+    /// The operational pattern: `red_team` (default), `blue_team`,
+    /// `bug_bounter`, `compliance`, `continuous_ops`, or `dfir`.
+    #[serde(default)]
+    pub pattern: Option<String>,
+}
+
+/// A checkpoint callback: persist the ledger after each phase.
+pub type Checkpoint = dyn FnMut(&Ledger, &str, &str);
+
+/// Options for one engine run.
+#[derive(Default)]
+pub struct RunOptions<'a> {
+    /// Model override; the bridge default when absent.
+    pub model: Option<String>,
+    /// The operational pattern.
+    pub pattern: Pattern,
+    /// Per-phase ledger persistence; `None` for one-shot runs.
+    pub checkpoint: Option<&'a mut Checkpoint>,
 }
 
 /// A phase-3 hypothesis as returned by the model.
@@ -159,6 +184,24 @@ pub(crate) struct Deepen {
     pub(crate) fix: String,
     /// critical | high | medium | low | info.
     pub(crate) severity: String,
+    /// low | medium | high: how easily an attacker reaches it.
+    #[serde(default)]
+    pub(crate) likelihood: String,
+    /// Path from entrypoint through propagation to sink.
+    #[serde(default)]
+    pub(crate) trace: Vec<String>,
+    /// Conditions under which it holds (auth, network, timing, ...).
+    #[serde(default)]
+    pub(crate) conditions: Vec<String>,
+    /// How an attacker would use it.
+    #[serde(default)]
+    pub(crate) execution: Option<Execution>,
+    /// ATT&CK technique id, e.g. `T1078`.
+    #[serde(default)]
+    pub(crate) mitre: Option<String>,
+    /// 0..1: how strongly the evidence supports the finding.
+    #[serde(default)]
+    pub(crate) confidence: Option<f64>,
 }
 
 /// One judged verification attempt.
@@ -203,6 +246,8 @@ pub(crate) struct RunState {
     pub(crate) threats: Vec<Threat>,
     /// Next finding number.
     pub(crate) f_next: u32,
+    /// When the run started, for the spend footer.
+    pub(crate) started: std::time::Instant,
 }
 
 impl RunState {
@@ -219,6 +264,7 @@ impl RunState {
             refuted: Vec::new(),
             threats: Vec::new(),
             f_next: 1,
+            started: std::time::Instant::now(),
         }
     }
 
@@ -241,23 +287,23 @@ pub(crate) struct ModelCtx {
 }
 
 /// The unified pipeline bound to one configuration.
-pub struct Pipeline {
+pub struct Engine {
     /// The bridge client.
-    pub(crate) llm: Llm,
+    pub(crate) llm: Client,
     /// The runner client.
-    pub(crate) runner: Runner,
+    pub(crate) runner: Sandbox,
     /// Endpoints and limits.
     pub(crate) config: Config,
 }
 
-impl Pipeline {
+impl Engine {
     /// Build a pipeline from a configuration.
     #[must_use]
     pub fn new(config: Config) -> Self {
-        let llm = Llm::local()
+        let llm = Client::local()
             .with_base_url(config.bridge.clone())
             .with_key(config.bridge_key.clone());
-        let runner = Runner::local().with_base_url(config.runner.clone());
+        let runner = Sandbox::local().with_base_url(config.runner.clone());
         Self {
             llm,
             runner,
@@ -265,24 +311,27 @@ impl Pipeline {
         }
     }
 
-    /// Run one agent's phases against a target.
+    /// Run one agent's phases, calling the option's checkpoint after each
+    /// phase with the current ledger, target and agent. The checkpoint lets a
+    /// caller persist progress so a separate call can observe a run while it
+    /// is in flight.
     ///
     /// # Errors
     /// Fails if the runner preflight fails, the bridge serves no model, or
     /// any phase fails.
-    pub fn run(
+    pub fn run_checkpointed(
         &self,
         agent: &Agent,
         target: &str,
-        model: Option<&str>,
-    ) -> Result<Report, String> {
+        opts: &mut RunOptions<'_>,
+    ) -> Result<Assessment, String> {
         let run_id = new_run_id(target);
         self.runner
             .health()
             .map_err(|error| format!("runner preflight failed: {error}"))?;
         let ctx = ModelCtx {
-            system: system_prompt(agent),
-            model: self.resolve_model(model)?,
+            system: system_prompt(agent, opts.pattern),
+            model: self.resolve_model(opts.model.as_deref())?,
         };
         let mut state = RunState::new(target);
         for phase in CANONICAL {
@@ -290,6 +339,9 @@ impl Pipeline {
                 continue;
             }
             self.execute(phase, &ctx, &mut state)?;
+            if let Some(cp) = opts.checkpoint.as_mut() {
+                cp(&state.ledger, target, agent.name);
+            }
         }
         self.assemble(&run_id, agent, &ctx, &mut state)
     }
@@ -303,7 +355,7 @@ impl Pipeline {
     ) -> Result<(), String> {
         match phase {
             PhaseKind::Recon => {
-                state.recon = self.phase_recon(&state.target, &mut state.ledger)?
+                state.recon = self.phase_recon(&state.target, &mut state.ledger)?;
             }
             PhaseKind::Model => {
                 state.target_model = self.phase_target_model(
@@ -311,17 +363,17 @@ impl Pipeline {
                     &state.target,
                     &state.recon,
                     &mut state.ledger,
-                )?
+                )?;
             }
             PhaseKind::Hypotheses => {
                 state.hypotheses =
-                    self.phase_hypotheses(ctx, &state.target_model, &mut state.ledger)
+                    self.phase_hypotheses(ctx, &state.target_model, &mut state.ledger);
             }
-            PhaseKind::Verify => self.phase_verify(ctx, state)?,
-            PhaseKind::Deepen => self.phase_deepen(ctx, state)?,
+            PhaseKind::Verify => self.phase_verify(ctx, state),
+            PhaseKind::Deepen => self.phase_deepen(ctx, state),
             PhaseKind::Threat => {
                 state.threats =
-                    self.phase_threat(ctx, &state.target_model, &mut state.ledger)
+                    self.phase_threat(ctx, &state.target_model, &mut state.ledger);
             }
             PhaseKind::Report => {}
         }
@@ -335,7 +387,7 @@ impl Pipeline {
         agent: &Agent,
         ctx: &ModelCtx,
         state: &mut RunState,
-    ) -> Result<Report, String> {
+    ) -> Result<Assessment, String> {
         let unknown = collect_unknown(&state.verifications);
         let (summary, mechanics) = if agent.phases.contains(&PhaseKind::Report) {
             let data = serde_json::json!({
@@ -352,21 +404,27 @@ impl Pipeline {
                 Vec::new(),
             )
         };
-        let report = Report {
-            schema: REPORT_SCHEMA,
+        let mut findings = std::mem::take(&mut state.findings);
+        findings.sort_by(|a, b| a.fingerprint.cmp(&b.fingerprint));
+        let mut spend = state.ledger.spend();
+        spend.duration_secs = state.started.elapsed().as_secs();
+        let report = Assessment {
+            schema: SCHEMA.into(),
             run_id: run_id.into(),
             agent: agent.name.into(),
             target: state.target.clone(),
             model: ctx.model.clone(),
             phases: state.ledger.phases().to_vec(),
-            findings: std::mem::take(&mut state.findings),
+            findings,
             unknown,
             refuted: std::mem::take(&mut state.refuted),
             threats: std::mem::take(&mut state.threats),
             runtime_mechanics: mechanics,
+            spend: Some(spend),
             summary,
         };
         state.ledger.save(run_id, &state.target, agent.name, &ctx.model)?;
+        crate::evidence::save_report(run_id, &report)?;
         Ok(report)
     }
 
@@ -376,9 +434,12 @@ impl Pipeline {
             return Ok(model.to_string());
         }
         self.llm.available_models().and_then(|models| {
-            models
-                .into_iter()
-                .next()
+            let preferred = models
+                .iter()
+                .find(|m| **m == self.config.default_model)
+                .cloned();
+            preferred
+                .or_else(|| models.into_iter().next())
                 .ok_or_else(|| "bridge /models returned no models".to_string())
         })
     }
@@ -388,7 +449,7 @@ impl Pipeline {
 ///
 /// # Errors
 /// Fails if the target is empty or the pipeline run fails.
-pub fn assess(params: &AssessParams) -> Result<Report, String> {
+pub fn assess(params: &AssessParams) -> Result<Assessment, String> {
     if params.target.trim().is_empty() {
         return Err("target is required".into());
     }
@@ -397,8 +458,12 @@ pub fn assess(params: &AssessParams) -> Result<Report, String> {
         config.max_hypotheses = n;
     }
     let agent = crate::agents::resolve_agent(params.agent.as_deref());
-    let pipeline = Pipeline::new(config);
-    pipeline.run(agent, &params.target, params.model.as_deref())
+    let mut opts = RunOptions {
+        model: params.model.clone(),
+        pattern: Pattern::parse(params.pattern.as_deref().unwrap_or_default()),
+        checkpoint: None,
+    };
+    Engine::new(config).run_checkpointed(agent, &params.target, &mut opts)
 }
 
 /// Retrieve the retained evidence ledger for a finished run.
@@ -409,11 +474,34 @@ pub fn evidence_for(run_id: &str) -> Result<String, String> {
     crate::evidence::load(run_id)
 }
 
-/// The system prompt for one agent: the unified prompt plus the role.
-fn system_prompt(agent: &Agent) -> String {
+/// Resolve a model for a run: an explicit override wins, else the configured
+/// default when the bridge serves it, else the bridge's first model.
+///
+/// # Errors
+/// Fails if the bridge serves no models.
+pub fn resolve_model(
+    client: &crate::llm::Client,
+    default_model: &str,
+    override_model: Option<&str>,
+) -> Result<String, String> {
+    if let Some(model) = override_model {
+        return Ok(model.to_string());
+    }
+    let models = client.available_models()?;
+    let preferred = models.iter().find(|m| **m == default_model).cloned();
+    preferred
+        .or_else(|| models.into_iter().next())
+        .ok_or_else(|| "bridge /models returned no models".to_string())
+}
+
+/// The system prompt for one agent: the unified prompt, the role, and the
+/// pattern guidance in that order.
+fn system_prompt(agent: &Agent, pattern: Pattern) -> String {
     format!(
-        "{}\n\nAGENT ROLE:\n{}",
-        methodology::SYSTEM_PROMPT, agent.role
+        "{}\n\nAGENT ROLE:\n{}\n\n{}",
+        methodology::SYSTEM_PROMPT,
+        agent.role,
+        pattern.guidance()
     )
 }
 
@@ -421,8 +509,7 @@ fn system_prompt(agent: &Agent) -> String {
 fn new_run_id(target: &str) -> String {
     let secs = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
+        .map_or(0, |d| d.as_secs());
     let slug: String = target
         .chars()
         .take(24)
@@ -450,22 +537,65 @@ fn collect_unknown(verifications: &[Verification]) -> Vec<String> {
 
 /// A verified finding before deepening: level and evidence only.
 pub(crate) fn shallow_finding(target: &str, v: &Verification, id: u32) -> Finding {
+    let verdict = if v.level == "CONFIRMED" {
+        Verdict::Confirmed
+    } else {
+        Verdict::NeedsValidation
+    };
+    let title = truncate(&v.hypothesis.claim, 90).to_string();
     Finding {
         id: format!("F-{id:03}"),
-        title: truncate(&v.hypothesis.claim, 90).to_string(),
+        fingerprint: fingerprint(target, &v.hypothesis.class, &title),
+        title,
         class: v.hypothesis.class.clone(),
+        verdict,
         severity: "info".into(),
+        likelihood: String::new(),
+        confidence: if v.level == "CONFIRMED" { 0.5 } else { 0.3 },
+        trace: Vec::new(),
+        conditions: Vec::new(),
+        execution: None,
+        mitre: None,
+        poc: None,
         evidence_level: v.level.clone(),
         escalation: String::new(),
         evidence: Evidence {
             command: v.command.clone(),
             output: v.output.clone(),
-            evidence_id: v.evidence_id.clone(),
+            id: v.evidence_id.clone(),
         },
         impact: v.reasoning.clone(),
         fix: String::new(),
         target: target.into(),
+        claimed_root_cause: Some(v.hypothesis.claim.clone()),
+        blockers: if verdict == Verdict::NeedsValidation {
+            v.unknown.clone()
+        } else {
+            Vec::new()
+        },
+        validation_plan: None,
+        reason: None,
     }
+}
+
+/// The stable fingerprint of a finding: target, class and title slug.
+///
+/// # Errors
+/// Does not fail; the slug is total over any input.
+pub(crate) fn fingerprint(target: &str, class: &str, title: &str) -> String {
+    let slug = |s: &str| {
+        s.chars()
+            .take(40)
+            .map(|c| {
+                if c.is_ascii_alphanumeric() {
+                    c.to_ascii_lowercase()
+                } else {
+                    '-'
+                }
+            })
+            .collect::<String>()
+    };
+    format!("{}::{}::{}", slug(target), slug(class), slug(title))
 }
 
 /// Deterministic fallback summary from the report data.
@@ -473,14 +603,12 @@ pub(crate) fn default_summary_for(report_data: &str) -> String {
     let value: serde_json::Value = serde_json::from_str(report_data).unwrap_or_default();
     let findings = value
         .get("findings")
-        .and_then(|f| f.as_array())
-        .map(Vec::len)
-        .unwrap_or(0);
+        .and_then(serde_json::Value::as_array)
+        .map_or(0, Vec::len);
     let refuted = value
         .get("refuted")
-        .and_then(|r| r.as_array())
-        .map(Vec::len)
-        .unwrap_or(0);
+        .and_then(serde_json::Value::as_array)
+        .map_or(0, Vec::len);
     format!(
         "Assessment finished. {findings} findings, {refuted} hypotheses refuted. \
 See the findings list for evidence ids."
@@ -489,22 +617,22 @@ See the findings list for evidence ids."
 
 /// Deterministic fallback summary for agents without a report phase.
 fn default_summary(target: &str, findings: &[Finding], refuted: &[Refuted]) -> String {
-    format!(
-        "Assessed {target}. {} findings ({} confirmed), {} hypotheses refuted. \
+format!(
+"Assessed {target}. {} findings ({} confirmed), {} hypotheses refuted. \
 See the findings list for evidence ids.",
-        findings.len(),
-        findings
-            .iter()
-            .filter(|f| f.evidence_level == "CONFIRMED")
-            .count(),
-        refuted.len()
-    )
+findings.len(),
+findings
+.iter()
+.filter(|f| f.verdict == Verdict::Confirmed)
+.count(),
+refuted.len()
+)
 }
 
 /// Pull the outermost JSON object out of a model response.
 pub(crate) fn extract_json(raw: &str) -> String {
     let start = raw.find('{').unwrap_or(0);
-    let end = raw.rfind('}').map(|i| i + 1).unwrap_or(raw.len());
+    let end = raw.rfind('}').map_or(raw.len(), |i| i + 1);
     if start < end {
         raw[start..end].to_string()
     } else {
@@ -552,12 +680,12 @@ mod tests {
         assert!(!id.contains(':') && !id.contains('/') && !id.contains('?'));
     }
 
-    /// Unknown agent names fall back to the default pentester.
+    /// Unknown agent names fall back to the default reviewer.
     #[test]
     fn unknown_agent_falls_back_to_the_default() {
         assert_eq!(
             crate::agents::resolve_agent(Some("nope")).name,
-            "maestro.pentester"
+            "maestro.security"
         );
     }
 }

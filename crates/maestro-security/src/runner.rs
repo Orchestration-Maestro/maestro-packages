@@ -1,7 +1,6 @@
-//! Client for the Kali box runner service: the execution plane for every
+//! Client for the analysis sandbox runner service: the execution plane for every
 //! command the pipeline generates.
 
-use crate::net;
 use serde_json::json;
 
 /// Default runner base URL (host-side, loopback).
@@ -18,12 +17,12 @@ pub struct ExecResult {
 
 /// A configured runner client.
 #[derive(Clone)]
-pub struct Runner {
-    /// Runner base URL.
+pub struct Sandbox {
+    /// Sandbox base URL.
     base_url: String,
 }
 
-impl Runner {
+impl Sandbox {
     /// Client pointed at the local runner defaults.
     #[must_use]
     pub fn local() -> Self {
@@ -44,7 +43,7 @@ impl Runner {
     /// # Errors
     /// Fails on any non-200 runner response.
     pub fn health(&self) -> Result<(), String> {
-        let resp = net::request("GET", &format!("{}/health", self.base_url), &[], &[])?;
+        let resp = maestro_http::request("GET", &format!("{}/health", self.base_url), &[], &[])?;
         if resp.status != 200 {
             return Err(format!("runner http {} on /health", resp.status));
         }
@@ -57,7 +56,7 @@ impl Runner {
     /// Fails on any non-200 runner response or a malformed NDJSON stream.
     pub fn exec(&self, command: &str, timeout_secs: u32) -> Result<ExecResult, String> {
         let body = json!({ "command": command, "timeout": timeout_secs }).to_string();
-        let resp = net::request(
+        let resp = maestro_http::request(
             "POST",
             &format!("{}/exec", self.base_url),
             &[("content-type", "application/json")],
@@ -84,13 +83,13 @@ fn parse_ndjson(raw: &[u8]) -> Result<ExecResult, String> {
         let value: serde_json::Value =
             serde_json::from_str(line).map_err(|e| format!("runner ndjson: {e}"))?;
         match value.get("type").and_then(|t| t.as_str()) {
-            Some("stdout") | Some("stderr") => {
+            Some("out" | "err") => {
                 if let Some(data) = value.get("data").and_then(|d| d.as_str()) {
                     output.push_str(data);
                 }
             }
             Some("exit") => {
-                let code = value.get("code").and_then(|c| c.as_i64()).unwrap_or(0);
+                let code = value.get("code").and_then(serde_json::Value::as_i64).unwrap_or(0);
                 exit_code = i32::try_from(code).unwrap_or(0);
             }
             // Tool banners and heartbeat lines carry no payload we need.

@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::report::Phase;
 
 /// Schema tag for the retained ledger document.
-pub const EVIDENCE_SCHEMA: &str = "maestro-security/evidence/1";
+pub const SCHEMA: &str = "maestro-security/evidence/1";
 
 /// One retained step of a run.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -30,6 +30,9 @@ pub struct Entry {
     /// The model that produced it (llm entries).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
+    /// Output tokens reported by the bridge (llm entries).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tokens_out: Option<u64>,
     /// The process exit code (exec entries).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub exit_code: Option<i32>,
@@ -39,7 +42,7 @@ pub struct Entry {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LedgerDoc {
     /// Schema tag.
-    pub schema: &'static str,
+    pub schema: String,
     /// Run id.
     pub run_id: String,
     /// Assessed target.
@@ -53,7 +56,7 @@ pub struct LedgerDoc {
 }
 
 /// One model call, as recorded in the ledger.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LlmCall {
     /// The prompt sent to the model.
     pub prompt: String,
@@ -61,13 +64,19 @@ pub struct LlmCall {
     pub output: String,
     /// The model that produced it.
     pub model: String,
+    /// Output tokens reported by the bridge; 0 when it reports none.
+    #[serde(default)]
+    pub tokens_out: u64,
 }
 
 /// The in-run ledger: assigns sequential evidence ids and accumulates
 /// entries for retention.
 pub struct Ledger {
+    /// The next sequential evidence number.
     next: u32,
+    /// The phases run so far, in order.
     phases: Vec<crate::report::Phase>,
+    /// Every retained entry.
     entries: Vec<Entry>,
 }
 
@@ -110,6 +119,7 @@ impl Ledger {
             prompt: None,
             output: output.into(),
             model: None,
+            tokens_out: None,
             exit_code: Some(exit_code),
         });
         id
@@ -131,6 +141,7 @@ impl Ledger {
             prompt: Some(call.prompt.clone()),
             output: call.output.clone(),
             model: Some(call.model.clone()),
+            tokens_out: Some(call.tokens_out),
             exit_code: None,
         });
         id
@@ -152,9 +163,26 @@ impl Ledger {
             prompt: None,
             output: note.into(),
             model: None,
+            tokens_out: None,
             exit_code: None,
         });
         id
+    }
+
+    /// What the run spent: LLM calls and output tokens across the ledger.
+    #[must_use]
+    pub fn spend(&self) -> crate::report::RunSpend {
+        let llm_calls = self.entries.iter().filter(|e| e.kind == "llm").count();
+        let tokens_out = self
+            .entries
+            .iter()
+            .filter_map(|e| e.tokens_out)
+            .sum::<u64>();
+        crate::report::RunSpend {
+            llm_calls,
+            tokens_out,
+            ..Default::default()
+        }
     }
 
     /// The phase log, in execution order.
@@ -179,7 +207,7 @@ impl Ledger {
         std::fs::create_dir_all(&dir).map_err(|error| format!("evidence dir: {error}"))?;
         let path = dir.join(format!("{run_id}.json"));
         let doc = LedgerDoc {
-            schema: EVIDENCE_SCHEMA,
+            schema: SCHEMA.into(),
             run_id: run_id.into(),
             target: target.into(),
             agent: agent.into(),
@@ -200,15 +228,24 @@ impl Ledger {
     }
 }
 
-/// The ledger directory: `$MAESTRO_SECURITY_HOME` or `$HOME/.maestro-security`.
-fn home() -> Result<PathBuf, String> {
+/// The base state directory: `$MAESTRO_SECURITY_HOME/.maestro-security` or
+/// `$HOME/.maestro-security`.
+///
+/// # Errors
+/// Fails if neither environment variable is set or `$HOME` is missing.
+pub fn base_dir() -> Result<PathBuf, String> {
     let base = std::env::var("MAESTRO_SECURITY_HOME")
         .ok()
         .filter(|value| !value.is_empty())
         .map(PathBuf::from)
         .or_else(|| std::env::var_os("HOME").map(PathBuf::from))
         .ok_or("set MAESTRO_SECURITY_HOME or HOME")?;
-    Ok(base.join(".maestro-security").join("evidence"))
+    Ok(base.join(".maestro-security"))
+}
+
+/// The evidence ledger directory under the base state directory.
+fn home() -> Result<PathBuf, String> {
+    Ok(base_dir()?.join("evidence"))
 }
 
 /// Load a retained ledger by run id.
@@ -219,4 +256,34 @@ pub fn load(run_id: &str) -> Result<String, String> {
     let path = home()?.join(format!("{run_id}.json"));
     std::fs::read_to_string(&path)
         .map_err(|_| format!("no evidence ledger for run {run_id} at {}", path.display()))
+}
+
+/// The report directory under the base state directory.
+fn reports() -> Result<PathBuf, String> {
+    Ok(base_dir()?.join("reports"))
+}
+
+/// Retain the finished report for one run, next to its ledger.
+///
+/// # Errors
+/// Fails if the state directory cannot be created or the write fails.
+pub fn save_report(run_id: &str, report: &crate::report::Assessment) -> Result<PathBuf, String> {
+    let dir = reports()?;
+    std::fs::create_dir_all(&dir).map_err(|error| format!("reports dir: {error}"))?;
+    let path = dir.join(format!("{run_id}.json"));
+    let json =
+        serde_json::to_string_pretty(report).map_err(|error| format!("report: {error}"))?;
+    std::fs::write(&path, json).map_err(|error| format!("report write: {error}"))?;
+    Ok(path)
+}
+
+/// Load a retained report by run id.
+///
+/// # Errors
+/// Fails if no report was retained for the run id.
+pub fn load_report(run_id: &str) -> Result<crate::report::Assessment, String> {
+    let path = reports()?.join(format!("{run_id}.json"));
+    let text = std::fs::read_to_string(&path)
+        .map_err(|_| format!("no report for run {run_id} at {}", path.display()))?;
+    serde_json::from_str(&text).map_err(|error| format!("report {run_id}: {error}"))
 }

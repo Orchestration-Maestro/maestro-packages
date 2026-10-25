@@ -6,11 +6,14 @@ members = ["crates/*"]
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
-repository = "https://github.com/Orchestration-Maestro/maestro-extensions"
+repository = "https://github.com/Orchestration-Maestro/maestro-packages"
 
 [workspace.dependencies]
 serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = { version = "=1.0.151", features = ["preserve_order", "float_roundtrip"] }
+tokio = { version = "=1.54.1", features = ["rt", "macros", "net", "io-util", "io-std", "time", "signal"] }
+rustls = { version = "0.23", default-features = false, features = ["std", "tls12", "ring"] }
+webpki-roots = "0.26"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
@@ -28,3 +31,4 @@ excessive_nesting = "forbid"
 unwrap_used = "forbid"
 expect_used = "forbid"
 panic = "forbid"
+module_name_repetitions = "forbid"

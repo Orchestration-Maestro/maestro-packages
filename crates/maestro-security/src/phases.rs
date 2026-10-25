@@ -1,15 +1,22 @@
 //! The pipeline's phases: recon through the runner, every model phase
 //! through the bridge, each step ledgered with a sequential evidence id.
 
+use std::fmt::Write;
+
 use crate::evidence::{Ledger, LlmCall};
 use crate::methodology;
 use crate::pipeline::{
     Deepen, Hypothesis, Judge, ModelCtx, Plan, RunState, Verification, default_summary_for,
     extract_json, shallow_finding, truncate,
 };
-use crate::report::{Refuted, Threat};
+use crate::report::{Finding, Refuted, Threat};
 
-impl crate::pipeline::Pipeline {
+/// Output ceiling for every model call. The bridge serves local models, so
+/// the ceiling only bounds one request's window, not a budget: thinking
+/// models get room to reason and still answer.
+const MAX_TOKENS: u32 = 32768;
+
+impl crate::pipeline::Engine {
     /// Phase 1: deterministic recon through the runner, raw and ledgered.
     pub(crate) fn phase_recon(
         &self,
@@ -20,11 +27,12 @@ impl crate::pipeline::Pipeline {
         for (command, timeout) in methodology::recon_commands(target) {
             let result = self.runner.exec(&command, timeout)?;
             let id = ledger.record_exec("recon", &command, &result.output, result.exit_code);
-            recon.push_str(&format!(
+            let _ = write!(
+                recon,
                 "\n=== {command} [{id}] exit={} ===\n{}\n",
                 result.exit_code,
                 truncate(&result.output, 8000)
-            ));
+            );
         }
         Ok(recon)
     }
@@ -38,7 +46,8 @@ impl crate::pipeline::Pipeline {
         ledger: &mut Ledger,
     ) -> Result<String, String> {
         let prompt = methodology::target_model_prompt(target, truncate(recon, 20000));
-        let doc = self.llm.chat(&ctx.model, &ctx.system, &prompt, 4096)?;
+        let reply = self.llm.chat(&ctx.model, &ctx.system, &prompt, MAX_TOKENS)?;
+        let doc = reply.content;
         let id = ledger.record_llm(
             "target-model",
             "structured target model from recon",
@@ -46,6 +55,7 @@ impl crate::pipeline::Pipeline {
                 prompt,
                 output: doc.clone(),
                 model: ctx.model.clone(),
+                tokens_out: reply.tokens_out,
             },
         );
         Ok(format!("{doc}\n[evidence {id}]"))
@@ -62,13 +72,14 @@ impl crate::pipeline::Pipeline {
             truncate(target_model, 12000),
             self.config.max_hypotheses,
         );
-        let raw = match self.llm.chat(&ctx.model, &ctx.system, &prompt, 4096) {
-            Ok(raw) => raw,
+        let reply = match self.llm.chat(&ctx.model, &ctx.system, &prompt, MAX_TOKENS) {
+            Ok(reply) => reply,
             Err(error) => {
                 ledger.record_note("hypotheses", &format!("failed: {error}"));
                 return Vec::new();
             }
         };
+        let raw = reply.content;
         let value: serde_json::Value =
             serde_json::from_str(&extract_json(&raw)).unwrap_or_default();
         let arr = value
@@ -89,13 +100,14 @@ impl crate::pipeline::Pipeline {
                 prompt,
                 output: raw,
                 model: ctx.model.clone(),
+                tokens_out: reply.tokens_out,
             },
         );
         hypotheses
     }
 
     /// Phase 4: verify every hypothesis, then split findings from refuted.
-    pub(crate) fn phase_verify(&self, ctx: &ModelCtx, state: &mut RunState) -> Result<(), String> {
+    pub(crate) fn phase_verify(&self, ctx: &ModelCtx, state: &mut RunState) {
         let target_model = state.target_model.clone();
         let hypotheses = std::mem::take(&mut state.hypotheses);
         for hypothesis in &hypotheses {
@@ -119,7 +131,6 @@ impl crate::pipeline::Pipeline {
             }
         }
         state.verifications = verifications;
-        Ok(())
     }
 
     /// One hypothesis through plan, act, observe, reflect, counterevidence.
@@ -137,9 +148,9 @@ impl crate::pipeline::Pipeline {
                 &ctx.model,
                 &ctx.system,
                 &methodology::verify_prompt(&hyp_json, truncate(target_model, 8000)),
-                2048,
+                MAX_TOKENS,
             )
-            .ok()?;
+            .ok()?.content;
         let plan: Plan = serde_json::from_str(&extract_json(&plan_raw)).ok()?;
         let result = self.runner.exec(&plan.command, 300).ok()?;
         let id = ledger.record_exec("verify", &plan.command, &result.output, result.exit_code);
@@ -153,9 +164,9 @@ impl crate::pipeline::Pipeline {
                     &plan.command,
                     truncate(&result.output, 8000),
                 ),
-                1024,
+                MAX_TOKENS,
             )
-            .ok()?;
+            .ok()?.content;
         let judge: Judge = serde_json::from_str(&extract_json(&judge_raw)).ok()?;
         let executed = self.counterevidence(ctx, &plan, &judge, ledger);
         let counterevidence = if executed.is_empty() {
@@ -209,7 +220,7 @@ impl crate::pipeline::Pipeline {
     }
 
     /// Phase 5: deepen each verified finding in place.
-    pub(crate) fn phase_deepen(&self, ctx: &ModelCtx, state: &mut RunState) -> Result<(), String> {
+    pub(crate) fn phase_deepen(&self, ctx: &ModelCtx, state: &mut RunState) {
         let verifications = std::mem::take(&mut state.verifications);
         for verification in &verifications {
             if verification.level == "REFUTED" || verification.level == "POSSIBLE" {
@@ -218,21 +229,17 @@ impl crate::pipeline::Pipeline {
             let Some(finding) = state
                 .findings
                 .iter_mut()
-                .find(|f| f.evidence.evidence_id == verification.evidence_id)
+                .find(|f| f.evidence.id == verification.evidence_id)
             else {
                 continue;
             };
             if finding.escalation.is_empty()
                 && let Some(deep) = self.deepen(ctx, verification, &mut state.ledger)
             {
-                finding.severity = deep.severity;
-                finding.escalation = deep.escalation;
-                finding.impact = deep.impact;
-                finding.fix = deep.fix;
+                apply_deepen(finding, deep);
             }
         }
         state.verifications = verifications;
-        Ok(())
     }
 
     /// Phase 5: one deepening call per verified finding.
@@ -252,10 +259,11 @@ impl crate::pipeline::Pipeline {
             "counterevidence": v.counterevidence,
         })
         .to_string();
-        let raw = self
+        let reply = self
             .llm
-            .chat(&ctx.model, &ctx.system, &methodology::deepen_prompt(&payload), 2048)
+            .chat(&ctx.model, &ctx.system, &methodology::deepen_prompt(&payload), MAX_TOKENS)
             .ok()?;
+        let raw = reply.content;
         let deep: Deepen = serde_json::from_str(&extract_json(&raw)).ok()?;
         ledger.record_llm(
             "deepen",
@@ -264,6 +272,7 @@ impl crate::pipeline::Pipeline {
                 prompt: payload,
                 output: raw,
                 model: ctx.model.clone(),
+                tokens_out: reply.tokens_out,
             },
         );
         Some(deep)
@@ -277,13 +286,14 @@ impl crate::pipeline::Pipeline {
         ledger: &mut Ledger,
     ) -> Vec<Threat> {
         let prompt = methodology::threat_prompt(truncate(target_model, 12000));
-        let raw = match self.llm.chat(&ctx.model, &ctx.system, &prompt, 4096) {
-            Ok(raw) => raw,
+        let reply = match self.llm.chat(&ctx.model, &ctx.system, &prompt, MAX_TOKENS) {
+            Ok(reply) => reply,
             Err(error) => {
                 ledger.record_note("threat", &format!("failed: {error}"));
                 return Vec::new();
             }
         };
+        let raw = reply.content;
         let value: serde_json::Value = serde_json::from_str(&extract_json(&raw)).unwrap_or_default();
         let arr = value
             .get("threats")
@@ -301,6 +311,7 @@ impl crate::pipeline::Pipeline {
                 prompt,
                 output: raw,
                 model: ctx.model.clone(),
+                tokens_out: reply.tokens_out,
             },
         );
         threats
@@ -314,10 +325,10 @@ impl crate::pipeline::Pipeline {
         ledger: &mut Ledger,
     ) -> (String, Vec<String>) {
         let prompt = methodology::report_prompt(truncate(report_data, 20000));
-        let raw = match self.llm.chat(&ctx.model, &ctx.system, &prompt, 1024) {
-            Ok(raw) => raw,
-            Err(_) => return (default_summary_for(report_data), Vec::new()),
+        let Ok(reply) = self.llm.chat(&ctx.model, &ctx.system, &prompt, MAX_TOKENS) else {
+            return (default_summary_for(report_data), Vec::new());
         };
+        let raw = reply.content;
         ledger.record_llm(
             "report",
             "final summary",
@@ -325,14 +336,14 @@ impl crate::pipeline::Pipeline {
                 prompt,
                 output: raw.clone(),
                 model: ctx.model.clone(),
+                tokens_out: reply.tokens_out,
             },
         );
         let value: serde_json::Value = serde_json::from_str(&extract_json(&raw)).unwrap_or_default();
         let summary = value
             .get("summary")
-            .and_then(|s| s.as_str())
-            .map(str::to_string)
-            .unwrap_or_else(|| default_summary_for(report_data));
+            .and_then(serde_json::Value::as_str)
+            .map_or_else(|| default_summary_for(report_data), str::to_string);
         let mechanics: Vec<String> = value
             .get("runtime_mechanics")
             .and_then(|m| m.as_array())
@@ -343,5 +354,31 @@ impl crate::pipeline::Pipeline {
             })
             .unwrap_or_default();
         (summary, mechanics)
+    }
+}
+
+/// Copy the non-empty deepen fields onto a confirmed finding.
+fn apply_deepen(finding: &mut Finding, deep: Deepen) {
+    finding.severity = deep.severity;
+    finding.escalation = deep.escalation;
+    finding.impact = deep.impact;
+    finding.fix = deep.fix;
+    if !deep.likelihood.is_empty() {
+        finding.likelihood = deep.likelihood;
+    }
+    if !deep.trace.is_empty() {
+        finding.trace = deep.trace;
+    }
+    if !deep.conditions.is_empty() {
+        finding.conditions = deep.conditions;
+    }
+    if deep.execution.is_some() {
+        finding.execution = deep.execution;
+    }
+    if deep.mitre.is_some() {
+        finding.mitre = deep.mitre;
+    }
+    if let Some(confidence) = deep.confidence {
+        finding.confidence = confidence.clamp(0.0, 1.0);
     }
 }
