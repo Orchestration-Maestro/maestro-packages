@@ -9,6 +9,7 @@ use maestro_extensions_wasm::{
     ToolMetadata, UserBlock,
 };
 use serde::Deserialize;
+use serde_json::json;
 
 use crate::pipeline::{assess, evidence_for, AssessParams};
 use crate::report::Assessment;
@@ -120,12 +121,215 @@ fn human_summary(report: &Assessment) -> String {
     out
 }
 
+/// The `security_workspace` tool definition.
+fn workspace_tool() -> ToolDefinition {
+    ToolDefinition {
+        metadata: ToolMetadata {
+            name: tools::WORKSPACE.into(),
+            label: "Security Workspace".into(),
+            description: tools::WORKSPACE_DESCRIPTION.into(),
+            parameters: tools::workspace_schema().into(),
+            prompt_snippet: Presence::Missing,
+            prompt_guidelines: Presence::Missing,
+            render_shell: Presence::Missing,
+            execution_mode: Presence::Missing,
+        },
+        prepare_arguments: None,
+        execute: Rc::new(|_, params, _, _, _| {
+            Box::pin(async move {
+                let text = tools::run_workspace(&params)
+                    .map_err(|error| format!("workspace failed: {error}"))?;
+                Ok(AgentToolResult {
+                    content: vec![UserBlock::Text(TextContent::new(text))],
+                    details: Presence::Missing,
+                    terminate: Presence::Missing,
+                })
+            })
+        }),
+    }
+}
+
+/// The `security_doctor` tool definition.
+fn doctor_tool() -> ToolDefinition {
+    ToolDefinition {
+        metadata: ToolMetadata {
+            name: tools::DOCTOR.into(),
+            label: "Security Doctor".into(),
+            description: tools::DOCTOR_DESCRIPTION.into(),
+            parameters: json!("{}").into(),
+            prompt_snippet: Presence::Missing,
+            prompt_guidelines: Presence::Missing,
+            render_shell: Presence::Missing,
+            execution_mode: Presence::Missing,
+        },
+        prepare_arguments: None,
+        execute: Rc::new(|_, _, _, _, _| {
+            Box::pin(async move {
+                let text =
+                    tools::run_doctor().map_err(|error| format!("doctor failed: {error}"))?;
+                Ok(AgentToolResult {
+                    content: vec![UserBlock::Text(TextContent::new(text))],
+                    details: Presence::Missing,
+                    terminate: Presence::Missing,
+                })
+            })
+        }),
+    }
+}
+
+/// The `security_route` tool definition.
+fn route_tool() -> ToolDefinition {
+    ToolDefinition {
+        metadata: ToolMetadata {
+            name: tools::ROUTE.into(),
+            label: "Security Route".into(),
+            description: tools::ROUTE_DESCRIPTION.into(),
+            parameters: tools::route_schema().into(),
+            prompt_snippet: Presence::Missing,
+            prompt_guidelines: Presence::Missing,
+            render_shell: Presence::Missing,
+            execution_mode: Presence::Missing,
+        },
+        prepare_arguments: None,
+        execute: Rc::new(|_, params, _, _, _| {
+            Box::pin(async move {
+                let text =
+                    tools::run_route(&params).map_err(|error| format!("route failed: {error}"))?;
+                Ok(AgentToolResult {
+                    content: vec![UserBlock::Text(TextContent::new(text))],
+                    details: Presence::Missing,
+                    terminate: Presence::Missing,
+                })
+            })
+        }),
+    }
+}
+
+/// The `security_report_page` tool definition.
+fn report_page_tool() -> ToolDefinition {
+    ToolDefinition {
+        metadata: ToolMetadata {
+            name: tools::REPORT_PAGE.into(),
+            label: "Security Report Page".into(),
+            description: tools::REPORT_PAGE_DESCRIPTION.into(),
+            parameters: tools::page_schema().into(),
+            prompt_snippet: Presence::Missing,
+            prompt_guidelines: Presence::Missing,
+            render_shell: Presence::Missing,
+            execution_mode: Presence::Missing,
+        },
+        prepare_arguments: None,
+        execute: Rc::new(|_, params, _, _, _| {
+            Box::pin(async move {
+                let html = tools::run_report_page(&params)
+                    .map_err(|error| format!("report page failed: {error}"))?;
+                Ok(AgentToolResult {
+                    content: vec![UserBlock::Text(TextContent::new(html))],
+                    details: Presence::Missing,
+                    terminate: Presence::Missing,
+                })
+            })
+        }),
+    }
+}
+
+/// The `security_evidence_page` tool definition.
+fn evidence_page_tool() -> ToolDefinition {
+    ToolDefinition {
+        metadata: ToolMetadata {
+            name: tools::EVIDENCE_PAGE.into(),
+            label: "Security Evidence Page".into(),
+            description: tools::EVIDENCE_PAGE_DESCRIPTION.into(),
+            parameters: tools::page_schema().into(),
+            prompt_snippet: Presence::Missing,
+            prompt_guidelines: Presence::Missing,
+            render_shell: Presence::Missing,
+            execution_mode: Presence::Missing,
+        },
+        prepare_arguments: None,
+        execute: Rc::new(|_, params, _, _, _| {
+            Box::pin(async move {
+                let html = tools::run_evidence_page(&params)
+                    .map_err(|error| format!("evidence page failed: {error}"))?;
+                Ok(AgentToolResult {
+                    content: vec![UserBlock::Text(TextContent::new(html))],
+                    details: Presence::Missing,
+                    terminate: Presence::Missing,
+                })
+            })
+        }),
+    }
+}
+
+/// The `security_validate` tool definition.
+fn validate_tool() -> ToolDefinition {
+    ToolDefinition {
+        metadata: ToolMetadata {
+            name: tools::VALIDATE.into(),
+            label: "Security Validate".into(),
+            description: tools::VALIDATE_DESCRIPTION.into(),
+            parameters: tools::page_schema().into(),
+            prompt_snippet: Presence::Missing,
+            prompt_guidelines: Presence::Missing,
+            render_shell: Presence::Missing,
+            execution_mode: Presence::Missing,
+        },
+        prepare_arguments: None,
+        execute: Rc::new(|_, params, _, _, _| {
+            Box::pin(async move {
+                let text =
+                    tools::run_validate(&params).map_err(|error| format!("validate failed: {error}"))?;
+                Ok(AgentToolResult {
+                    content: vec![UserBlock::Text(TextContent::new(text))],
+                    details: Presence::Missing,
+                    terminate: Presence::Missing,
+                })
+            })
+        }),
+    }
+}
+
+/// The `security_disclose` tool definition.
+fn disclose_tool() -> ToolDefinition {
+    ToolDefinition {
+        metadata: ToolMetadata {
+            name: tools::DISCLOSE.into(),
+            label: "Security Disclose".into(),
+            description: tools::DISCLOSE_DESCRIPTION.into(),
+            parameters: tools::disclose_schema().into(),
+            prompt_snippet: Presence::Missing,
+            prompt_guidelines: Presence::Missing,
+            render_shell: Presence::Missing,
+            execution_mode: Presence::Missing,
+        },
+        prepare_arguments: None,
+        execute: Rc::new(|_, params, _, _, _| {
+            Box::pin(async move {
+                let text =
+                    tools::run_disclose(&params).map_err(|error| format!("disclose failed: {error}"))?;
+                Ok(AgentToolResult {
+                    content: vec![UserBlock::Text(TextContent::new(text))],
+                    details: Presence::Missing,
+                    terminate: Presence::Missing,
+                })
+            })
+        }),
+    }
+}
+
 /// Register the security tools with the extension host.
 #[must_use]
 pub fn factory(api: ExtensionAPI) -> ExtensionFuture<'static, ()> {
     Box::pin(async move {
         api.register_tool(assess_tool())?;
         api.register_tool(evidence_tool())?;
+        api.register_tool(workspace_tool())?;
+        api.register_tool(doctor_tool())?;
+        api.register_tool(route_tool())?;
+        api.register_tool(report_page_tool())?;
+        api.register_tool(evidence_page_tool())?;
+        api.register_tool(validate_tool())?;
+        api.register_tool(disclose_tool())?;
         Ok(())
     })
 }

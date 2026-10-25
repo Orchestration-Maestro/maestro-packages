@@ -18,6 +18,110 @@ pub struct Agent {
     pub phases: &'static [PhaseKind],
 }
 
+/// The operational pattern a run follows.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum Pattern {
+    /// Offensive: find and prove, deepest first.
+    #[default]
+    RedTeam,
+    /// Defensive: assess and harden, standard controls only.
+    BlueTeam,
+    /// Bounty: scope, deduplicate, disclose.
+    BugBounter,
+    /// Compliance: map findings to the standard's requirements.
+    Compliance,
+    /// Continuous operations: re-run, diff against the last run.
+    ContinuousOps,
+    /// Incident response: timeline, root cause, containment.
+    Dfir,
+}
+
+impl Pattern {
+    /// Every known pattern, in canonical order.
+    pub const ALL: [Pattern; 6] = [
+        Pattern::RedTeam,
+        Pattern::BlueTeam,
+        Pattern::BugBounter,
+        Pattern::Compliance,
+        Pattern::ContinuousOps,
+        Pattern::Dfir,
+    ];
+
+    /// The wire name of the pattern.
+    #[must_use]
+    pub fn name(&self) -> &'static str {
+        match self {
+            Pattern::RedTeam => "red_team",
+            Pattern::BlueTeam => "blue_team",
+            Pattern::BugBounter => "bug_bounter",
+            Pattern::Compliance => "compliance",
+            Pattern::ContinuousOps => "continuous_ops",
+            Pattern::Dfir => "dfir",
+        }
+    }
+
+    /// Parse a wire name; an unknown name is the default pattern.
+    #[must_use]
+    pub fn parse(name: &str) -> Self {
+        Self::ALL
+            .into_iter()
+            .find(|p| p.name() == name)
+            .unwrap_or(Pattern::RedTeam)
+    }
+
+    /// The guidance line appended to the system prompt for the pattern.
+    #[must_use]
+    pub fn guidance(&self) -> &'static str {
+        match self {
+            Pattern::RedTeam => {
+                "PATTERN red_team: find and prove. Order findings deepest \
+first. An unproven candidate is needs_validation, never a guess."
+            }
+            Pattern::BlueTeam => {
+                "PATTERN blue_team: assess and harden. Every fix is a \
+standard, named control. Rank by risk reduced per unit of effort."
+            }
+            Pattern::BugBounter => {
+                "PATTERN bug_bounter: scope first, deduplicate against \
+known reports, then disclose. A finding outside scope is listed as out \
+of scope, not dropped silently."
+            }
+            Pattern::Compliance => {
+                "PATTERN compliance: map every finding to the standard's \
+requirement it violates. A finding without a requirement mapping is an \
+observation, not a compliance failure."
+            }
+            Pattern::ContinuousOps => {
+                "PATTERN continuous_ops: this is a re-run. Diff against the \
+previous run: new, changed, and resolved. Report the delta, not the whole."
+            }
+            Pattern::Dfir => {
+                "PATTERN dfir: build the timeline first, then the root \
+cause, then containment. Every timeline entry cites its evidence id."
+            }
+        }
+    }
+}
+
+/// The three-agent panel over one finding: the finder proposes, the
+/// verifier attacks it, the reporter writes it up. The panel is data, not
+/// code: the same three roles for every finding.
+pub struct FindingPanel {
+    /// The role that found the candidate.
+    pub finder: &'static str,
+    /// The role that tries to refute it.
+    pub verifier: &'static str,
+    /// The role that writes the report entry.
+    pub reporter: &'static str,
+}
+
+/// The default panel: probe finds, proof verifies, security reports.
+pub const PANEL: FindingPanel = FindingPanel {
+    finder: "maestro.probe",
+    verifier: "maestro.proof",
+    reporter: "maestro.security",
+};
+
 /// The full roster. `maestro.security` is the default.
 pub const ROSTER: &[Agent] = &[
     Agent {
@@ -96,4 +200,27 @@ pub fn resolve_agent(name: Option<&str>) -> &'static Agent {
     let default = &ROSTER[0];
     name.and_then(|n| ROSTER.iter().find(|a| a.name == n))
         .unwrap_or(default)
+}
+
+#[cfg(test)]
+mod tests {
+    //! Unit tests for the roster and patterns.
+
+    use super::{Pattern, PANEL, ROSTER};
+
+    /// Unknown pattern names fall back to the default.
+    #[test]
+    fn unknown_pattern_is_red_team() {
+        assert_eq!(Pattern::parse("bogus"), Pattern::RedTeam);
+        assert_eq!(Pattern::parse("dfir"), Pattern::Dfir);
+        assert_eq!(Pattern::ALL.len(), 6);
+    }
+
+    /// The panel names three distinct roster agents.
+    #[test]
+    fn panel_roles_are_roster_agents() {
+        for name in [PANEL.finder, PANEL.verifier, PANEL.reporter] {
+            assert!(ROSTER.iter().any(|a| a.name == name));
+        }
+    }
 }

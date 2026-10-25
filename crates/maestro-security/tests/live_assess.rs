@@ -68,10 +68,11 @@ fn live_assessment_report_invariants() {
         agent: None,
         model: std::env::var("ASSESS_MODEL").ok(),
         max_hypotheses: None,
+        pattern: None,
     };
     let report = ok_or_fail(assess(&params), "live assessment");
 
-    assert_eq!(report.schema, "maestro-security/report/2");
+    assert_eq!(report.schema, "maestro-security/report/3");
     assert!(!report.run_id.trim().is_empty());
     assert!(!report.model.trim().is_empty(), "model resolved at run time");
     let names: Vec<&str> = report.phases.iter().map(|p| p.name.as_str()).collect();

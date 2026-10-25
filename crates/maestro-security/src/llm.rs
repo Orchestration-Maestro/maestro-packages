@@ -92,7 +92,7 @@ impl Client {
         system: &str,
         user: &str,
         max_tokens: u32,
-    ) -> Result<String, String> {
+    ) -> Result<ChatReply, String> {
         let body = json!({
             "model": model,
             "max_tokens": max_tokens,
@@ -129,8 +129,24 @@ impl Client {
             // phase layer retries.
             return Err("bridge returned no message content".into());
         }
-        Ok(content)
+        let tokens_out = value
+            .pointer("/usage/completion_tokens")
+            .and_then(serde_json::Value::as_u64)
+            .unwrap_or(0);
+        Ok(ChatReply {
+            content,
+            tokens_out,
+        })
     }
+}
+
+/// One chat completion result: the content plus what it cost.
+#[derive(Debug, Clone)]
+pub struct ChatReply {
+    /// The model's message content.
+    pub content: String,
+    /// Output tokens reported by the bridge; 0 when it reports none.
+    pub tokens_out: u64,
 }
 
 /// Cap a string for error messages.

@@ -20,6 +20,12 @@ maestro-http = { path = "../maestro-http" }
 serde.workspace = true
 serde_json.workspace = true
 
+# The MCP stdio surface is host-only: tokio's stdio/net transports do not
+# exist on wasm, and the WASM surface is the extension.
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+rmcp = { version = "=3.7.0", features = ["transport-io"] }
+tokio.workspace = true
+
 [dev-dependencies]
 serde_json.workspace = true
 
