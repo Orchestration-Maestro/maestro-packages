@@ -55,7 +55,7 @@ resolved from the bridge, never a binding.
 
 ### R1 — Autonomy (issue #7; chapter spec: AUTONOMY.md)
 
-Owner decisions (grill, 2026-10-25):
+Owner decisions (grills, 2026-10-25):
 
 1. Trigger: a command only — never message parsing, never the web UI.
 2. Run style: a background run with live updates and a visible status;
@@ -64,12 +64,24 @@ Owner decisions (grill, 2026-10-25):
 3. Scope: box tools + evidence/report files only; no workspace writes.
 4. Results: files + report page + notification, and the result event is
    emitted back to Maestro so larger workflows can consume it.
+5. Identity: every run is subagent-like — its own live entry in the
+   session; you steer by writing to it.
+6. Steering: you (free text) AND the Maestro agent (it sees run events and
+   sends guidance mid-run).
+7. Concurrency: many runs at once, with a run board listing live state.
+8. Durability: checkpoint after every phase; resume from the last completed
+   phase; partial evidence kept.
+
+The essence: an assessment run is a Maestro citizen — a live, subagent-like
+session entity whose whole life is a Maestro event stream, steered from
+chat, killed instantly, checkpointed and resumable.
 
 Surface: `/assess <target>` (returns a run id), `/security-stop <run_id>`,
-`/security-steer <run_id> <message>`; progress events per phase boundary
-and per finding; result event `maestro.security.assessment`. One module per
-concern, reusing the nine shared runners. Estimate: 150–200 production
-lines. Next: to-tickets → implement (red-first) → two-axis review → PR.
+`/security-steer <run_id> <message>`; the event contract on the shared bus
+(run.started / run.phase / run.finding / run.refuted / run.steered /
+run.killed / run.checkpoint / assessment); one module per concern reusing
+the nine shared runners. Estimate: 500–700 production lines across T1–T7.
+Next: T2 → T7 implement (red-first), two-axis review, PR.
 
 ### R2 — Box bake (task #15, box lane)
 
