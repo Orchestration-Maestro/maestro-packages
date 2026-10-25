@@ -3,7 +3,7 @@
 //! [`request`] speaks both `http://` (plain TCP) and `https://` (rustls with
 //! webpki roots). Responses are read until close and decoded from
 //! `content-length` or `transfer-encoding: chunked` framing. Transient
-//! failures — connection errors and 429/5xx statuses — are retried with
+//! failures — transport errors and 429/5xx statuses — are retried with
 //! exponential backoff under a caller-settable attempt budget
 //! ([`request_with_attempts`]).
 
@@ -11,7 +11,8 @@ use std::borrow::Cow;
 use std::fmt::Write as _;
 use std::io::{Read, Write};
 use std::net::TcpStream;
-use std::time::Duration;
+
+mod retry;
 
 /// A completed HTTP response: status code plus the decoded body.
 #[derive(Debug)]
@@ -25,24 +26,13 @@ pub struct Response {
     pub retry_after: Option<u64>,
 }
 
-/// Default attempt budget for [`request`]: the first try plus two retries on
-/// transient failures.
-pub const DEFAULT_ATTEMPTS: u32 = 3;
-
-/// Base delay between attempts in milliseconds; doubles per retry.
-const RETRY_BASE_DELAY_MS: u64 = 250;
-/// Cap on the delay between attempts in milliseconds.
-const RETRY_MAX_DELAY_MS: u64 = 4000;
-/// Cap on a server-supplied `Retry-After` in seconds.
-const RETRY_AFTER_CAP_SECS: u64 = 30;
-
 /// Send one HTTP request with the default retry budget and read the full
 /// response.
 ///
 /// `url` must use `http://` or `https://`. Blocking by design: callers in
 /// async runtimes wrap it with a blocking spawn.
 ///
-/// Connection failures and retryable statuses (429, 5xx) are retried with
+/// Transport errors and retryable statuses (429, 5xx) are retried with
 /// exponential backoff; a `Retry-After` header in seconds is honored. Any
 /// other response is returned as-is on the first attempt.
 ///
@@ -55,7 +45,7 @@ pub fn request(
     headers: &[(&str, &str)],
     body: &[u8],
 ) -> Result<Response, String> {
-    request_with_attempts(method, url, headers, body, DEFAULT_ATTEMPTS)
+    request_with_attempts(method, url, headers, body, retry::DEFAULT_ATTEMPTS)
 }
 
 /// Send one HTTP request with an explicit attempt budget and read the full
@@ -63,7 +53,7 @@ pub fn request(
 ///
 /// `attempts` is the total number of tries; one means no retry, and values
 /// below one are treated as one. A caller that wants a single try or a larger
-/// budget (for example five) passes it here. Transient failures — connection
+/// budget (for example five) passes it here. Transient failures — transport
 /// errors and 429/5xx statuses — consume an attempt; anything else ends the
 /// call immediately with that response.
 ///
@@ -84,46 +74,13 @@ pub fn request_with_attempts(
         Cow::Owned(format!("{host}:{port}"))
     };
     let head = request_head(method, &hostport, path, headers, body.len());
-    let budget = attempts.max(1);
-    let mut attempt = 0u32;
-    loop {
-        attempt += 1;
-        let outcome = if secure {
+    retry::run_with_retry(attempts, || {
+        if secure {
             tls_request(host, port, &head, body)
         } else {
             plain_request(host, port, &head, body)
-        };
-        let retryable = match &outcome {
-            Err(_) => true,
-            Ok(response) => retryable_status(response.status),
-        };
-        if !retryable || attempt >= budget {
-            return outcome;
         }
-        let delay = match &outcome {
-            Err(_) => backoff_delay(attempt),
-            Ok(response) => response.retry_after.map_or_else(
-                || backoff_delay(attempt),
-                |secs| Duration::from_secs(secs.min(RETRY_AFTER_CAP_SECS)),
-            ),
-        };
-        std::thread::sleep(delay);
-    }
-}
-
-/// Status codes safe to retry: rate limits and server errors.
-fn retryable_status(status: u16) -> bool {
-    status == 429 || (500..=599).contains(&status)
-}
-
-/// Exponential backoff between attempts: 250 ms, 500 ms, 1 s, … capped at
-/// four seconds.
-fn backoff_delay(attempt: u32) -> Duration {
-    let shift = (attempt - 1).min(4);
-    let ms = RETRY_BASE_DELAY_MS
-        .saturating_mul(1u64 << shift)
-        .min(RETRY_MAX_DELAY_MS);
-    Duration::from_millis(ms)
+    })
 }
 
 /// Split a `http(s)://host:port/path` URL into host, port, path and TLS flag.
@@ -328,8 +285,8 @@ mod tests {
         }
     }
 
-    /// Spin up a one-shot loopback server that answers with a fixed body.
-    fn one_shot_server(status_line: &str, headers: &str, body: &str) -> (String, thread::JoinHandle<()>) {
+    /// Bind a loopback listener on a random port and return it with its URL.
+    fn bind_loopback() -> (TcpListener, String) {
         let listener = match TcpListener::bind("127.0.0.1:0") {
             Ok(listener) => listener,
             Err(error) => die(&format!("bind: {error}")),
@@ -339,6 +296,12 @@ mod tests {
             Err(error) => die(&format!("addr: {error}")),
         };
         let url = format!("http://127.0.0.1:{}/probe", addr.port());
+        (listener, url)
+    }
+
+    /// Spin up a one-shot loopback server that answers with a fixed body.
+    fn one_shot_server(status_line: &str, headers: &str, body: &str) -> (String, thread::JoinHandle<()>) {
+        let (listener, url) = bind_loopback();
         let status_line = status_line.to_string();
         let headers = headers.to_string();
         let body = body.to_string();
@@ -375,15 +338,7 @@ mod tests {
     fn scripted_server(
         script: Vec<(u16, &str, &str)>,
     ) -> (String, Arc<AtomicUsize>, thread::JoinHandle<()>) {
-        let listener = match TcpListener::bind("127.0.0.1:0") {
-            Ok(listener) => listener,
-            Err(error) => die(&format!("bind: {error}")),
-        };
-        let addr = match listener.local_addr() {
-            Ok(addr) => addr,
-            Err(error) => die(&format!("addr: {error}")),
-        };
-        let url = format!("http://127.0.0.1:{}/probe", addr.port());
+        let (listener, url) = bind_loopback();
         let seen = Arc::new(AtomicUsize::new(0));
         let script_owned: Vec<(u16, String, String)> = script
             .into_iter()
@@ -405,7 +360,7 @@ mod tests {
                 break;
             };
             let n = counter.fetch_add(1, Ordering::SeqCst) + 1;
-            serve_one(&mut sock, &script, n);
+            serve_one(&mut sock, script, n);
         }
     }
 

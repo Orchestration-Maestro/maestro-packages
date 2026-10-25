@@ -15,10 +15,10 @@ discipline of the 13 frameworks we decomposed; you drive it with nine tools.
 - **Pipeline (this skill)** = the finished product. The default path for any
   assessment. Nine tools, one methodology.
 - **The frameworks in the box** (strix, shannon, clearwing, pentagi, aida,
-  dark-moon, pentest-swarm, pentestgpt, hackingbuddygpt, cai) = the
-  ingredients this pipeline was fused from. Still runnable directly when you
-  need one of their unique surfaces (PentAGI web UI, Dark-Moon playbooks, CAI
-  coordination); see the box skill for their launchers.
+  dark-moon, pentest-swarm, pentestgpt, hackingbuddygpt, cai) are retired:
+  their behaviour lives in this pipeline. The box keeps only the raw tools
+  (nmap, sqlmap, nuclei, …) and the skill library. maestro-security is the
+  only assessment path.
 - **The box toolset** (nmap, nuclei, sqlmap, ghidra, ...) = the instruments
   the pipeline's hands run in the box. You rarely call these directly.
 
