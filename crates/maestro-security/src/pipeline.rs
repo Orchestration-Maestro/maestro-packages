@@ -311,10 +311,8 @@ impl Engine {
         }
     }
 
-    /// Run one agent's phases, calling the option's checkpoint after each
-    /// phase with the current ledger, target and agent. The checkpoint lets a
-    /// caller persist progress so a separate call can observe a run while it
-    /// is in flight.
+    /// Run one agent's phases under a fresh run id, calling the option's
+    /// checkpoint after each phase with the current ledger, target and agent.
     ///
     /// # Errors
     /// Fails if the runner preflight fails, the bridge serves no model, or
@@ -326,6 +324,24 @@ impl Engine {
         opts: &mut RunOptions<'_>,
     ) -> Result<Assessment, String> {
         let run_id = new_run_id(target);
+        self.run_identified(agent, target, &run_id, opts)
+    }
+
+    /// Run one agent's phases under a caller-chosen run id, calling the
+    /// option's checkpoint after each phase. The autonomy trigger records the
+    /// id in the run index before its tail starts, so the report and the index
+    /// name the same run.
+    ///
+    /// # Errors
+    /// Fails if the runner preflight fails, the bridge serves no model, or
+    /// any phase fails.
+    pub fn run_identified(
+        &self,
+        agent: &Agent,
+        target: &str,
+        run_id: &str,
+        opts: &mut RunOptions<'_>,
+    ) -> Result<Assessment, String> {
         self.runner
             .health()
             .map_err(|error| format!("runner preflight failed: {error}"))?;
@@ -343,7 +359,7 @@ impl Engine {
                 cp(&state.ledger, target, agent.name);
             }
         }
-        self.assemble(&run_id, agent, &ctx, &mut state)
+        self.assemble(run_id, agent, &ctx, &mut state)
     }
 
     /// Dispatch one phase.
@@ -450,9 +466,18 @@ impl Engine {
 /// # Errors
 /// Fails if the target is empty or the pipeline run fails.
 pub fn assess(params: &AssessParams) -> Result<Assessment, String> {
-    if params.target.trim().is_empty() {
-        return Err("target is required".into());
-    }
+    require_target(params)?;
+    let run_id = new_run_id(&params.target);
+    assess_identified(params, &run_id)
+}
+
+/// Run one assessment under a caller-chosen run id; the autonomy trigger
+/// records that id in the run index before its tail starts.
+///
+/// # Errors
+/// Fails if the target is empty or the pipeline run fails.
+pub fn assess_identified(params: &AssessParams, run_id: &str) -> Result<Assessment, String> {
+    require_target(params)?;
     let mut config = Config::from_env();
     if let Some(n) = params.max_hypotheses && n > 0 {
         config.max_hypotheses = n;
@@ -463,7 +488,15 @@ pub fn assess(params: &AssessParams) -> Result<Assessment, String> {
         pattern: Pattern::parse(params.pattern.as_deref().unwrap_or_default()),
         checkpoint: None,
     };
-    Engine::new(config).run_checkpointed(agent, &params.target, &mut opts)
+    Engine::new(config).run_identified(agent, &params.target, run_id, &mut opts)
+}
+
+/// Reject a blank target before any work starts.
+fn require_target(params: &AssessParams) -> Result<(), String> {
+    if params.target.trim().is_empty() {
+        return Err("target is required".into());
+    }
+    Ok(())
 }
 
 /// Retrieve the retained evidence ledger for a finished run.
@@ -506,7 +539,7 @@ fn system_prompt(agent: &Agent, pattern: Pattern) -> String {
 }
 
 /// A filename-safe run id: `run-<unix-seconds>-<target-slug>`.
-fn new_run_id(target: &str) -> String {
+pub(crate) fn new_run_id(target: &str) -> String {
     let secs = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(0, |d| d.as_secs());

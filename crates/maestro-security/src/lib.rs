@@ -20,6 +20,7 @@
 
 mod agents;
 pub mod audit;
+pub mod autonomy;
 pub mod bench;
 pub mod browser;
 pub mod campaign;

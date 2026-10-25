@@ -1,16 +1,18 @@
-//! The wasm extension surface: registers the framework's tools with the
-//! Maestro host.
+//! The wasm extension surface: registers the framework's tools and trigger
+//! commands with the Maestro host.
 
 use std::fmt::Write;
 use std::rc::Rc;
 
 use maestro_extensions_wasm::{
-    AgentToolResult, ExtensionAPI, ExtensionFuture, Presence, TextContent, ToolDefinition,
-    ToolMetadata, UserBlock,
+    AgentToolResult, CallbackEmitter, CommandOptions, EventBus, EventListener,
+    ExtensionAPI, ExtensionCommandContext, ExtensionFuture, NotificationType, Presence,
+    TextContent, ToolDefinition, ToolMetadata, UserBlock,
 };
 use serde::Deserialize;
-use serde_json::json;
+use serde_json::{json, Value};
 
+use crate::autonomy;
 use crate::pipeline::{assess, evidence_for, AssessParams};
 use crate::report::Assessment;
 use crate::tools;
@@ -317,6 +319,125 @@ fn disclose_tool() -> ToolDefinition {
     }
 }
 
+/// The synchronous trigger prefix: hand the pipeline to an independently
+/// owned tail, so the command answers at once.
+fn trigger_listener() -> EventListener {
+    Rc::new(|payload: Value, _emitter: CallbackEmitter<'_>| {
+        Ok(Some(Box::pin(async move {
+            autonomy::run_trigger(&payload)
+        })))
+    })
+}
+
+/// Register the trigger commands and their listener with the host.
+fn register_autonomy(api: &ExtensionAPI) -> Result<(), String> {
+    api.events()
+        .on(autonomy::TRIGGER_CHANNEL, trigger_listener())
+        .map_err(|error| format!("trigger listener: {error}"))?;
+    for command in autonomy::COMMANDS {
+        let bus = api.events();
+        api.register_command(
+            command.name,
+            CommandOptions {
+                description: Some(command.description.to_string()),
+                handler: Rc::new(move |args, ctx| {
+                    let bus = bus.clone();
+                    Box::pin(async move {
+                        trigger_command(command.name, &bus, &ctx, &args).await;
+                        Ok(())
+                    })
+                }),
+                get_argument_completions: None,
+            },
+        )
+        .map_err(|error| format!("register /{}: {error}", command.name))?;
+    }
+    Ok(())
+}
+
+/// Dispatch one trigger command to its single-purpose handler.
+async fn trigger_command(
+    name: &str,
+    bus: &EventBus,
+    ctx: &ExtensionCommandContext,
+    args: &str,
+) {
+    match name {
+        autonomy::ASSESS_COMMAND => assess_command(bus, ctx, args).await,
+        autonomy::STOP_COMMAND => stop_command(ctx, args),
+        autonomy::STEER_COMMAND => steer_command(ctx, args),
+        _ => {}
+    }
+}
+
+/// `/assess <target>`: record the run, emit the trigger, answer with the id.
+async fn assess_command(bus: &EventBus, ctx: &ExtensionCommandContext, args: &str) {
+    let target = match autonomy::parse_target(args) {
+        Ok(target) => target,
+        Err(error) => return notify(ctx, &error, true),
+    };
+    let run_id = match autonomy::start_run(&target) {
+        Ok(run_id) => run_id,
+        Err(error) => return notify(ctx, &format!("could not record the run: {error}"), true),
+    };
+    let failed = bus
+        .emit(
+            autonomy::TRIGGER_CHANNEL,
+            autonomy::trigger_payload(&run_id, &target),
+        )
+        .await;
+    if let Err(error) = failed {
+        let _ = autonomy::finish_run(&run_id, Err(error.as_str()));
+        return notify(ctx, &format!("could not start the run: {error}"), true);
+    }
+    notify(
+        ctx,
+        &format!("Assessment {run_id} started. /security-stop {run_id} stops it."),
+        false,
+    );
+}
+
+/// `/security-stop <run_id>`: acknowledge; the abort lands with the run task.
+fn stop_command(ctx: &ExtensionCommandContext, args: &str) {
+    match autonomy::parse_run_id(args) {
+        Ok(run_id) => notify(
+            ctx,
+            &format!(
+                "Stop acknowledged for {run_id}; the running task aborts at its next phase boundary."
+            ),
+            false,
+        ),
+        Err(error) => notify(ctx, &error, true),
+    }
+}
+
+/// `/security-steer <run_id> <message>`: acknowledge; steering lands with the
+/// run task.
+fn steer_command(ctx: &ExtensionCommandContext, args: &str) {
+    match autonomy::parse_steer(args) {
+        Ok((run_id, message)) => notify(
+            ctx,
+            &format!(
+                "Steer acknowledged for {run_id}: {message} (delivered at the next phase boundary)."
+            ),
+            false,
+        ),
+        Err(error) => notify(ctx, &error, true),
+    }
+}
+
+/// Show one notification; failures use the error severity.
+fn notify(ctx: &ExtensionCommandContext, message: &str, failure: bool) {
+    let kind = if failure {
+        NotificationType::Error
+    } else {
+        NotificationType::Info
+    };
+    if let Ok(ui) = ctx.ui() {
+        let _ = ui.notify(message, Some(kind));
+    }
+}
+
 /// Register the security tools with the extension host.
 #[must_use]
 pub fn factory(api: ExtensionAPI) -> ExtensionFuture<'static, ()> {
@@ -330,6 +451,7 @@ pub fn factory(api: ExtensionAPI) -> ExtensionFuture<'static, ()> {
         api.register_tool(evidence_page_tool())?;
         api.register_tool(validate_tool())?;
         api.register_tool(disclose_tool())?;
+        register_autonomy(&api)?;
         Ok(())
     })
 }
