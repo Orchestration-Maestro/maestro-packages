@@ -466,7 +466,6 @@ impl Engine {
 /// # Errors
 /// Fails if the target is empty or the pipeline run fails.
 pub fn assess(params: &AssessParams) -> Result<Assessment, String> {
-    require_target(params)?;
     let run_id = new_run_id(&params.target);
     assess_identified(params, &run_id)
 }
@@ -477,7 +476,9 @@ pub fn assess(params: &AssessParams) -> Result<Assessment, String> {
 /// # Errors
 /// Fails if the target is empty or the pipeline run fails.
 pub fn assess_identified(params: &AssessParams, run_id: &str) -> Result<Assessment, String> {
-    require_target(params)?;
+    if params.target.trim().is_empty() {
+        return Err("target is required".into());
+    }
     let mut config = Config::from_env();
     if let Some(n) = params.max_hypotheses && n > 0 {
         config.max_hypotheses = n;
@@ -489,14 +490,6 @@ pub fn assess_identified(params: &AssessParams, run_id: &str) -> Result<Assessme
         checkpoint: None,
     };
     Engine::new(config).run_identified(agent, &params.target, run_id, &mut opts)
-}
-
-/// Reject a blank target before any work starts.
-fn require_target(params: &AssessParams) -> Result<(), String> {
-    if params.target.trim().is_empty() {
-        return Err("target is required".into());
-    }
-    Ok(())
 }
 
 /// Retrieve the retained evidence ledger for a finished run.
