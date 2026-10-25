@@ -10,6 +10,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 
 use crate::evidence;
+use crate::report::Assessment;
 
 /// Lifecycle status of a run or a workspace.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -88,6 +89,51 @@ pub struct Workspace {
 /// on-disk files, so it is safe to clone and share.
 #[derive(Clone, Copy)]
 pub struct Store;
+
+impl RunRecord {
+    /// A record for a run that is starting now.
+    #[must_use]
+    pub fn starting(
+        run_id: String,
+        target: &str,
+        agent: &str,
+        model: &str,
+        workspace: Option<&str>,
+    ) -> Self {
+        Self {
+            run_id,
+            target: target.to_string(),
+            agent: agent.to_string(),
+            model: model.to_string(),
+            status: Status::Running,
+            started_at: now_secs(),
+            finished_at: None,
+            findings: 0,
+            refuted: 0,
+            summary: "running".into(),
+            workspace: workspace.map(str::to_string),
+        }
+    }
+
+    /// Settle the record from its outcome: the finished stamp, the status,
+    /// the model and the counts. `Ok` completes, `Err` fails with its cause.
+    pub fn settle(&mut self, outcome: Result<&Assessment, &str>) {
+        self.finished_at = Some(now_secs());
+        match outcome {
+            Ok(report) => {
+                self.status = Status::Completed;
+                self.model.clone_from(&report.model);
+                self.findings = report.findings.len();
+                self.refuted = report.refuted.len();
+                self.summary.clone_from(&report.summary);
+            }
+            Err(error) => {
+                self.status = Status::Failed;
+                self.summary = error.to_string();
+            }
+        }
+    }
+}
 
 impl Store {
     /// The run index file (`runs.jsonl`).

@@ -13,6 +13,7 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 
 use crate::autonomy;
+use crate::autonomy::run::{EventSink, SessionEntry};
 use crate::pipeline::{assess, evidence_for, AssessParams};
 use crate::report::Assessment;
 use crate::tools;
@@ -319,12 +320,36 @@ fn disclose_tool() -> ToolDefinition {
     }
 }
 
-/// The synchronous trigger prefix: hand the pipeline to an independently
+/// The session entry type that opens a run's live thread.
+const RUN_ENTRY: &str = "security-run";
+
+/// Emit the lifecycle's events on the host bus.
+struct BusSink(EventBus);
+
+impl EventSink for BusSink {
+    fn emit<'a>(&'a mut self, channel: &'a str, payload: Value) -> ExtensionFuture<'a, ()> {
+        self.0.emit(channel, payload)
+    }
+}
+
+/// Append the run's live entries through the host API.
+struct ApiEntry(ExtensionAPI);
+
+impl SessionEntry for ApiEntry {
+    fn append(&mut self, body: &Value) -> Result<(), String> {
+        self.0.append_entry(RUN_ENTRY, Some(body.clone()))
+    }
+}
+
+/// The synchronous trigger prefix: hand the lifecycle to an independently
 /// owned tail, so the command answers at once.
-fn trigger_listener() -> EventListener {
-    Rc::new(|payload: Value, _emitter: CallbackEmitter<'_>| {
+fn trigger_listener(api: ExtensionAPI) -> EventListener {
+    Rc::new(move |payload: Value, _emitter: CallbackEmitter<'_>| {
+        let api = api.clone();
         Ok(Some(Box::pin(async move {
-            autonomy::run_trigger(&payload)
+            let mut sink = BusSink(api.events());
+            let mut entry = ApiEntry(api);
+            autonomy::run_trigger(&mut sink, &mut entry, &payload).await
         })))
     })
 }
@@ -332,7 +357,7 @@ fn trigger_listener() -> EventListener {
 /// Register the trigger commands and their listener with the host.
 fn register_autonomy(api: &ExtensionAPI) -> Result<(), String> {
     api.events()
-        .on(autonomy::TRIGGER_CHANNEL, trigger_listener())
+        .on(autonomy::TRIGGER_CHANNEL, trigger_listener(api.clone()))
         .map_err(|error| format!("trigger listener: {error}"))?;
     for command in autonomy::COMMANDS {
         let bus = api.events();
@@ -403,7 +428,7 @@ fn stop_command(ctx: &ExtensionCommandContext, args: &str) {
         Ok(run_id) => notify(
             ctx,
             &format!(
-                "Stop acknowledged for {run_id}; the running task aborts at its next phase boundary."
+                "Stop noted for {run_id}; the abort control lands in T3, so the run keeps going for now."
             ),
             false,
         ),
@@ -418,7 +443,7 @@ fn steer_command(ctx: &ExtensionCommandContext, args: &str) {
         Ok((run_id, message)) => notify(
             ctx,
             &format!(
-                "Steer acknowledged for {run_id}: {message} (delivered at the next phase boundary)."
+                "Steer noted for {run_id}: {message}; the steering queue lands in T3."
             ),
             false,
         ),

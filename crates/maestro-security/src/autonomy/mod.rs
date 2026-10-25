@@ -2,15 +2,18 @@
 //!
 //! Only an explicit command starts a run. `/assess <target>` records the run
 //! in the run index and the host wiring emits the trigger event; the trigger
-//! listener's tail runs the pipeline under that same run id. `/security-stop`
-//! and `/security-steer` answer an acknowledgement until the progress task
-//! owns the control.
+//! listener's tail runs the lifecycle in [`run`] under that same run id.
+//! `/security-stop` and `/security-steer` answer an acknowledgement until the
+//! progress task owns the control.
 
 use serde_json::{json, Value};
 
+pub mod events;
+pub mod run;
+
 use crate::pipeline;
 use crate::report::Assessment;
-use crate::store::{now_secs, RunRecord, Status, Store};
+use crate::store::{RunRecord, Store};
 
 /// The command that starts an assessment.
 pub const ASSESS_COMMAND: &str = "assess";
@@ -19,6 +22,9 @@ pub const STOP_COMMAND: &str = "security-stop";
 /// The command that steers a running assessment.
 pub const STEER_COMMAND: &str = "security-steer";
 /// The bus channel carrying one trigger from a command to its listener.
+///
+/// Internal machinery: not one of the eight public contract channels in
+/// [`events`]; only the command and its listener share it.
 pub const TRIGGER_CHANNEL: &str = "maestro.security.trigger";
 
 /// One registered chat command.
@@ -99,19 +105,13 @@ pub fn trigger_payload(run_id: &str, target: &str) -> Value {
 /// The run-index record for a run that is about to start.
 #[must_use]
 pub fn new_run_record(target: &str, model: &str) -> RunRecord {
-    RunRecord {
-        run_id: pipeline::new_run_id(target),
-        target: target.to_string(),
-        agent: crate::agents::resolve_agent(None).name.to_string(),
-        model: model.to_string(),
-        status: Status::Running,
-        started_at: now_secs(),
-        finished_at: None,
-        findings: 0,
-        refuted: 0,
-        summary: "running".into(),
-        workspace: None,
-    }
+    RunRecord::starting(
+        pipeline::new_run_id(target),
+        target,
+        crate::agents::resolve_agent(None).name,
+        model,
+        None,
+    )
 }
 
 /// Record a starting run in the run index and return its id.
@@ -124,24 +124,6 @@ pub fn start_run(target: &str) -> Result<String, String> {
     Ok(record.run_id)
 }
 
-/// Total the record from the run's outcome.
-pub fn settle_record(record: &mut RunRecord, outcome: Result<&Assessment, &str>) {
-    record.finished_at = Some(now_secs());
-    match outcome {
-        Ok(report) => {
-            record.status = Status::Completed;
-            record.model.clone_from(&report.model);
-            record.findings = report.findings.len();
-            record.refuted = report.refuted.len();
-            record.summary.clone_from(&report.summary);
-        }
-        Err(error) => {
-            record.status = Status::Failed;
-            record.summary = error.to_string();
-        }
-    }
-}
-
 /// Record a run's final state in the run index.
 ///
 /// # Errors
@@ -150,11 +132,11 @@ pub fn finish_run(run_id: &str, outcome: Result<&Assessment, &str>) -> Result<()
     let mut record = Store
         .get_run(run_id)?
         .ok_or_else(|| format!("no run {run_id} in the index"))?;
-    settle_record(&mut record, outcome);
+    record.settle(outcome);
     Store.upsert_run(&record)
 }
 
-/// Run the pipeline for one trigger payload and settle its record.
+/// Run the lifecycle for one trigger payload and settle its record.
 ///
 /// The tail returns its failure to the host reporter, so a listener keeps
 /// working after one bad run.
@@ -162,7 +144,11 @@ pub fn finish_run(run_id: &str, outcome: Result<&Assessment, &str>) -> Result<()
 /// # Errors
 /// Fails when the payload lacks a run id or target, or the record cannot be
 /// settled.
-pub fn run_trigger(payload: &Value) -> Result<(), String> {
+pub async fn run_trigger<S: run::EventSink, E: run::SessionEntry>(
+    sink: &mut S,
+    entry: &mut E,
+    payload: &Value,
+) -> Result<(), String> {
     let (run_id, target) =
         decode_trigger(payload).ok_or("trigger payload needs run_id and target")?;
     let params = pipeline::AssessParams {
@@ -172,7 +158,7 @@ pub fn run_trigger(payload: &Value) -> Result<(), String> {
         max_hypotheses: None,
         pattern: None,
     };
-    let outcome = pipeline::assess_identified(&params, &run_id);
+    let outcome = run::execute(sink, entry, &params, &run_id).await;
     finish_run(&run_id, outcome.as_ref().map_err(String::as_str))
 }
 
@@ -188,10 +174,11 @@ mod tests {
     //! Unit tests for the trigger surface.
 
     use super::{
-        COMMANDS, finish_run, new_run_record, parse_run_id, parse_steer, parse_target,
-        settle_record, start_run, trigger_payload,
+        COMMANDS, finish_run, new_run_record, parse_run_id, parse_steer, parse_target, start_run,
+        trigger_payload,
     };
     use crate::store::{Status, Store};
+    use std::sync::atomic::{AtomicU32, Ordering};
 
     /// Exactly the three commands are offered, in order, each described.
     #[test]
@@ -272,7 +259,7 @@ mod tests {
     #[test]
     fn a_failed_outcome_settles_the_record() {
         let mut record = new_run_record("example.com", "qwythos");
-        settle_record(&mut record, Err("runner down"));
+        record.settle(Err("runner down"));
         assert!(matches!(record.status, Status::Failed));
         assert_eq!(record.summary, "runner down");
         assert!(record.finished_at.is_some());
@@ -281,19 +268,30 @@ mod tests {
     /// A started run lands in the run index under its returned id.
     #[test]
     fn a_started_run_is_recorded() {
-        let run_id = start_run("registry-test.example").expect("start_run");
-        let runs = Store.list_runs(0).expect("run index");
-        assert!(
-            runs.iter().any(|run| run.run_id == run_id),
-            "run {run_id} missing from the index"
-        );
-        finish_run(&run_id, Err("test cleanup")).expect("settle the test run");
+        static NEXT: AtomicU32 = AtomicU32::new(0);
+        let home = std::env::temp_dir().join(format!(
+            "maestro-security-index-{}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::SeqCst)
+        ));
+        crate::evidence::with_home(&home, || {
+            let run_id = start_run("registry-test.example").expect("start_run");
+            let runs = Store.list_runs(0).expect("run index");
+            assert!(
+                runs.iter().any(|run| run.run_id == run_id),
+                "run {run_id} missing from the index"
+            );
+            finish_run(&run_id, Err("test cleanup")).expect("settle the test run");
+        });
+        let _ = std::fs::remove_dir_all(&home);
     }
 
-    /// A payload without a run id or target is rejected.
+    /// A payload without a run id or target decodes to nothing.
     #[test]
     fn a_short_payload_is_rejected() {
-        let error = super::run_trigger(&serde_json::json!({ "run_id": "run-1" })).unwrap_err();
-        assert!(error.contains("needs run_id and target"), "unexpected: {error}");
+        assert!(
+            super::decode_trigger(&serde_json::json!({ "run_id": "run-1" })).is_none(),
+            "a payload needs both the run id and the target"
+        );
     }
 }
