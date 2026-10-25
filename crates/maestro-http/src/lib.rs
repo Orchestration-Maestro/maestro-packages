@@ -51,11 +51,11 @@ pub fn request(
 /// Send one HTTP request with an explicit attempt budget and read the full
 /// response.
 ///
-/// `attempts` is the total number of tries; one means no retry, and values
-/// below one are treated as one. A caller that wants a single try or a larger
-/// budget (for example five) passes it here. Transient failures — transport
-/// errors and 429/5xx statuses — consume an attempt; anything else ends the
-/// call immediately with that response.
+/// `attempts` is the total number of tries; one means no retry, values below
+/// one are treated as one, and values above five are clamped to five. A
+/// caller that wants a single try or a larger budget (up to five) passes it
+/// here. Transient failures — transport errors and 429/5xx statuses — consume
+/// an attempt; anything else ends the call immediately with that response.
 ///
 /// # Errors
 /// As [`request`], reported for the final attempt.

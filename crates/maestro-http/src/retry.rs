@@ -34,23 +34,28 @@ fn backoff_delay(attempt: u32) -> Duration {
     Duration::from_millis(ms)
 }
 
-/// Run `attempt` up to `attempts` times (clamped to 1..=5), retrying any
+/// Clamp a requested attempt budget to 1..=`MAX_ATTEMPTS`.
+fn budget(attempts: u32) -> u32 {
+    attempts.clamp(1, MAX_ATTEMPTS)
+}
+
+/// Run `send` up to `attempts` times (clamped to 1..=5), retrying any
 /// transport error and 429/5xx statuses with exponential backoff. A
 /// `Retry-After` header in seconds is honored, capped.
-pub fn run_with_retry<F>(attempts: u32, mut attempt: F) -> Result<Response, String>
+pub fn run_with_retry<F>(attempts: u32, mut send: F) -> Result<Response, String>
 where
     F: FnMut() -> Result<Response, String>,
 {
-    let budget = attempts.clamp(1, MAX_ATTEMPTS);
+    let limit = budget(attempts);
     let mut n = 0u32;
     loop {
         n += 1;
-        let outcome = attempt();
+        let outcome = send();
         let retryable = match &outcome {
             Err(_) => true,
             Ok(response) => retryable_status(response.status),
         };
-        if !retryable || n >= budget {
+        if !retryable || n >= limit {
             return outcome;
         }
         let delay = match &outcome {
@@ -66,8 +71,18 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::backoff_delay;
+    use super::{backoff_delay, budget};
     use std::time::Duration;
+
+    /// The budget clamps a requested value into 1..=5.
+    #[test]
+    fn budget_clamps_to_the_cap() {
+        assert_eq!(budget(0), 1);
+        assert_eq!(budget(1), 1);
+        assert_eq!(budget(3), 3);
+        assert_eq!(budget(5), 5);
+        assert_eq!(budget(50), 5);
+    }
 
     /// The backoff doubles from 250 ms and caps at 4 s.
     #[test]
