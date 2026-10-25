@@ -53,6 +53,9 @@ pub struct Config {
     pub bridge_key: String,
     /// Sandbox base URL.
     pub runner: String,
+    /// Default model when a run does not name one; used only if the bridge
+    /// actually serves it, otherwise the bridge's first model.
+    pub default_model: String,
     /// Maximum hypotheses verified per run.
     pub max_hypotheses: usize,
 }
@@ -63,6 +66,7 @@ impl Default for Config {
             bridge: crate::llm::DEFAULT_BASE_URL.into(),
             bridge_key: crate::llm::DEFAULT_KEY.into(),
             runner: crate::runner::DEFAULT_RUNNER_URL.into(),
+            default_model: "qwythos".into(),
             max_hypotheses: 8,
         }
     }
@@ -77,6 +81,7 @@ impl Config {
             ("MAESTRO_SECURITY_BRIDGE", &mut config.bridge),
             ("MAESTRO_SECURITY_BRIDGE_KEY", &mut config.bridge_key),
             ("MAESTRO_SECURITY_RUNNER", &mut config.runner),
+            ("MAESTRO_SECURITY_MODEL", &mut config.default_model),
         ] {
             if let Ok(value) = std::env::var(key) && !value.is_empty() {
                 *field = value;
@@ -376,9 +381,12 @@ impl Engine {
             return Ok(model.to_string());
         }
         self.llm.available_models().and_then(|models| {
-            models
-                .into_iter()
-                .next()
+            let preferred = models
+                .iter()
+                .find(|m| **m == self.config.default_model)
+                .cloned();
+            preferred
+                .or_else(|| models.into_iter().next())
                 .ok_or_else(|| "bridge /models returned no models".to_string())
         })
     }

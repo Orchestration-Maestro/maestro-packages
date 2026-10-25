@@ -1,4 +1,4 @@
-//! Maestro.s unified security framework: understand program and network behaviour, find security issues with root-cause analysis, and write better code.
+//! Maestro's unified security framework: understand program and network behaviour, find security issues with root-cause analysis, and write better code.
 //!
 //! One pipeline (recon, target model, hypothesis sweep, verify, deepen,
 //! threat, report) with five agents, driven by a model resolved at run
@@ -14,7 +14,6 @@ mod agents;
 mod evidence;
 mod llm;
 mod methodology;
-mod net;
 mod phases;
 mod pipeline;
 mod report;
@@ -27,8 +26,9 @@ pub mod mcp;
 
 pub use agents::{resolve_agent, Agent, ROSTER};
 pub use evidence::{Ledger, LedgerDoc};
+pub use llm::Client;
 pub use pipeline::{assess, evidence_for, AssessParams, Config, Engine};
-pub use report::{Assessment, SCHEMA};
+pub use report::{Assessment, Finding, SCHEMA};
 
 #[cfg(target_arch = "wasm32")]
 maestro_extensions_wasm::export_extension!(extension::factory);

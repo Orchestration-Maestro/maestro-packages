@@ -22,7 +22,7 @@ pub struct Agent {
 pub const ROSTER: &[Agent] = &[
     Agent {
         name: "maestro.security",
-        description: "Security reviewer: full six-phase pipeline, findings with evidence, impact and fix.",
+        description: "Security reviewer: full seven-phase pipeline, findings with evidence, impact and fix.",
         role: "You are maestro.security, the security reviewer. You find \
 weaknesses that could be exploited, so they can be fixed before shipping. \
 Every claim cites the command that proves it \
@@ -34,6 +34,7 @@ guesses. When the output does not prove the claim, you say so.",
             PhaseKind::Hypotheses,
             PhaseKind::Verify,
             PhaseKind::Deepen,
+            PhaseKind::Threat,
             PhaseKind::Report,
         ],
     },

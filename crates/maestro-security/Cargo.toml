@@ -16,7 +16,11 @@ path = "src/bin/maestro-security-mcp.rs"
 
 [dependencies]
 maestro-extensions-wasm = { git = "https://github.com/Orchestration-Maestro/maestro" }
+maestro-http = { path = "../maestro-http" }
 serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
 serde_json.workspace = true
 
 [lints]

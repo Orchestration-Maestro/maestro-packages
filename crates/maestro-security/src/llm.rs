@@ -5,12 +5,11 @@
 //! so swapping models never touches this code. A per-run override is still
 //! possible via the tool parameter.
 
-use crate::net;
 use serde_json::json;
 
-/// Default bridge base URL (loopback, WASM-visible). The audience segment is
-/// part of the wiring, not the model choice.
-pub const DEFAULT_BASE_URL: &str = "http://127.0.0.1:8001/heretic/v1";
+/// Default bridge base URL (loopback, WASM-visible): the local model router,
+/// which serves every registered model directly, no capability key needed.
+pub const DEFAULT_BASE_URL: &str = "http://127.0.0.1:8080/v1";
 /// Default capability key (machine-local; also in /work/tools/pi-bridge.env).
 pub const DEFAULT_KEY: &str =
     "3648e45e792d925d2bf138156fb820e491a5f89f3c5d33f2d6963920b170592f";
@@ -56,7 +55,7 @@ impl Client {
     /// model list.
     pub fn available_models(&self) -> Result<Vec<String>, String> {
         let url = format!("{}/models", self.base_url);
-        let resp = net::request(
+        let resp = maestro_http::request(
             "GET",
             &url,
             &[("authorization", &format!("Bearer {}", self.key))],
@@ -104,7 +103,7 @@ impl Client {
         })
         .to_string();
         let url = format!("{}/chat/completions", self.base_url);
-        let resp = net::request(
+        let resp = maestro_http::request(
             "POST",
             &url,
             &[
@@ -119,11 +118,18 @@ impl Client {
         }
         let value: serde_json::Value =
             serde_json::from_slice(&resp.body).map_err(|e| format!("bridge json: {e}"))?;
-        value
+        let content = value
             .pointer("/choices/0/message/content")
             .and_then(|c| c.as_str())
-            .map(str::to_string)
-            .ok_or_else(|| "bridge returned no message content".into())
+            .unwrap_or_default()
+            .to_string();
+        if content.trim().is_empty() {
+            // Thinking models spend tokens on reasoning before answering; an
+            // empty answer means the budget ran out mid-thought, which the
+            // phase layer retries.
+            return Err("bridge returned no message content".into());
+        }
+        Ok(content)
     }
 }
 

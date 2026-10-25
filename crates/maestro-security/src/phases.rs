@@ -11,6 +11,11 @@ use crate::pipeline::{
 };
 use crate::report::{Refuted, Threat};
 
+/// Output ceiling for every model call. The bridge serves local models, so
+/// the ceiling only bounds one request's window, not a budget: thinking
+/// models get room to reason and still answer.
+const MAX_TOKENS: u32 = 32768;
+
 impl crate::pipeline::Engine {
     /// Phase 1: deterministic recon through the runner, raw and ledgered.
     pub(crate) fn phase_recon(
@@ -41,7 +46,7 @@ impl crate::pipeline::Engine {
         ledger: &mut Ledger,
     ) -> Result<String, String> {
         let prompt = methodology::target_model_prompt(target, truncate(recon, 20000));
-        let doc = self.llm.chat(&ctx.model, &ctx.system, &prompt, 4096)?;
+        let doc = self.llm.chat(&ctx.model, &ctx.system, &prompt, MAX_TOKENS)?;
         let id = ledger.record_llm(
             "target-model",
             "structured target model from recon",
@@ -65,7 +70,7 @@ impl crate::pipeline::Engine {
             truncate(target_model, 12000),
             self.config.max_hypotheses,
         );
-        let raw = match self.llm.chat(&ctx.model, &ctx.system, &prompt, 4096) {
+        let raw = match self.llm.chat(&ctx.model, &ctx.system, &prompt, MAX_TOKENS) {
             Ok(raw) => raw,
             Err(error) => {
                 ledger.record_note("hypotheses", &format!("failed: {error}"));
@@ -139,7 +144,7 @@ impl crate::pipeline::Engine {
                 &ctx.model,
                 &ctx.system,
                 &methodology::verify_prompt(&hyp_json, truncate(target_model, 8000)),
-                2048,
+                MAX_TOKENS,
             )
             .ok()?;
         let plan: Plan = serde_json::from_str(&extract_json(&plan_raw)).ok()?;
@@ -155,7 +160,7 @@ impl crate::pipeline::Engine {
                     &plan.command,
                     truncate(&result.output, 8000),
                 ),
-                1024,
+                MAX_TOKENS,
             )
             .ok()?;
         let judge: Judge = serde_json::from_str(&extract_json(&judge_raw)).ok()?;
@@ -255,7 +260,7 @@ impl crate::pipeline::Engine {
         .to_string();
         let raw = self
             .llm
-            .chat(&ctx.model, &ctx.system, &methodology::deepen_prompt(&payload), 2048)
+            .chat(&ctx.model, &ctx.system, &methodology::deepen_prompt(&payload), MAX_TOKENS)
             .ok()?;
         let deep: Deepen = serde_json::from_str(&extract_json(&raw)).ok()?;
         ledger.record_llm(
@@ -278,7 +283,7 @@ impl crate::pipeline::Engine {
         ledger: &mut Ledger,
     ) -> Vec<Threat> {
         let prompt = methodology::threat_prompt(truncate(target_model, 12000));
-        let raw = match self.llm.chat(&ctx.model, &ctx.system, &prompt, 4096) {
+        let raw = match self.llm.chat(&ctx.model, &ctx.system, &prompt, MAX_TOKENS) {
             Ok(raw) => raw,
             Err(error) => {
                 ledger.record_note("threat", &format!("failed: {error}"));
@@ -315,7 +320,7 @@ impl crate::pipeline::Engine {
         ledger: &mut Ledger,
     ) -> (String, Vec<String>) {
         let prompt = methodology::report_prompt(truncate(report_data, 20000));
-        let Ok(raw) = self.llm.chat(&ctx.model, &ctx.system, &prompt, 1024) else {
+        let Ok(raw) = self.llm.chat(&ctx.model, &ctx.system, &prompt, MAX_TOKENS) else {
             return (default_summary_for(report_data), Vec::new());
         };
         ledger.record_llm(

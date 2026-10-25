@@ -28,7 +28,10 @@ deserialization, cryptography, configuration, supply chain, denial of \
 service, information disclosure. Each hypothesis names its class, its target \
 node from phase 2, one concrete test command, the output that would prove \
 it, and the output that would refute it. Many cheap tests before any deep \
-dive.
+dive. When the target is a host or container environment, the sweep also \
+covers the environment itself: image and container configuration, exposed \
+services and their credentials, installed tooling, agent frameworks and \
+skill code, and local data stores.
 PHASE 4 VERIFY: Plan-Act-Observe-Reflect per hypothesis, at most three \
 attempts. Evidence levels are strict:
   CONFIRMED: direct observation of the vulnerable behaviour, reproducible \
