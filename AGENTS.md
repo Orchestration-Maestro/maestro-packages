@@ -15,3 +15,15 @@ Extension packages for Maestro. This repository follows the same strict governan
 - No dead weight: every line, test, abstraction, dependency and doc must be needed.
 - Builds on the AWS remote-build host (`maestro-remote-build run ...`); never touch the local Qdrant or model router.
 - No secrets in messages, tests or fixtures.
+
+## Workflow (ask-matt pipeline)
+
+- Every change follows Matt's flow: /grill-with-docs (when questions remain) → /to-spec → /to-tickets → /implement per ticket → /pr → /retro.
+- A spec document lands on main before implementation: first commit of its ticket's PR; the issue points only at that one spec.
+- Implement with /tdd, one red-green slice at a time; every change gets /code-review on both axes (Standards + Spec).
+- Tickets carry acceptance criteria, commands and report format; a lane follows its ticket, never a private brief.
+- Verify only on the AWS remote-build host (`maestro-remote-build run ...`); no local builds.
+- Both reviews run read-only; blocking findings fixed before merge, minor doc-only findings become a cleanup issue.
+- Merge with squash and a signed conventional commit; /retro after each ticket; mechanical mistakes become deterministic checks.
+- Lane models: every lane, planning and review runs on deepseek/deepseek-flash; the supervisor names the model in each dispatch.
+- Every issue is labelled `packages` and opens with "Repository: maestro-packages" so it never mixes with maestro core work.
