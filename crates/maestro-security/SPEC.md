@@ -24,7 +24,7 @@ resolved from the bridge, never a binding.
   doctor, route, assess, validate, evidence, report_page, evidence_page,
   disclose (brief + SARIF), workspace.
 - **Models from the decomposition**: 3-verdict findings (CONFIRMED /
-  NeedsValidation / REFUTED), 8-state coverage ledger, 4-way doctor,
+  NeedsValidation / Rejected), 8-state coverage ledger, 4-way doctor,
   optimistic-concurrency workspaces, cards + credentials stores.
 - **Evidence**: one JSON file per run under `$MAESTRO_SECURITY_HOME`;
   reports render as HTML artifacts (Maestro's live-page mechanism).
@@ -34,10 +34,11 @@ resolved from the bridge, never a binding.
   knowledge sources (CVE/OWASP/ATT&CK), rules.
 - **Fusion proof**: DECOMPOSITION-MATRIX.md — 1,089 communities, 727
   behavioural, 724 owned, 0 gaps; UNIFIED-DESIGN.md holds the design.
-- **Box**: `maestro-security:local` image (10.7 GB), 27 raw tools, runner
-  on 8100 (NDJSON), bridge on 8001; two-version mode machinery.
-- **Live proof**: a full 7-phase run on qwythos — 4 findings, 3 refuted,
-  3 threats.
+- **Box**: the `maestro-security:local` image carrying the raw tools
+  (nmap, sqlmap, nuclei, …), the runner on 8100 (NDJSON) and the box
+  bridge for LLM routing; two-version mode machinery.
+- **Live proof**: `tests/live_assess.rs` plus a full 7-phase run executed
+  on qwythos; the run record lives in the workspace ledger.
 
 ## 3. The contract with Maestro
 
@@ -80,6 +81,8 @@ runner and bridge health wired into the doctor probe.
 
 Forge-branded live surfaces: status line, working indicator and progress
 widget in the TUI; report page + attack graph refinement in the browser.
+Traces to owner grill decision 2 (the run must have a real visual and work
+in the TUI).
 
 ### R4 — Larger-workflow binding
 
@@ -89,8 +92,8 @@ run is a step in bigger pipelines (hooks/events chain), per the owner's
 
 ### R5 — Elsewhere (tracked, not this repo)
 
-- 64 `module_name_repetitions` violations across 16 crates in the maestro
-  core repo (separate lane).
+- `module_name_repetitions` violations across the maestro core repo
+  (separate lane, tracked in the maestro workspace).
 - Box image backup cadence (local D: drive only, no GHCR).
 
 ## 5. Owner decisions (register)
@@ -100,8 +103,8 @@ run is a step in bigger pipelines (hooks/events chain), per the owner's
 - Default model qwythos, resolved at runtime from the bridge/router.
 - Retry: default 3, overridable 1–5 per caller.
 - No new backends of any kind; schemas on existing stores.
-- Single-purpose functions; query the code graph before every code write;
-  no duplicated code.
+- Single-purpose functions; query the code graph before every plan (owner
+  OD-133); no duplicated code.
 - No local builds: every check through `maestro-remote-build run`.
 - Brand: Forge palette; Maestro names only in code and docs.
 - Autonomy grill (2026-10-25): the four R1 decisions.
