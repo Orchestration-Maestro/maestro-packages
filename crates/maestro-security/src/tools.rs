@@ -34,7 +34,8 @@ reconstruction), maestro.cyber (threat model and hardening).";
 
 /// Description of the evidence tool.
 pub const EVIDENCE_DESCRIPTION: &str = "Retrieve the retained evidence ledger (full \
-untruncated outputs of every step) for a finished run, by run id.";
+untruncated outputs of every step) for a finished run, by run id, or by agent \
+name (the newest retained run by that agent).";
 
 /// JSON schema for the assessment tool parameters.
 #[must_use]
@@ -72,13 +73,17 @@ pub fn assess_schema() -> serde_json::Value {
 pub fn evidence_schema() -> serde_json::Value {
     json!({
         "type": "object",
-        "required": ["run_id"],
         "properties": {
             "run_id": {
                 "type": "string",
                 "description": "Run id from a finished assessment report"
+            },
+            "agent": {
+                "type": "string",
+                "description": "Agent name; resolves the newest retained run by that agent"
             }
-        }
+        },
+        "anyOf": [{ "required": ["run_id"] }, { "required": ["agent"] }]
     })
 }
 
@@ -91,7 +96,8 @@ creds:add, creds:list.";
 
 /// Description of the doctor tool.
 pub const DOCTOR_DESCRIPTION: &str = "Check the health of the security box: runner \
-reachability, bridge reachability, model availability, and host hardware. \
+reachability, bridge reachability, model availability, a live one-token \
+inference probe on the default model, sandbox tooling, and host hardware. \
 Each check carries a classification (healthy, config_drift, \
 missing_analysis_engine, unsupported_host) and a remediation line.";
 
@@ -194,11 +200,28 @@ pub fn run_assess(arguments: &serde_json::Value) -> Result<String, String> {
 /// # Errors
 /// Fails if the arguments are malformed or the underlying capability fails.
 pub fn run_evidence(arguments: &serde_json::Value) -> Result<String, String> {
-    let run_id = arguments
-        .get("run_id")
+    let run_id = match arguments.get("run_id").and_then(serde_json::Value::as_str) {
+        Some(id) => id.to_string(),
+        None => latest_run_for_agent(arguments)?,
+    };
+    crate::pipeline::evidence_for(&run_id).map_err(|e| format!("evidence lookup failed: {e}"))
+}
+
+/// Resolve the newest retained run by an agent name.
+///
+/// # Errors
+/// Fails if no agent is given or the agent has no retained runs.
+fn latest_run_for_agent(arguments: &serde_json::Value) -> Result<String, String> {
+    let agent = arguments
+        .get("agent")
         .and_then(serde_json::Value::as_str)
-        .ok_or("run_id is required")?;
-    crate::pipeline::evidence_for(run_id).map_err(|e| format!("evidence lookup failed: {e}"))
+        .ok_or("run_id or agent is required")?;
+    crate::store::Store
+        .list_runs(0)?
+        .into_iter()
+        .find(|run| run.agent == agent)
+        .map(|run| run.run_id)
+        .ok_or_else(|| format!("no retained runs by agent {agent}"))
 }
 
 /// One workspace action; the result JSON is the output.
@@ -342,5 +365,29 @@ pub fn run_disclose(arguments: &serde_json::Value) -> Result<String, String> {
             Ok(crate::disclose::sarif(&report))
         }
         other => Err(format!("unknown disclose action: {other}")),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    //! Unit tests for the shared tool runners.
+
+    use super::run_evidence;
+
+    /// Evidence with neither run id nor agent is a clear error.
+    #[test]
+    fn evidence_requires_run_id_or_agent() {
+        let err = run_evidence(&serde_json::json!({})).unwrap_err();
+        assert!(err.contains("run_id or agent is required"), "unexpected: {err}");
+    }
+
+    /// Evidence for an agent with no retained runs is a clear error.
+    #[test]
+    fn evidence_agent_without_runs_is_an_error() {
+        let err = run_evidence(&serde_json::json!({
+            "agent": "test-agent-never-run-xyz"
+        }))
+        .unwrap_err();
+        assert!(err.contains("no retained runs"), "unexpected: {err}");
     }
 }

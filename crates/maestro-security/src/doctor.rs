@@ -68,6 +68,7 @@ pub fn doctor() -> Result<Vitals, String> {
         check_runner(&config),
         check_bridge(&config),
         check_models(&config),
+        check_inference(&config),
         check_tooling(&config),
         check_hardware(&config),
     ];
@@ -114,6 +115,22 @@ fn check_models(config: &Config) -> HealthCheck {
             &format!("{} models, default={}", models.len(), config.default_model),
         ),
         Err(e) => drift("models", "bridge /models", &e, "start the model router or fix the bridge key"),
+    }
+}
+
+/// Check the default model answers a live one-token probe.
+fn check_inference(config: &Config) -> HealthCheck {
+    let client = Client::local()
+        .with_base_url(config.bridge.clone())
+        .with_key(config.bridge_key.clone());
+    match client.chat(&config.default_model, "Reply with exactly: OK", "ping", 16) {
+        Ok(_) => ok("inference", &config.default_model),
+        Err(e) => missing(
+            "inference",
+            &config.default_model,
+            &e,
+            "the model did not answer; check the router catalog and model name",
+        ),
     }
 }
 
@@ -179,6 +196,17 @@ fn drift(name: &str, target: &str, error: &str, remediation: &str) -> HealthChec
         name: name.into(),
         status: "fail".into(),
         classification: Classification::ConfigDrift,
+        detail: format!("{target}: {error}"),
+        remediation: remediation.into(),
+    }
+}
+
+/// A failing check whose dependency is absent from the environment.
+fn missing(name: &str, target: &str, error: &str, remediation: &str) -> HealthCheck {
+    HealthCheck {
+        name: name.into(),
+        status: "fail".into(),
+        classification: Classification::MissingAnalysisEngine,
         detail: format!("{target}: {error}"),
         remediation: remediation.into(),
     }

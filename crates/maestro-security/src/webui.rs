@@ -101,6 +101,20 @@ color:var(--burnished-brass)}
 ul{margin:8px 0;padding-left:20px;color:var(--vector-steel)}
 .empty{color:var(--vector-steel);font-family:'JetBrains Mono',ui-monospace,
 monospace;font-size:12px}
+.graph{display:flex;gap:16px;flex-wrap:wrap;margin:12px 0}
+.groot{align-self:flex-start;border:1px solid var(--molten-ember);
+color:var(--molten-ember);border-radius:4px;padding:6px 10px;font-size:13px;
+font-family:'JetBrains Mono',ui-monospace,monospace}
+.gcol{border-left:2px solid var(--line);padding-left:12px;min-width:180px;
+flex:1}
+.glabel{font:600 11px/1.2 'Barlow Condensed','Arial Narrow',sans-serif;
+letter-spacing:.14em;text-transform:uppercase;color:var(--vector-steel);
+margin-bottom:6px}
+.gnode{border:1px solid var(--line);border-radius:4px;padding:6px 10px;
+font-size:13px;margin:6px 0;background:var(--oxide)}
+.gnode.dead{opacity:.55;text-decoration:line-through}
+.gnode .gdet{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;
+color:var(--vector-steel)}
 ";
 
 /// Build the report page.
@@ -119,6 +133,8 @@ fn html_document(a: &Assessment) -> String {
 <h1><span class="mark">Maestro</span> Security</h1>
 <div class="meta">target {target} &middot; agent {agent} &middot; model {model} &middot; run {run_id} {spend}</div>
 <div class="summary">{summary}</div>
+<h2>Attack graph</h2>
+{graph}
 <h2>Findings</h2>
 {findings}
 <h2>Refuted</h2>
@@ -133,12 +149,79 @@ fn html_document(a: &Assessment) -> String {
         model = esc(&a.model),
         run_id = esc(&a.run_id),
         summary = esc(&a.summary),
+        graph = attack_graph(a),
         findings = findings,
         refuted = refuted,
         threats = threats,
         unknown = unknown,
         spend = spend,
         css = FORGE_CSS,
+    )
+}
+
+/// The attack graph section: the target, its findings, threats, dead ends
+/// and open questions as a self-contained tree. Only edges present in the
+/// data model are drawn.
+fn attack_graph(a: &Assessment) -> String {
+    let findings = graph_column("findings", a.findings.iter().map(node_finding));
+    let threats = graph_column("threats", a.threats.iter().map(node_threat));
+    let dead_ends = graph_column("dead ends", a.refuted.iter().map(node_dead_end));
+    let open = graph_column(
+        "open",
+        a.unknown.iter().map(|u| format!("<div class='gnode'>{}</div>", esc(u))),
+    );
+    format!(
+        "<div class='graph'><div class='groot'>{target}</div>{findings}{threats}{dead_ends}{open}</div>",
+        target = esc(&a.target)
+    )
+}
+
+/// One finding node: verdict-styled, with its evidence command as detail.
+fn node_finding(f: &crate::report::Finding) -> String {
+    let cls = match f.verdict {
+        crate::report::Verdict::Confirmed | crate::report::Verdict::NeedsValidation => "",
+        crate::report::Verdict::Rejected => "dead",
+    };
+    format!(
+        "<div class='gnode {cls}'>{title} <span class='conf'>{conf:.2}</span> <span class='gdet'>{ev}</span></div>",
+        title = esc(&f.title),
+        conf = f.confidence,
+        ev = esc(&f.evidence.command)
+    )
+}
+
+/// One threat node: the asset, with the impact as detail.
+fn node_threat(t: &crate::report::Threat) -> String {
+    format!(
+        "<div class='gnode'>{asset} <span class='gdet'>{impact}</span></div>",
+        asset = esc(&t.asset),
+        impact = esc(&t.impact)
+    )
+}
+
+/// One refuted-hypothesis node: struck through as a dead end.
+fn node_dead_end(r: &crate::report::Refuted) -> String {
+    format!(
+        "<div class='gnode dead'>{hypothesis} <span class='gdet'>{ev}</span></div>",
+        hypothesis = esc(&r.hypothesis),
+        ev = esc(&r.evidence_id)
+    )
+}
+
+/// One graph column, or its empty-state line.
+fn graph_column<I>(label: &str, nodes: I) -> String
+where
+    I: IntoIterator<Item = String>,
+{
+    let nodes: Vec<String> = nodes.into_iter().collect();
+    if nodes.is_empty() {
+        return format!(
+            "<div class='gcol'><div class='glabel'>{label}</div><p class='empty'>none</p></div>"
+        );
+    }
+    format!(
+        "<div class='gcol'><div class='glabel'>{label}</div>{}</div>",
+        nodes.join("")
     )
 }
 
@@ -308,6 +391,79 @@ mod tests {
     #[test]
     fn escapes_html() {
         assert_eq!(esc("<a>&\""), "&lt;a&gt;&amp;&quot;");
+    }
+
+    /// An assessment with one node in every graph branch.
+    fn sample_assessment() -> crate::report::Assessment {
+        use crate::report::{Assessment, Evidence, Finding, Refuted, Threat, Verdict};
+        Assessment {
+            schema: crate::report::SCHEMA.into(),
+            run_id: "r".into(),
+            agent: "a".into(),
+            target: "example.com".into(),
+            model: "m".into(),
+            phases: Vec::new(),
+            findings: vec![Finding {
+                id: "F-001".into(),
+                fingerprint: "fp".into(),
+                title: "SQLi in login".into(),
+                class: "injection".into(),
+                verdict: Verdict::Confirmed,
+                severity: "high".into(),
+                likelihood: String::new(),
+                confidence: 0.8,
+                trace: Vec::new(),
+                conditions: Vec::new(),
+                execution: None,
+                mitre: None,
+                poc: None,
+                evidence_level: "CONFIRMED".into(),
+                escalation: "admin".into(),
+                evidence: Evidence {
+                    command: "curl -s /login".into(),
+                    output: "ok".into(),
+                    id: "ev-0001".into(),
+                },
+                impact: "db read".into(),
+                fix: "params".into(),
+                target: "example.com".into(),
+                claimed_root_cause: None,
+                blockers: Vec::new(),
+                validation_plan: None,
+                reason: None,
+            }],
+            unknown: vec!["tls config".into()],
+            refuted: vec![Refuted {
+                class: "xss".into(),
+                hypothesis: "reflected xss".into(),
+                evidence_id: "ev-0002".into(),
+            }],
+            threats: vec![Threat {
+                asset: "db".into(),
+                actor: "ext".into(),
+                path: "sqli".into(),
+                impact: "exfil".into(),
+                likelihood: "medium".into(),
+                hardening: "params".into(),
+            }],
+            runtime_mechanics: Vec::new(),
+            spend: None,
+            summary: "s".into(),
+        }
+    }
+
+    /// The attack graph renders the target root and every non-empty branch.
+    #[test]
+    fn attack_graph_renders_all_branches() {
+        let graph = super::attack_graph(&sample_assessment());
+        assert!(graph.contains("example.com"), "missing target root: {graph}");
+        assert!(graph.contains("SQLi in login"), "missing finding: {graph}");
+        assert!(graph.contains("tls config"), "missing open: {graph}");
+        assert!(
+            graph.contains("reflected xss") && graph.contains("dead"),
+            "missing dead end: {graph}"
+        );
+        assert!(graph.contains("exfil"), "missing threat: {graph}");
     }
 
     /// The spend line is empty when there is no spend.
