@@ -282,3 +282,19 @@ communities are non-pentest infrastructure:
 - Ownership sweep: 1,089 communities >= 20 nodes; 362 non-behavioral; 727 behavioral; 724 owned; 3 non-pentest infra.
 - God nodes: top 5 per framework identified and mapped.
 - Cross-check: every top-10 subsystem per framework has a named owner module.
+
+## Campaign target 1: the reverse-skill (issue #14, byte-per-byte)
+
+Decomposed 2026-10-25 by the REA-only agent (mission
+`rea-v2/reverse-skill/`): 93 capability rows, 77 proven, 16 likely, 0
+guessed, 10 unknown; 13 REA evidence ids; sha256-identified target.
+
+Shape: a router plus claim discipline, not a tool catalog — 60 of 93 rows
+are selection or prohibition rules. Every analysis path collapses to three
+primitives: a bounded result, a retained parent Evidence id, and a
+page/item view.
+
+Rulings: the primitives home to the evidence ledger (`evidence.rs` lineage,
+`report.rs`/`webui.rs` view); the recurring prohibitions become one gate in
+`validate.rs`. Graph agreement (ADR-0020): 43 nodes / 8 communities, every
+community maps to a row group, 0 unmapped.
