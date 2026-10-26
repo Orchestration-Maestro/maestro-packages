@@ -360,3 +360,15 @@ SIGTERM→SIGKILL on a monotonic clock, undeliverable SIGKILL ends
 `unobserved: true` with no invented exit. The terminal budget is a
 rejection, never a clamp. Per-family failure types name the remote thing.
 Owners ruled: runner.rs, browser.rs, reverse.rs, tools.rs, evidence.rs.
+
+## Campaign target 3, slice 5: artifact / native / android families (issue #14)
+
+Decomposed 2026-10-26 (mission `rea-v2/rea/`): 49 rows. The artifact family
+is 16 rows over one provider (rea-artifact-graph v1) in an empty registry,
+split 8/8 on session target vs own path. The native family is four species
+under one kind with a 60 s / 64 MiB command budget and a duration_ms + 60 s
+LLDB deadline. Android speaks MCP to a hash-pinned JADX engine; the adb
+provider's destructive axis is the device. Fixed defect (ruled, not
+copied): the annotation derivation promotes write effects — destructive
+derives from the full effect set including mayWriteFilesystem and
+mayModifyDevice.
