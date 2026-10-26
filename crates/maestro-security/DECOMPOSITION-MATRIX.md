@@ -770,3 +770,17 @@ mission file. Data-only targets (rea-check) carry an explicit waiver
 --schema mutation, URL API keys, hidden failures + discarded stderr, the
 stdout-only contract preserved, and the memory-on-JSON-stores mapping
 (ADR-0022).
+
+## Closure pass 2 — the unread behaviour (Sol review round, 2026-10-26)
+
+The review's blocker-2 gaps are captured with byte evidence: the 30
+Ghidra operation bodies (slice 6c, 35 rows — dispatch enforced, the
+cursor-as-capability rule, commit-on-readback); the native_api facet
+(slice 6d — all 1,062 lines, 34 declarations; the eleven-premise chain
+and the dual-recovery gate); the PentestGPT anti-fabrication receipt
+matcher (slice 2b, 42 rows — six exact-byte attempts, the
+StructuredOutput exclusion, journal-slice observations); the skill
+bodies (slice 1b, 67 rows; slice 1c, 96 rows — all 11 process bodies);
+and the companion references (slice 1d, 78 rows — all six files). Every
+slice carries its evidence bundle and supervisor rulings. No unread
+product behaviour remains; the open unknowns all carry dispositions.
