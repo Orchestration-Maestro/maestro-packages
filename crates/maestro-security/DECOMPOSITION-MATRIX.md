@@ -593,3 +593,20 @@ container/SSH run silently re-executes the command on the HOST at five
 call sites — the port refuses with ExecutionFailed and never falls back.
 execute_code is a permanent file with a 14-language table and a timeout
 parameter. Target 10 closed: 112 rows over three slices.
+
+## Campaign target 11, slice 1: Pentest-Swarm-AI blackboard + confidence (issue #14)
+
+Decomposed 2026-10-26 (mission `rea-v2/fw-swarm/`): 50 rows. The
+blackboard is an immutable typed finding log with AND-predicate or push
+channel reads, one RWMutex, and fan-out that drops silently when a
+subscriber's 32-slot buffer fills — correctness leans on cursor replay.
+Confidence is pure half-life decay computed at read time, never stored;
+base clamped to [0,1], half-life unclamped, and the Go/SQL engines
+disagree on half_life <= 0 (no decay vs 1 s clamp). Accrual is rewrite +
+Supersedes, not reinforcement; gates stack agent MinPheromone 0.05-0.7,
+report publish 0.5, Jev P(real) < 0.5. The quality gate discounts only
+inferential findings by a price tier, at exactly one call site. Jev is a
+single yes/no question over the finding text, batches of 16, opt-in,
+fail-open in three places. Ruled: overflow recorded not silent, Go
+semantics for the half-life edge, fail-closed Jev. Slice 2: PoC loop,
+exploit chains, gate outputs.
