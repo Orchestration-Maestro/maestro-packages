@@ -717,3 +717,19 @@ budget_paused counting as active, the <cache_point> at prompt line 520
 (532 newline-terminated lines, not 533). Ruled: the reserve becomes the
 report-phase budget floor; prompt-only rules are not ported. Slice 2:
 phases, cost site, tools.
+
+## Campaign target 15, slice 2: strix phases, cost, tools — target closed
+
+Decomposed 2026-10-26 (mission `rea-v2/fw-strix/`). Phases are five
+free-form strings with no schema, all naming setup, no scan-activity
+phase, and failure never clears the last phase. The cost site is
+ReportState._llm_usage.total_cost — live in-memory, deliberately not the
+persisted record, one writer and four enforcement readers; bands proven
+exact: root 70/85/95, sub-agent 75/80/85, reserve 90;
+DEFAULT_MAX_TURNS = 500. The "~90 tools" are three inventories: 46
+in-repo @function_tool functions in 10 families, an SDK toolset of four
+CustomTools, and runtime MCP tools. The prompt tells the model every
+agent has shell + browser while the factory disables view_image —
+roster facts stated as invariants vs per-agent config. Ruled: typed
+phases with terminal states, RunSpend as the cost model, the manifest
+as the roster truth. ALL SIXTEEN FRAMEWORKS DECOMPOSED.
