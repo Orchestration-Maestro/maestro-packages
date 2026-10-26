@@ -490,3 +490,15 @@ a three-kind log stream, live updates by GraphQL subscription (replaced by
 the event seam), user-initiated run grammar with an agent-assisted
 variant, form fields as the assess arguments, and provider caches as the
 board view-model precedent. Target 6 closed: 211 rows over three slices.
+
+## Campaign target 7: rea-check (issue #14)
+
+Decomposed 2026-10-26 (in-session mission, REA-observed doctor.json,
+ev_29c3bdc9): 8 rows. The four-way classification is confirmed by the
+bytes: per-check healthy/config_drift/missing_analysis_engine/
+unsupported_host, a document-level healthy aggregator, a separate
+environment_healthy, a scope object (explicit clients/providers/skill/
+target), scope vs informational check arrays, one-line remediations per
+failure, caller-supplied engine verification ("REA does not download or
+install it"), component-deep engine checks, and stale-skill detection.
+Target 7 closed.
