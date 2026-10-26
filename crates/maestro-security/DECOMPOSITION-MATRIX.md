@@ -521,3 +521,18 @@ worker runs six phases; the real step engine is per-vulnerability-class
 is four mechanisms, not a queue: durable run record, per-activity retry,
 cancellation channel, live query — mapped to store.rs, the shared retry,
 the abort signal and the event seam. Target 8 closed.
+
+## Campaign target 9, slice 1: PentestGPT supervisor model (issue #14)
+
+Decomposed 2026-10-26 (mission `rea-v2/fw-pentestgpt/`): 53 rows, 43
+proven. base_revision is a real CAS twice — compile-time equality then a
+BEGIN IMMEDIATE + SELECT revision + StaleRevisionError write txn. The
+decision type is closed at three layers (schema additionalProperties
+false, runtime exact-key check, field-level types). Finish discipline:
+1..4 unique observation ids from DONE tasks, board closed, backlog capped
+at one task selected in the same decision. Injection defense is
+prompt-only — instruction + schema discipline, evidence verbatim in the
+state JSON, blast radius bounded by the compiler. FIXED DEFECT (not
+ported): the reference leaves StaleRevisionError uncaught; the port
+catches it, re-reads the snapshot and re-decides, with a red-first test.
+Episode ids are revision-scoped. Slice 2: episodes, prompts, tools.
