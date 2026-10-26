@@ -733,3 +733,14 @@ agent has shell + browser while the factory disables view_image —
 roster facts stated as invariants vs per-agent config. Ruled: typed
 phases with terminal states, RunSpend as the cost model, the manifest
 as the roster truth. ALL SIXTEEN FRAMEWORKS DECOMPOSED.
+
+## Campaign target 20, slice 1: the security skills (issue #14)
+
+Decomposed 2026-10-26 (mission `rea-v2/skills/`): 39 rows, 20 proven.
+Sixteen of the seventeen named skills exist in the checkout (aws-
+observability and aws-security do not — their earlier credit is revoked
+until found or ruled absent). 4,190 SKILL.md lines covered; section-
+granularity rows are labelled likely, never proven. Ruled: the
+three-tier boundary discipline lands on maestro.security; the
+constraint floors land on maestro.proof. Slice 2: the box's 135
+skills.
