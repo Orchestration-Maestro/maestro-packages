@@ -656,3 +656,18 @@ nothing by default); pending-command expiry written only on read; and
 two executors with two error contracts (MCP errors as text on HTTP 200,
 REST as status codes). Ruled: fail-closed, deployment-independent,
 absolute expiry, one executor with one error contract. Target 12 closed.
+
+## Campaign target 13, slice 1: Dark-Moon domains + step engine (issue #14)
+
+Decomposed 2026-10-26 (mission `rea-v2/fw-darkmoon/`): 45 rows, 10
+unknowns. Two layers, zero coupling: 51 flat .md domain agents (not 55 —
+four absent in this checkout, recorded as a delta) loaded via static
+prompt_file config; the step engine is Python with no step model, no
+abort class, statement-order sequencing, retries defaulting to zero.
+SAFETY FIX: _validate_command splits on &&/pipe/; and allowlists only the
+first token — later segments ride on the first tool's approval; the port
+validates every segment. The doctor is shell: a probe ladder
+(nvidia-smi -> WSL2 dxg -> ROCm -> /dev/kfd) published to
+/run/darkmoon-gpu.env, gating hashcat viability. Ruled: every-segment
+validation, typed doctor with the same ladder, domain files as catalog
+knowledge packs. Slice 2: the 13 MCP tools + workflow discovery.
