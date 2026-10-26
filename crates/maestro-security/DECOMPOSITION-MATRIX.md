@@ -550,3 +550,19 @@ preamble, bounded working set. Traces: three files per episode, atomic
 omitted markers. FIXED DEFECT: closed_tasks[:-4][-4:] slices [-8:-4] —
 the port takes the last four closed tasks with a red-first test. Target 9
 closed.
+
+## Campaign target 10, slice 1: cai AP + CTR core (issue #14)
+
+Decomposed 2026-10-26 (mission `rea-v2/fw-cai/`): 24 rows. Correction:
+"AP" is an agentic-pattern topology — AP = (A, H, D, C, E): Agents,
+Handoffs, Decision, Communication, Execution — with a five-pattern
+catalogue (Swarm, Hierarchical, Chain-of-Thought, Auction-Based,
+Recursive); nothing is an "adversarial probe". "CTR" is Cut The Rope: a
+game-theoretic attack-graph LP solver — one LLM inference builds a 4-10
+node graph, weights come offline from the transcript, then two scipy
+linprog calls over an attack-rate x defense-rate grid with 100 defender
+subgraphs dropping 20% of nodes. There is no attack-path traversal and no
+declarative test object; a "test" is a JSONL conversation log. The digest
+is a deterministic rule-based interpreter over three result files. The
+port maps the topology to agents.rs, replaces scipy result-first, and
+keeps the deterministic digest. Slice 2: the 36 tools.
