@@ -372,3 +372,15 @@ provider's destructive axis is the device. Fixed defect (ruled, not
 copied): the annotation derivation promotes write effects — destructive
 derives from the full effect set including mayWriteFilesystem and
 mayModifyDevice.
+
+## Campaign target 3, slice 6: the provider bridges and session managers (issue #14)
+
+Decomposed 2026-10-26 (mission `rea-v2/rea/`): 57 rows, 17 unknowns. Six
+transports, not one — unix-socket HMAC NDJSON, TCP descriptor, stdio MCP
+peer, O_EXCL file-pair, injected NDJSON handle, argv stdout — ruled as a
+transport trait in runner.rs. A second failure channel exists below JSON
+(reserved exit 75/76 plus a one-byte marker file) for interpreter, import
+and compile failures before any handler. Detach is not kill; Rizin has two
+detach paths; Windows refuses persistent GDB sessions (Job-Object
+cleanup). Open gaps (Cutter lifecycle, ReaGhidraBridge 53%) close in
+slice 6b.
