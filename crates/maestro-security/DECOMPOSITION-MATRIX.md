@@ -627,3 +627,18 @@ fallback; ROI grades on the low band. Ruled: the verify gate
 re-observes the target (model stdout never the sole oracle); chains
 stay data; the two gates stay distinct; the --no-sandbox PDF is
 refused. Target 11 closed: 90 rows.
+
+## Campaign target 12, slice 1: AIDA cards + recon + credentials (issue #14)
+
+Decomposed 2026-10-26 (mission `rea-v2/fw-aida/`). Corrections by bytes:
+there is no board — cards render through a unified table; recon types are
+not typed (data_type is String(50), snake_cased, only service/endpoint/
+vulnerability written); the ASVS payload is 177.9 KiB. Highest-value:
+status (confirmed/potential/untested) is a bare string with no transition
+guard — any state reaches any state via one setattr loop; proof is a bare
+Text column with no command/output/file reference; recon-to-finding is a
+double-write sharing a copied blob; credentials are plaintext with a
+per-assessment placeholder resolution endpoint. FIXED in the port:
+guarded transitions, evidence-lineage proof, one linked record, encrypted
+credentials at rest with box-only placeholder resolution. Slice 2: the
+MCP surface and the FastAPI contract.
