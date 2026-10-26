@@ -298,3 +298,14 @@ Rulings: the primitives home to the evidence ledger (`evidence.rs` lineage,
 `report.rs`/`webui.rs` view); the recurring prohibitions become one gate in
 `validate.rs`. Graph agreement (ADR-0020): 43 nodes / 8 communities, every
 community maps to a row group, 0 unmapped.
+
+## Campaign target 2: the REA method + merged leanrea (issue #14)
+
+Decomposed 2026-10-25 by the REA-only agent (mission `rea-v2/rea-method/`):
+82 rows, 80 proven, 2 likely, 0 guessed, 11 unknown. Byte split confirmed:
+lines 1–50 and 110–133 are the owner's REA method; lines 52–108 are the
+adapted leanrea fast path — a probe router (19 target rows) plus six
+economy rules, not a second methodology. Owner homes: prohibitions and
+gates → validate.rs, ledger → evidence.rs, views → report.rs, target
+selection → router.rs, recipes → tools.rs, the 8 steps →
+pipeline.rs/phases.rs. Graph agreement: 11 nodes / 1 community, 0 unmapped.
