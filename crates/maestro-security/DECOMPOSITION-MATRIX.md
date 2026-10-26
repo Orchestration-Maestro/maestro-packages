@@ -410,3 +410,15 @@ session, no config, no login — state crosses calls as files; the address
 retry is CLI-only and the no-session error MCP-only. mcp doctor verifies
 the catalog digest, 207/207 tools, 6/6 prompts. Target 3 closed: 430 rows
 over eight slices, evidence bundles and graph agreement per slice.
+
+## Campaign target 4: clearwing (issue #14)
+
+Decomposed 2026-10-26 (mission `rea-v2/fw-clearwing/`): 39 rows, 33
+proven, 16 container-bound unknowns. One thin launcher, a 25-module
+command table, 30 parser verbs, dispatch by module basename plus aliases.
+The engine is a per-thread-id dict state with a max_steps budget, one
+assistant step per pass, boolean approval resume. The LLM layer wraps a
+genai-pyo3 client with two retry classes and an env-gated call log;
+prompts are Python strings, not data. semantic_memory and
+episodic_memory ship compiled-only — slice 4b decompiles them. Graph:
+13,346 nodes / 33,990 edges.
