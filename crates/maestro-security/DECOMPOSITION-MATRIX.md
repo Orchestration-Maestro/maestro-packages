@@ -335,3 +335,15 @@ trusts. Unknowns are an append-only hash chain (digest-addressed, CAS
 revision tokens, duplicates as success). Agreement: 23 session-family
 graph nodes ↔ provider-session seams; dist-internal rows ride byte
 evidence. Slice 3 order: the provider-coordinate family (45 tools).
+
+## Campaign target 3, slice 3: the provider-coordinate family (issue #14)
+
+Decomposed 2026-10-26 (mission `rea-v2/rea/`): 43 rows, all proven, 12
+unknowns. The family is 44 tools (document/address/procedure coordinates,
+overlapping); inspect_macho and demangle_swift are path tools, not
+coordinate tools. Addresses are bare strings at the contract — a Rust hex
+parser at the boundary would reject inputs the reference accepts;
+normalisation happens after the provider's invalid_format, CLI-only.
+Dispatch arity is (operation, parameters, options). Ruling: runner.rs owns
+the six-decision pre-dispatch gate, validate.rs the two post-dispatch
+identity checks.
