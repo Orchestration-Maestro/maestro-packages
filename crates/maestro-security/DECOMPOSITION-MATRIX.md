@@ -422,3 +422,15 @@ genai-pyo3 client with two retry classes and an env-gated call log;
 prompts are Python strings, not data. semantic_memory and
 episodic_memory ship compiled-only — slice 4b decompiles them. Graph:
 13,346 nodes / 33,990 edges.
+
+## Campaign target 4b: the clearwing memory backends (issue #14)
+
+Decomposed 2026-10-26 (mission `rea-v2/fw-clearwing/`): 30 rows, 27
+proven. Both backends wrap one SQLite memory.db: Knowledge/Episode
+records, external-content FTS5 with three sync triggers, a threading.Lock
+around every read/write. Homes: memory.rs, store.rs, pipeline.rs.
+Preserve: top_k=5, recall limit 50, the cosine zero-denominator guard,
+None-to-FTS fallback, one timestamp per batch, first_id+i synthesis,
+falsy-metadata-to-{} and the embedding dropped on read. Fix, not copy:
+full-table Python scan in the vector path, invented batch ids, unclosed
+connections. Target 4 closed: 69 rows.
