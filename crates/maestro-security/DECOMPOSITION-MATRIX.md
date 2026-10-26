@@ -642,3 +642,17 @@ per-assessment placeholder resolution endpoint. FIXED in the port:
 guarded transitions, evidence-lineage proof, one linked record, encrypted
 credentials at rest with box-only placeholder resolution. Slice 2: the
 MCP surface and the FastAPI contract.
+
+## Campaign target 12, slice 2: the AIDA surfaces — target closed
+
+Decomposed 2026-10-26 (mission `rea-v2/fw-aida/`): 50 rows, all proven.
+The MCP server has no store — it is a REST client over the FastAPI
+contract (localhost:8000/api, Bearer token), mounted as /mcp inside the
+same app; 21 tools, 2 resources, one dispatcher; tool calls travel the
+same routers so websocket broadcasts fire identically. Four defects not
+copied, each fixed in the port: a fail-open gate on settings-read
+exceptions; gating keyed to DEPLOYMENT_MODE (container deploy gates
+nothing by default); pending-command expiry written only on read; and
+two executors with two error contracts (MCP errors as text on HTTP 200,
+REST as status codes). Ruled: fail-closed, deployment-independent,
+absolute expiry, one executor with one error contract. Target 12 closed.
