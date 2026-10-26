@@ -566,3 +566,18 @@ declarative test object; a "test" is a JSONL conversation log. The digest
 is a deterministic rule-based interpreter over three result files. The
 port maps the topology to agents.rs, replaces scipy result-first, and
 keeps the deterministic digest. Slice 2: the 36 tools.
+
+## Campaign target 10, slice 2: the cai tools (issue #14)
+
+Decomposed 2026-10-26 (mission `rea-v2/fw-cai/`): 46 rows, 40 proven.
+The inventory is 41 tools, not 36 — the registry is OFF by default
+(about 120-150 prompt tokens per tool schema); agents run on hand-written
+import lists. No tool calls an LLM: the five "AI" tools are HTTP clients
+(Perplexity via the OpenAI SDK, Google CSE). Tool failure is a string
+back to the model, never run failure; only the user-cancel aborts. Six
+categories (defensive, monitoring, forensics, lateral, privesc, most of
+exploitation) resolve to zero tools — taxonomy leads inventory. Ruled:
+inventory corrected, registry precedent confirms the manifest design,
+the HTTP tools map to sourcehunt.rs, the failure shape lands in
+pipeline.rs, empty categories stay taxonomy-only. Slice 3: the executor
+output contract.
