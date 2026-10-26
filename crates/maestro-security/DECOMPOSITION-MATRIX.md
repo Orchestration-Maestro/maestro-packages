@@ -610,3 +610,20 @@ single yes/no question over the finding text, batches of 16, opt-in,
 fail-open in three places. Ruled: overflow recorded not silent, Go
 semantics for the half-life edge, fail-closed Jev. Slice 2: PoC loop,
 exploit chains, gate outputs.
+
+## Campaign target 11, slice 2: the swarm PoC loop and gate outputs — closed
+
+Decomposed 2026-10-26 (mission `rea-v2/fw-swarm/`): 40 rows, 35 proven.
+Verified-only-if-fires has a soft centre: the fire test reads the
+script's own stdout for VULNERABLE/NOT CONFIRMED — the model's prompt
+contract is the oracle and nothing re-parses the target; a second
+Verified=true write sits at classifier.go:126 (open unknown). Chains
+have no executor — Links compile into a playbook and a CLI printer;
+"safe verify" per link is a sentence handed to an LLM. Two quality
+concepts: the submission rubric (Threshold 6.0, grade_submission) is
+unrelated to the pheromone discount. SARIF is hand-built 2.1.0 with
+LLM-derived rule ids; PDF is chromium --no-sandbox with an HTML
+fallback; ROI grades on the low band. Ruled: the verify gate
+re-observes the target (model stdout never the sole oracle); chains
+stay data; the two gates stay distinct; the --no-sandbox PDF is
+refused. Target 11 closed: 90 rows.
