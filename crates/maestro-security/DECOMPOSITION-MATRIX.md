@@ -817,3 +817,11 @@ framework side honours both token delimiters; prose-skill extraction
 gaps re-emit their notes with every run. False joins are impossible by
 construction: an owner module with no crate file lands in a named
 exclusion.
+
+## Acceptance (2026-10-26)
+
+The Sol 6.1 evidence gate ACCEPTED the campaign after six re-gate
+rounds. P1 is complete: every target decomposed byte-per-byte with
+evidence, every row joined to its graph nodes by source identity (or
+explicitly excluded), every defect ruled, every unknown dispositioned.
+The fusion (P2) may proceed.
