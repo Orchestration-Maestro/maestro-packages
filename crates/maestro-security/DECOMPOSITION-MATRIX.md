@@ -784,3 +784,15 @@ bodies (slice 1b, 67 rows; slice 1c, 96 rows — all 11 process bodies);
 and the companion references (slice 1d, 78 rows — all six files). Every
 slice carries its evidence bundle and supervisor rulings. No unread
 product behaviour remains; the open unknowns all carry dispositions.
+
+## Closure pass 3 — the strict join (Sol re-gate round, 2026-10-26)
+
+The first join's substring scoring produced false joins (docs_* nodes,
+single-sided mappings). The strict join replaces it: matches by source
+identity — path-component chains of the cited files against graphify
+id tokens, generic docs_* nodes excluded unless cited, and BOTH the
+framework and the maestro side required, otherwise the row lands in the
+explicit exclusion report. Dark-Moon's fact-table format is noted and
+its maestro side references the in-file rulings. The join script lives
+at .superpowers/sdd/maestro-v1/join_graph.py; the appendices in the
+mission files are its output.
