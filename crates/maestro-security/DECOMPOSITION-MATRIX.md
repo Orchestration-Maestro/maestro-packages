@@ -384,3 +384,16 @@ and compile failures before any handler. Detach is not kill; Rizin has two
 detach paths; Windows refuses persistent GDB sessions (Job-Object
 cleanup). Open gaps (Cutter lifecycle, ReaGhidraBridge 53%) close in
 slice 6b.
+
+## Campaign target 3, slice 6b: the gap closures (issue #14)
+
+Decomposed 2026-10-26 (mission `rea-v2/rea/`): 33 rows, 8 unknowns.
+Cutter's detach rule: it discovers sessions instead of starting them —
+zero spawn/kill bytes in the whole dist; close/retryDescriptorCleanup on
+one ArtifactResourceScope; each request settles behind an idempotent
+finish with a 25 s timer; a timed-out command is released only on
+confirmCommandCompletion receipt. ReaGhidraBridge is a cooperative-exit
+bridge: no System.exit/Thread/interrupt in 4,910 lines, five refusal
+gates, one authenticated connection, transport enum decides writability.
+Ruled: typed failure codes, never message phrases; the Windows descriptor
+residue is prevented in the port, not admitted.
