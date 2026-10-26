@@ -27,3 +27,17 @@ Extension packages for Maestro. This repository follows the same strict governan
 - Merge with squash and a signed conventional commit; /retro after each ticket; mechanical mistakes become deterministic checks.
 - Lane models: every lane, planning and review runs on deepseek/deepseek-flash; the supervisor names the model in each dispatch.
 - Every issue is labelled `packages` and opens with "Repository: maestro-packages" so it never mixes with maestro core work.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues for this repo; every issue carries the `packages` label and a Repository stamp line. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical roles: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: the glossary lives in `CONTEXT.md` (workspace convention), decisions in `docs/adr/`. See `docs/agents/domain.md`.
