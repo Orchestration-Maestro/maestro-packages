@@ -400,7 +400,7 @@ residue is prevented in the port, not admitted.
 
 ## Campaign target 3, slice 7: the CLI surface — target 3 closed (issue #14)
 
-Decomposed 2026-10-26 (mission `rea-v2/rea/`): 51 rows, 12 unknowns. The
+Decomposed 2026-10-26 (mission `rea-v2/rea/`): 37 rows, 12 unknowns. The
 real entry is scripts/rea.mjs (both bin symlinks); dist/cli.js was a wrong
 route, not a wrong launcher. Five error envelopes (routing, validation,
 flag, analysis, semantics), all stdout, exit 1; exit codes are binary with
@@ -408,7 +408,7 @@ doctor's verdict as the only non-error non-zero. --schema has three
 behaviours; --token-*/--filter-output/--full-output are inert on it. No
 session, no config, no login — state crosses calls as files; the address
 retry is CLI-only and the no-session error MCP-only. mcp doctor verifies
-the catalog digest, 207/207 tools, 6/6 prompts. Target 3 closed: 430 rows
+the catalog digest, 207/207 tools, 6/6 prompts. Target 3 closed: 322 rows (mission-file counts, corrected)
 over eight slices, evidence bundles and graph agreement per slice.
 
 ## Campaign target 4: clearwing (issue #14)
