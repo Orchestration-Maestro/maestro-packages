@@ -450,3 +450,17 @@ every exit path is 1 except success; diagnostics escaped and clipped to
 256 chars against terminal-control forgery. Ruled: validate.rs producer
 gate, coverage.rs as-is, surface.rs diagnostics. Graph: 145 nodes / 310
 edges.
+
+## Campaign target 6, slice 1: pentagi CLI + schema (issue #14)
+
+Decomposed 2026-10-26 (mission `rea-v2/fw-pentagi/`): 95 rows. The
+"binary" is a 501-byte shim forwarding to docker compose after a
+fail-closed preflight; the server ships only as Go source. The server has
+one flag (-info, 8 s deadline, JSON stdout, exit 0/1). Schema: 25 tables
+(13 initial + 12 migrated), 11 enum types, 6 updated_at triggers, goose
+migrations with an advisory lock. Providers: three YAML presets x 13
+agent roles; 11 keys match MSGCHAIN_TYPE, two do not, two roles have no
+entry. Identity: ce/2.1.0-ce.h87ac00f, pinned worker image. Ruled: the
+shim's preflight becomes the doctor probe; the compose forwarder is
+replaced by the crate's own grammar. Slice 2: the Go engine + remaining
+migrations.
