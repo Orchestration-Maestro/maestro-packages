@@ -1,276 +1,209 @@
-# maestro-security autonomy — full architecture (issue #7)
+# maestro-security autonomy — spec (issue #7)
 
-The complete design. Every decision made and recorded here; the ledger
-copy lives at `.superpowers/sdd/maestro-v1/autonomy-spec.md`.
+The spec written from the grill (2026-10-25, five rounds, owner-confirmed).
+The domain language lives in CONTEXT.md; the decisions live in
+docs/adr/0001-0012. This document is the build plan.
 
-## 0. The essence
+## 1. The essence
 
-An assessment run is a Maestro citizen: a live, subagent-like session entity
-whose whole life is a Maestro event stream. You see it in the session, steer
-it from chat, kill it instantly; the Maestro agent can steer it too. Many
-runs live at once, each with its own channel, steering queue and abort
-signal. Runs checkpoint after every phase and resume after a crash or kill.
-One UI layer renders the same event stream in the TUI and the browser, and
-the result event composes into larger Maestro workflows.
+A run is an isolated background process inside Maestro: its own workflow
+(the seven-phase pipeline), its own log, its own state. The session shows
+only a curated timeline of it. You and the Maestro agent reach it through
+one command grammar — `/maestro-security <verb>` — on four transports:
+session commands, the maestro CLI, MCP, and the RPC surface. Its findings
+and results leave the run only through the event seam. It outlives the
+session, checkpoints after every phase, and resumes after a kill or crash.
 
-## 1. Owner decisions (grills, 2026-10-25)
+## 2. The decisions
 
-1. Trigger: a command only — never message parsing, never the web UI.
-2. Run style: background run, live updates, a real visual, bidirectional
-   control from the session chat, modular, works in the TUI.
-3. Scope: box tools + evidence/report files only; no workspace writes.
-4. Results: files + report page + notification, and the result event is
-   emitted back to Maestro; always bound to Maestro hooks and events.
-5. Identity: every run is subagent-like — its own live entry in the
-   session; you steer by writing to it.
-6. Steering: you (free text) AND the Maestro agent (it sees run events and
-   sends guidance mid-run).
-7. Concurrency: many runs at once, with a run board listing live state.
-8. Durability: checkpoint after every phase; resume from the last completed
-   phase; partial evidence kept.
+All decisions are recorded as ADRs and are binding:
 
-## 2. Run lifecycle — the state machine
+- ADR-0001 trigger is a command, never message parsing or the web UI
+- ADR-0002 the run is a session citizen (curated presence, steerable)
+- ADR-0003 runs are extension-owned; the native-hosting gap is deferred
+  until maestro is fully set up
+- ADR-0004 a run is an isolated background process with its own workflow,
+  logs and state
+- ADR-0005 one grammar, four transports: session commands, CLI, MCP, RPC
+- ADR-0006 a run outlives the session
+- ADR-0007 every run starts with the doctor probe (fail fast)
+- ADR-0008 no hard cap on a run's life
+- ADR-0009 local-first authorization (user + agent; hosted auth later)
+- ADR-0010 evidence lives forever (manual cleanup only)
+- ADR-0011 no run steers another run
+- ADR-0012 two runs may share one target (the box serializes exec)
 
-States: `queued` → `running` → `completed | killed | failed`.
-Inside `running`, the run holds exactly one phase state.
+Owner decisions from the earlier grills: steering shapes priorities and
+guidance, never the evidence (verdicts are sacred); the curated timeline
+carries phase transitions and findings only; campaigns compose missions
+and open as a follow-up ticket.
 
-| From | Event | To | Emits |
-| --- | --- | --- | --- |
-| — | `/assess <target>` accepted | queued | `run.started` |
-| queued | runner slot free | running(recon) | `run.phase` |
-| running(phase) | phase completes | running(next) | `run.phase`, `run.checkpoint` |
-| running | finding proven | running | `run.finding` |
-| running | hypothesis refuted | running | `run.refuted` |
-| running | `/security-stop` | killed | `run.killed` |
-| running | unrecoverable error | failed | `run.failed` |
-| running(report) | report written + validated | completed | `maestro.security.assessment` |
+## 3. The run
 
-Guards:
-- `killed` and `failed` keep the evidence; the run stays resumable from the
-  last checkpoint.
-- A kill is serviced at the next phase boundary (and at each hypothesis
-  boundary inside Verify); the abort signal is checked before every LLM
-  call and before every runner exec.
-- `completed` fires `maestro.security.assessment` exactly once.
+- States: `queued → running → completed | killed | failed | paused`.
+- The run is a background task with its own state; nothing of it enters
+  the session's context.
+- It survives the session ending and Maestro restarting; the board shows
+  it on the next start and steer/stop/logs keep working.
+- Every run starts with the doctor probe; an unhealthy result refuses the
+  start with the classification before any phase runs.
+- No duration cap: steering, pause, stop and the abort signal are the
+  controls; per-phase timeouts stay where the pipeline already has them.
+- Runs are independent: no run steers another; two runs may share a target
+  and the box serializes tool exec per target.
+- Kill: abort signal, evidence kept, resumable from the last checkpoint,
+  no result event. Pause: hold at the next phase boundary, checkpointed,
+  visible, resumed by the resume verb.
 
-## 3. Event contract — the grammar
+## 4. The event seam
 
-Shared bus, literal channels. JSON payloads, keys in this order.
+Channels on the shared bus (literal names; JSON payloads; per-run channel
+`maestro.security.run.<run_id>` mirrors every event):
 
-`maestro.security.run.started`
-```json
-{"run_id": "run-1700000000-0001-slug", "target": "https://x.example", "source": "command"}
+| Channel | Carries |
+| --- | --- |
+| `maestro.security.run.started` | run id, target, source |
+| `maestro.security.run.phase` | run id, phase, status |
+| `maestro.security.run.finding` | run id, fingerprint, verdict |
+| `maestro.security.run.refuted` | run id, hypothesis |
+| `maestro.security.run.steered` | run id, source, message |
+| `maestro.security.run.paused` / `.resumed` | run id, phase |
+| `maestro.security.run.killed` | run id, phase, resumable |
+| `maestro.security.run.checkpoint` | run id, phase |
+| `maestro.security.run.failed` | run id, class, detail |
+| `maestro.security.assessment` | run id, report, verdict counts |
+
+`maestro.security.trigger` stays internal machinery. The seam is the only
+route findings and results leave a run; evidence and reports are immutable
+and larger workflows consume them as events.
+
+## 5. The command surface — one grammar, four transports
+
 ```
-`maestro.security.run.phase`
-```json
-{"run_id": "…", "phase": "recon", "status": "entered", "at": 1700000000}
+/maestro-security assess <target> [--model <m>] [--resume <run_id>]
+/maestro-security stop <run_id>
+/maestro-security pause <run_id>
+/maestro-security resume <run_id>
+/maestro-security steer <run_id> <message>
+/maestro-security list
+/maestro-security board
+/maestro-security logs <run_id> [--follow]
+/maestro-security report <run_id>
 ```
-`maestro.security.run.finding`
-```json
-{"run_id": "…", "fingerprint": "target::class::title", "verdict": "Confirmed", "phase": "verify"}
-```
-`maestro.security.run.refuted`
-```json
-{"run_id": "…", "hypothesis": "…", "phase": "verify"}
-```
-`maestro.security.run.steered`
-```json
-{"run_id": "…", "source": "user|agent", "message": "…"}
-```
-`maestro.security.run.killed`
-```json
-{"run_id": "…", "phase": "verify", "resumable": true}
-```
-`maestro.security.run.checkpoint`
-```json
-{"run_id": "…", "phase": "verify", "findings": 3, "evidence_files": 7}
-```
-`maestro.security.run.failed`
-```json
-{"run_id": "…", "class": "box_unreachable|model_error|internal", "detail": "…"}
-```
-`maestro.security.assessment`
-```json
-{"run_id": "…", "schema": "maestro-security/report/3", "report": "<report JSON>", "report_path": "…", "verdicts": {"confirmed": 4, "needs_validation": 9, "rejected": 0}}
-```
-Per-run channel `maestro.security.run.<run_id>`: every event above is also
-emitted there, so subscribers can scope to one run.
 
-Internal machinery (documented, not part of the public contract):
-`maestro.security.trigger` — starts a run; only the trigger module emits it.
+The same grammar on all four transports: session slash-commands, the
+maestro CLI, the MCP server tools, and the RPC methods. One core behind
+them; no transport-specific grammar.
 
-Emitters never block: the event emit is fire-and-forget with the host bus;
-listener tails run on their own tasks.
+## 6. The curated timeline
 
-## 4. Session identity — the subagent-like run entry
+Each run opens a curated session entry: phase transitions and findings
+only, updated as they happen, closing with the summary (verdict counts,
+spend, report link) when the run completes. The run's raw events, prompts,
+tool outputs and spend never enter the transcript.
 
-On `/assess`, the run opens a custom session entry (`security-run`) whose
-data is the run record:
-```json
-{"run_id": "…", "target": "…", "state": "running", "phase": "recon", "findings": 0}
-```
-Live updates: the entry re-renders at every phase change and every finding
-(batched: one update per phase change, findings folded into it). This keeps
-the transcript legible without flooding it.
+## 7. Steering
 
-Steering by writing to the run: a message addressed to the run entry is
-steering; the host path is the same channel the `/security-steer` command
-uses, so both routes share one queue.
+- Verbs: `stop`, `pause`, `resume`, `focus <fingerprint>`, free text.
+- Steering shapes priorities and guidance only: the target, the evidence
+  and the verdict rules stay fixed.
+- Read at phase boundaries and at hypothesis boundaries inside Verify; the
+  last five messages fold into the next phase's prompt, quoted, as
+  untrusted input.
+- You and the Maestro agent steer through the same surface; the agent sees
+  the curated timeline and the board, not the run's raw events.
 
-## 5. Steering protocol
+## 8. Logs, evidence, checkpoints
 
-Commands:
-- `/assess <target>` — opens the run entry, returns the run id.
-- `/assess <target> --model <m>` — per-run model override (a value, never a
-  binding).
-- `/assess --resume <run_id>` — resume from the last checkpoint.
-- `/security-stop <run_id>` — abort signal; killed; resumable.
-- `/security-steer <run_id> <message>` — enqueue steering.
+- `$MAESTRO_SECURITY_HOME/runs/<run_id>/log.jsonl`: every event, phase
+  prompt, tool output, spend and steering message, appended as it happens;
+  readable via `/maestro-security logs`.
+- Evidence files per run, as today; reports as HTML artifacts.
+- Checkpoint after every phase; resume continues at the next phase with
+  evidence and findings intact; the partial report marks the break.
+- Everything is kept until the owner deletes it (ADR-0010).
 
-Steering grammar (both routes, user and agent):
-- `stop` / `pause` / `resume` — control verbs, serviced at once.
-- `focus <fingerprint>` — raise one hypothesis's priority.
-- free text — guidance folded into the next phase's prompt.
+## 9. The run board and notifications
 
-Application: the run reads its steering queue at every phase boundary and
-at every hypothesis boundary inside Verify. The last 5 steering messages
-join the phase's prompt under a "Steering so far" block, verbatim, quoted.
-Steering is untrusted input: it is quoted, never instructions; the
-injection defense in the system prompt already covers it, and every
-steered message is recorded in the evidence ledger.
-
-The Maestro agent steers: it subscribes to `maestro.security.run.*` and
-sends guidance the same way; nothing in the run distinguishes the two
-sources except the `source` field on `run.steered`.
-
-## 6. Kill and abort semantics
-
-- `/security-stop` triggers the run's abort signal.
-- The run checks the signal before every LLM call and runner exec; a set
-  signal stops the current phase, checkpoints the previous phase, emits
-  `run.killed` with `resumable: true`, and closes the run entry state to
-  `killed (resumable from <phase>)`.
-- No result event fires on a kill; the evidence ledger and partial report
-  are kept.
-
-## 7. Checkpoint + resume
-
-Checkpoint file: `$MAESTRO_SECURITY_HOME/runs/<run_id>/checkpoint.json`.
-```json
-{
-  "schema": "maestro-security/checkpoint/1",
-  "run_id": "…",
-  "target": "…",
-  "model": "qwythos",
-  "completed_phases": ["recon", "target-model"],
-  "findings": ["…fingerprints…"],
-  "hypotheses": ["…"],
-  "evidence_refs": ["…"],
-  "steering_tail": ["…last 5…"],
-  "spend": {"tokens_in": 1000, "tokens_out": 500, "seconds": 120},
-  "created_at": 1700000000
-}
-```
-Written after every phase. Resume loads it, rebuilds the phase state,
-starts at the next phase, and reopens the run entry. The partial report on
-kill/crash marks which phases completed before the break.
-
-## 8. Concurrency and the run board
-
-- Any number of concurrent runs. Each run owns: its channel, steering
-  queue (bounded, 64 messages, drop-oldest with a recorded event), abort
-  signal, checkpoint dir.
-- The box runner serializes exec per target host; runs on different targets
-  proceed in parallel.
-- Run board: in-memory view over the store — id, target, state, phase,
-  elapsed, findings count. Rendered by the UI layer, not stored twice.
-
-## 9. UI layer — one renderer over the event stream
-
-Both surfaces subscribe to the same events; nothing browser-only.
-
-- TUI: status line shows `⚔ <n> runs · <phase-of-newest>`; the working
-  indicator runs during LLM/exec phases; the run-board widget lists live
-  runs; notifications on findings and completion.
-- Browser: a live progress page artifact per run (HTML re-rendered at each
-  phase event), and the final report page as today.
-- The renderer is one module; it holds no pipeline state, only the board
-  view model built from events.
+- Board: all runs with id, target, state, phase, elapsed, findings —
+  rendered from the one event stream in the TUI (status line, board
+  widget) and the browser (board page, live run page).
+- Notifications on findings and completion, on both surfaces.
+- Authorization: the session's user and the agent (ADR-0009).
 
 ## 10. Failure model
 
-| Class | Detection | Behaviour |
-| --- | --- | --- |
-| model transient error | maestro-http Err / 429 / 5xx | shared retry (default 3, clamp 1–5, backoff, Retry-After) |
-| model persistent error | retries exhausted | `run.failed` (model_error); evidence kept; resumable |
-| box unreachable | runner health / exec error | `run.failed` (box_unreachable); doctor classification; resumable |
-| kill mid-phase | abort signal | checkpoint of last phase; `run.killed`; resumable |
-| process crash | next start reads checkpoint | resume from last completed phase |
-| steering flood | queue bound | drop-oldest + recorded event |
+| Class | Behaviour |
+| --- | --- |
+| model transient error | shared retry (default 3, clamp 1–5) |
+| model persistent error | run failed (model_error), evidence kept, resumable |
+| box unreachable | run failed (box_unreachable), doctor classification, resumable |
+| kill mid-phase | checkpoint of last phase, killed event, resumable |
+| pause | hold at boundary, checkpointed, resumed later |
+| crash / restart | run keeps living or resumes from checkpoint (ADR-0006) |
+| steering flood | bounded queue, drop-oldest recorded |
 
 ## 11. Modular layout — one job per module
 
-- `autonomy/mod.rs` — trigger surface (T1, landed): command specs,
-  argument parsers, run registry.
-- `autonomy/events.rs` — the contract: channel names, payload builders, the
-  one emit path (T2, landed).
-- `autonomy/run.rs` — lifecycle stepping: state machine, phase transitions,
-  hypothesis boundaries, abort checks (T2, landed).
-- `identity.rs` — the run entry: open, update, close (T2, landed, as the
-  SessionEntry type in run.rs).
-- `steer.rs` — the steering queue, grammar, prompt folding (T3).
-- `checkpoint.rs` — checkpoint schema, write, load, resume (T4).
-- `board.rs` — board view model + status-line and widget updates (T5).
-- `page.rs` — live progress page artifact (T5).
-- `completion.rs` — validate gate, result event, files, artifact,
-  notification (T6).
+Core (the run machinery, reusing the nine shared runners — no duplicates):
 
-Reuse, never re-code: tools.rs shared runners, router.rs, validate.rs,
-store.rs (single record builder), evidence.rs, doctor.rs, maestro-http.
-No new backend, no polling; WASI 0.3 async for the run tail. The run tail
-yields at phase boundaries so stop/steer are serviced on a single-threaded
-instance (review residual risk, verified in T3).
+- `autonomy/mod.rs` — the grammar: verb parsing, one parser per verb.
+- `autonomy/run.rs` — lifecycle: state machine, phase boundaries, abort
+  checks, doctor probe at start.
+- `autonomy/log.rs` — the run log (log.jsonl writer + reader).
+- `autonomy/events.rs` — the seam: channel names and payload builders.
+- `autonomy/steer.rs` — steering queue, verbs, prompt folding.
+- `autonomy/checkpoint.rs` — checkpoint write/load/resume.
+- `autonomy/board.rs` — board view model + status updates.
+- `autonomy/completion.rs` — validate gate, result event, files, artifact,
+  summary close, notification.
 
-## 12. Composition into larger workflows
+Surfaces (each transport = one module over the core):
 
-`maestro.security.assessment` is the seam: any extension subscribes and
-reacts. Examples the design enables: a remediation workflow picks up
-findings and files fix tasks; a nightly campaign chains many assessments;
-a report pipeline aggregates results into the catalog. The run needs no
-knowledge of its consumers.
+- `autonomy/session.rs` — the session slash-commands (register-command).
+- `autonomy/cli.rs` — the maestro CLI verbs.
+- `autonomy/mcp_surface.rs` — the MCP tools (extends mcp.rs).
+- `autonomy/rpc_surface.rs` — the RPC methods.
 
-## 13. Tests (red-first, per task)
+The four transports are thin adapters; no logic outside the core.
 
-- T1 (landed): commands register; missing target is an argument error; a
-  target returns a run id and records the run; run ids are unique under
-  same-second and same-slug collisions.
-- T2 (landed): lifecycle events fire in order; finding/refuted events; the
-  run entry opens and updates; no event without its transition.
-- T3: steering reaches the running phase; steered event fires; stop emits
-  killed and no result event; stop is serviced between phases.
-- T4: checkpoint written after each phase; resume restarts at the next
-  phase; partial report marks the break.
-- T5: the board lists concurrent runs with live state; status line and
-  widget render from events.
-- T6: completion emits the assessment event and writes the same files as a
-  manual run.
-- T7: module boundaries, shared-runner reuse audit, docs.
+## 12. Tests (red-first)
+
+- grammar: each verb parses; bad arguments error per verb.
+- doctor-at-start: unhealthy refuses the run with the classification.
+- run: lifecycle events in order; the curated entry opens, updates, closes
+  with the summary.
+- steering: reaches the running phase; steered event; focus reprioritizes;
+  pause holds at the boundary; resume continues; stop emits killed, no
+  result event.
+- logs: log.jsonl appends every event and steering message.
+- checkpoint: written per phase; resume restarts at the next phase;
+  partial report marks the break.
+- board: lists concurrent runs with live state; two runs, one target,
+  serialized exec.
+- completion: assessment event, same files as a manual run, immutable.
+- surfaces: all four transports dispatch the same core verbs (transport
+  tests, not re-tests of core logic).
+
+## 13. Task map (issue #7, revised after the grill)
+
+- T1 Rework the grammar: `/maestro-security` verbs replace the three
+  standalone commands; run registry unchanged in shape.
+- T2 Rework the run: isolated background process + log.jsonl + curated
+  timeline (the landed session-event wiring becomes the timeline writer).
+- T3 Steering + pause/stop/kill.
+- T4 Checkpoint + resume.
+- T5 Board + notifications (TUI + browser).
+- T6 Completion + result event + summary close.
+- T7 CLI surface.
+- T8 MCP surface.
+- T9 RPC surface.
+- T10 Modularity + docs + SKILL.md section + humanizer.
 
 ## 14. Size plan
 
-About 500–700 production lines across T1–T7, reusing the nine shared
-runners; every file under the 500-line bar. Each piece maps to the
-extension contract (OD-354 + host.wit); nothing is a Pi-port item.
-
-## 15. Task map (issue #7)
-
-- T1 Trigger + run record — landed (3f541fd).
-- T2 Lifecycle + events + session entry — landed (3555a8e, 1650d92), plus
-  the T1 review fixes folded in: unique run ids (root-cause proven),
-  single record-settlement owner in store.rs, honest acks, isolated test
-  home, trigger channel documented internal.
-- T3 Steering + kill — next.
-- T4 Checkpoint + resume.
-- T5 Run board + UI layer.
-- T6 Completion + result event.
-- T7 Modularity + docs (includes the pipeline.rs split: 680 → under 500).
+About 900–1,200 production lines across T1–T10 (the four transports are
+thin adapters over one core); every file under the 500-line bar. Each
+piece maps to the extension contract (OD-354 + host.wit); nothing is a
+Pi-port item. The deferred native-hosting gap ticket opens when maestro is
+fully set up (ADR-0003).
