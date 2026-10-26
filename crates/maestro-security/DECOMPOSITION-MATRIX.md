@@ -321,3 +321,17 @@ clusters covering 74 tools). Providers are external subprocesses (26
 bridge sources + one Windows .node). Graph: 1,482 nodes / 62 communities.
 Slice 2 order: the session/evidence family and the registry machinery
 first — the foundation every family sits on.
+
+## Campaign target 3, slice 2: the REA foundation (issue #14)
+
+Decomposed 2026-10-26 (mission `rea-v2/rea/`): 40 rows. The session family
+is a coordinator (registerSessionTools delegates to lifecycle/evidence/
+process registries, every call through one admission gate and one result
+projection). One contract row of six fields; registration hard-fails on a
+missing effect audit or output schema. The four MCP hints are derived from
+the effect set, not authored; closed-world schemas come from strict zod
+shapes. Evidence I/O canonicalises then writes atomically, re-parses then
+trusts. Unknowns are an append-only hash chain (digest-addressed, CAS
+revision tokens, duplicates as success). Agreement: 23 session-family
+graph nodes ↔ provider-session seams; dist-internal rows ride byte
+evidence. Slice 3 order: the provider-coordinate family (45 tools).
