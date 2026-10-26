@@ -67,15 +67,24 @@ leanrea + every skill, run by an agent whose only tools are REA's
 the matrix must agree row by row before any build (ADR-0020); a review
 accepts only with evidence. Decompose first, then build (ADR-0019).
 
-### P2 — maestro-manifests
+### P2 — The fusion
+
+Nothing is built or manifested incrementally. When the full campaign is
+done (every target decomposed, graph + matrix agreeing), ONE unified
+design (UNIFIED-DESIGN.md v3) fuses every decomposed row into the
+maestro-security architecture: modules, agents, knowledge packs, the
+workflow. The fusion is the single source the manifest and the build read
+from.
+
+### P3 — maestro-manifests
 
 New repository Orchestration-Maestro/maestro-manifests, following the
 manifest schema Maestro already documents (manifest mode names one pinned
 release, e.g. `git:github.com/org/maestro-manifests@v1`). The security
-package manifest is its first tenant: runner, tools, pipeline, agents,
-skills, instructions and workflow as catalog items (ADR-0013, ADR-0018).
+package manifest is written from the fused design, complete — nothing
+partial (ADR-0013, ADR-0018). The first draft (PR #18) is held until then.
 
-### P3 — The runner build
+### P4 — The runner build
 
 `maestro-security-runner`: one Rust crate — the unified framework. Agents
 (defined in the catalog, living in Maestro, ADR-0014), knowledge packs per
@@ -86,30 +95,30 @@ an isolated background process with its own log, the curated timeline, the
 `/maestro-security` grammar on four transports, checkpoint + resume.
 Built file-by-file from the matrix, red-first, AWS-only.
 
-### P4 — The box strip-down
+### P5 — The box strip-down
 
 Box = raw tools + models only. All 16 frameworks are removed as code; the
 box daemon is reduced to command exec. The runner embeds the brain.
 
-### P5 — Catalog integration
+### P6 — Catalog integration
 
 Installing the extension adds the security package to Maestro's catalog;
 the agents register in Maestro; modular workflows are selectable; the
 pipeline is user-initiated only (ADR-0021).
 
-### P6 — The four transports
+### P7 — The four transports
 
 One grammar `/maestro-security <verb>` (assess, stop, pause, resume,
 steer, list, board, logs, report) on session commands, the maestro CLI,
 MCP and RPC (ADR-0005); the 9 tools stay the on-demand capability surface
 behind the same core.
 
-### P7 — Campaigns (follow-up)
+### P8 — Campaigns (follow-up)
 
 Missions compose into campaigns; opens as its own ticket after the
 mission is right.
 
-### P8 — Larger-workflow binding + live-visual polish (follow-up)
+### P9 — Larger-workflow binding + live-visual polish (follow-up)
 
 `maestro.security.assessment` consumed by other Maestro workflows;
 Forge-branded board and pages, TUI status and widgets.
