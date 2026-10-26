@@ -502,3 +502,22 @@ target), scope vs informational check arrays, one-line remediations per
 failure, caller-supplied engine verification ("REA does not download or
 install it"), component-deep engine checks, and stale-skill detection.
 Target 7 closed.
+
+## Campaign target 8: shannon (issue #14)
+
+Decomposed 2026-10-26 (mission `rea-v2/fw-shannon/`): 65 rows, 44
+evidence records. A workspace is a directory under workspaces/ — no
+registry, no index, no lock file. Its identity splits: the user-facing
+name and the engine-facing workflow id, mapped only by session.json
+inside the workspace — the load-bearing decision. launch.json is written
+once and gates five refusals, so resume-to-a-different-target is
+impossible; classification runs read-only before any write, so every
+refusal promises the files are untouched; stop cancels then terminates,
+bounded and idempotent; there is no freeze because nothing ever deletes a
+workspace. CLI: nine verbs, one-level grammar, 2=usage/1=operational,
+eight stable error codes, JSON envelope on stderr with stdout empty. The
+worker runs six phases; the real step engine is per-vulnerability-class
+(vuln -> SAST reconcile -> queue check -> conditional exploit). Temporal
+is four mechanisms, not a queue: durable run record, per-activity retry,
+cancellation channel, live query — mapped to store.rs, the shared retry,
+the abort signal and the event seam. Target 8 closed.
