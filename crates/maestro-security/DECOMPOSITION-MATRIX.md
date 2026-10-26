@@ -536,3 +536,17 @@ state JSON, blast radius bounded by the compiler. FIXED DEFECT (not
 ported): the reference leaves StaleRevisionError uncaught; the port
 catches it, re-reads the snapshot and re-decides, with a red-first test.
 Episode ids are revision-scoped. Slice 2: episodes, prompts, tools.
+
+## Campaign target 9, slice 2: PentestGPT episodes, prompts, tools — closed
+
+Decomposed 2026-10-26 (mission `rea-v2/fw-pentestgpt/`): no tool registry
+to port — UnifiedAgent runs with no tools= and the vendored ToolRegistry
+has zero call sites; the run's surface is the pipeline's runners plus the
+box exec. Episode ids: supervisor-r{revision}[-a{n}]; executor ids from
+the persisted trace column. Prompt building is byte-exact: 10 state keys,
+validation_feedback capped at 1,000 chars, canonical JSON after a fixed
+preamble, bounded working set. Traces: three files per episode, atomic
+.tmp -> os.replace with 0600, per-event fsync, four signature hashes,
+omitted markers. FIXED DEFECT: closed_tasks[:-4][-4:] slices [-8:-4] —
+the port takes the last four closed tasks with a red-first test. Target 9
+closed.
