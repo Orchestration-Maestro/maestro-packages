@@ -51,58 +51,70 @@ resolved from the bridge, never a binding.
   existing stores. No GraphDB, no vector DB, no database of any kind.
 - **Webpages**: reports are HTML artifacts; Maestro renders them live.
 
-## 4. Everything we want to do (roadmap, in order)
+## 4. The program (roadmap, in order — settled by the grill)
 
-### R1 — Autonomy (issue #7; chapter spec: AUTONOMY.md)
+The end state: maestro-security assimilates everything into ONE Maestro-branded
+Rust framework — the 16 frameworks, REA (tools, docs, concepts), the
+reverse-skill, leanrea and every skill — shipped as one catalog package with
+its manifest in the maestro-manifests repository. The box keeps raw tools and
+models only.
 
-Owner decisions (grills, 2026-10-25):
+### P1 — The decomposition campaign
 
-1. Trigger: a command only — never message parsing, never the web UI.
-2. Run style: a background run with live updates and a visible status;
-   bidirectional control (kill/steer) from the session chat, exactly like
-   subagent workflows; modular; works in the TUI.
-3. Scope: box tools + evidence/report files only; no workspace writes.
-4. Results: files + report page + notification, and the result event is
-   emitted back to Maestro so larger workflows can consume it.
-5. Identity: every run is subagent-like — its own live entry in the
-   session; you steer by writing to it.
-6. Steering: you (free text) AND the Maestro agent (it sees run events and
-   sends guidance mid-run).
-7. Concurrency: many runs at once, with a run board listing live state.
-8. Durability: checkpoint after every phase; resume from the last completed
-   phase; partial evidence kept.
+Byte-per-byte decomposition of all 16 frameworks + REA + reverse-skill +
+leanrea + every skill, run by an agent whose only tools are REA's
+(ADR-0016). Every row cites its graphify node; the graph blast radius and
+the matrix must agree row by row before any build (ADR-0020); a review
+accepts only with evidence. Decompose first, then build (ADR-0019).
 
-The essence: an assessment run is a Maestro citizen — a live, subagent-like
-session entity whose whole life is a Maestro event stream, steered from
-chat, killed instantly, checkpointed and resumable.
+### P2 — maestro-manifests
 
-Surface: `/assess <target>` (returns a run id), `/security-stop <run_id>`,
-`/security-steer <run_id> <message>`; the event contract on the shared bus
-(run.started / run.phase / run.finding / run.refuted / run.steered /
-run.killed / run.checkpoint / assessment); one module per concern reusing
-the nine shared runners. Estimate: 500–700 production lines across T1–T7.
-Next: T2 → T7 implement (red-first), two-axis review, PR.
+New repository Orchestration-Maestro/maestro-manifests, following the
+manifest schema Maestro already documents (manifest mode names one pinned
+release, e.g. `git:github.com/org/maestro-manifests@v1`). The security
+package manifest is its first tenant: runner, tools, pipeline, agents,
+skills, instructions and workflow as catalog items (ADR-0013, ADR-0018).
 
-### R2 — Box bake (task #15, box lane)
+### P3 — The runner build
 
-REA framework + all security skills baked into the box image; two-version
-mode verified end to end (abliterated default, standard git-pristine);
-runner and bridge health wired into the doctor probe.
+`maestro-security-runner`: one Rust crate — the unified framework. Agents
+(defined in the catalog, living in Maestro, ADR-0014), knowledge packs per
+agent, the modular pipeline (phases as catalog items, `--phases` and
+`--profile`, default the full seven), the REA modules, the exec client.
+Includes the autonomy run layer (issue #7, spec AUTONOMY.md): the run as
+an isolated background process with its own log, the curated timeline, the
+`/maestro-security` grammar on four transports, checkpoint + resume.
+Built file-by-file from the matrix, red-first, AWS-only.
 
-### R3 — Live visuals and TUI polish
+### P4 — The box strip-down
 
-Forge-branded live surfaces: status line, working indicator and progress
-widget in the TUI; report page + attack graph refinement in the browser.
-Traces to owner grill decision 2 (the run must have a real visual and work
-in the TUI).
+Box = raw tools + models only. All 16 frameworks are removed as code; the
+box daemon is reduced to command exec. The runner embeds the brain.
 
-### R4 — Larger-workflow binding
+### P5 — Catalog integration
 
-Consume `maestro.security.assessment` in Maestro workflows so an autonomous
-run is a step in bigger pipelines (hooks/events chain), per the owner's
-"always bind to Maestro hooks and events".
+Installing the extension adds the security package to Maestro's catalog;
+the agents register in Maestro; modular workflows are selectable; the
+pipeline is user-initiated only (ADR-0021).
 
-### R5 — Elsewhere (tracked, not this repo)
+### P6 — The four transports
+
+One grammar `/maestro-security <verb>` (assess, stop, pause, resume,
+steer, list, board, logs, report) on session commands, the maestro CLI,
+MCP and RPC (ADR-0005); the 9 tools stay the on-demand capability surface
+behind the same core.
+
+### P7 — Campaigns (follow-up)
+
+Missions compose into campaigns; opens as its own ticket after the
+mission is right.
+
+### P8 — Larger-workflow binding + live-visual polish (follow-up)
+
+`maestro.security.assessment` consumed by other Maestro workflows;
+Forge-branded board and pages, TUI status and widgets.
+
+### Tracked elsewhere
 
 - `module_name_repetitions` violations across the maestro core repo
   (separate lane, tracked in the maestro workspace).
