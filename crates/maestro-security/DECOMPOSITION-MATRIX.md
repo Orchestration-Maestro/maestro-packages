@@ -796,3 +796,15 @@ explicit exclusion report. Dark-Moon's fact-table format is noted and
 its maestro side references the in-file rulings. The join script lives
 at .superpowers/sdd/maestro-v1/join_graph.py; the appendices in the
 mission files are its output.
+
+## Closure pass 4 — tails and the strict-join v3 (Sol re-gate, 2026-10-26)
+
+All 21 clipped clause tails were byte-read at narrow terminals
+(slice 1f); nine earlier inferences were corrected by the bytes, and
+the hardening-patterns line-number drift was fixed (SSRF :121,
+Destructive Ops :204, Rate Limiting :239, Data Classification :297).
+The strict join v3 requires source identity — the full stem chain of
+the cited file at a token boundary of the node id; single shared tokens
+never join; stale appendices are stripped before each run; prose-skill
+files that the graphs do not AST-extract land in named exclusions.
+Blocker 2 is fully closed.
