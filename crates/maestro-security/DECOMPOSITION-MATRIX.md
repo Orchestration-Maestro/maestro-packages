@@ -755,3 +755,18 @@ own maestro-security skill. Target 20 closed. THE CAMPAIGN IS COMPLETE:
 all 16 frameworks, REA, the reverse-skill, leanrea and the skills are
 decomposed byte-per-byte with evidence and graph agreement. Next: P2,
 the fusion.
+
+## Closure pass (Sol review round, 2026-10-26)
+
+ADR-0020 row-level agreement: a deterministic join ran over all 27
+mission tables against the regenerated graphify extractions (framework
+graphs: reverse-skill 43, method 11, REA 1,482, clearwing 13,346,
+cloudflare 145, pentagi 25,762, swarm 4,726, AIDA 2,322, Dark-Moon
+1,421, HBGPT 1,663, strix 11,521, skills 1,528 + 306; maestro graph:
+905 nodes). 1,386 rows joined with framework-node and maestro-node
+citations; every unmatched row carries an exclusion report in its
+mission file. Data-only targets (rea-check) carry an explicit waiver
+(ADR-0023). Closure rulings appended to the mission files: the mcp add
+--schema mutation, URL API keys, hidden failures + discarded stderr, the
+stdout-only contract preserved, and the memory-on-JSON-stores mapping
+(ADR-0022).
