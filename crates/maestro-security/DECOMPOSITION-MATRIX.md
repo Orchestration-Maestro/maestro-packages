@@ -701,3 +701,19 @@ Limits.RunState. The no-repeat rule is prompt text only. Limits.reached()
 checks COMPLETED before any budget — a last-round solve scores success.
 Fixed in the port: cancellation and timeouts, a real seen-set, a typed
 CoT error, credential-type keying. Target 14 closed.
+
+## Campaign target 15, slice 1: the strix orchestrator (issue #14)
+
+Decomposed 2026-10-26 (mission `rea-v2/fw-strix/`): 25 rows, 23 proven.
+The budget ordering guarantee is a 90% reserve: sub-agents are refused at
+90% of max_budget_usd, the whole scan stops at 100%, and the last tenth
+exists so the root can write its report. Budget counts LLM spend in USD
+only. "Three agents per finding" exists only in the prompt — no code
+counts agents per vulnerability. The run ends by a model tool call
+(finish_scan); turn cap and budget are the only non-model exits. Ported
+mechanics: pre-call refusal repeated at three independent sites,
+epoch-guarded resume (limit raised before the pause flag clears),
+budget_paused counting as active, the <cache_point> at prompt line 520
+(532 newline-terminated lines, not 533). Ruled: the reserve becomes the
+report-phase budget floor; prompt-only rules are not ported. Slice 2:
+phases, cost site, tools.
