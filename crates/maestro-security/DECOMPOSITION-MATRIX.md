@@ -808,3 +808,12 @@ the cited file at a token boundary of the node id; single shared tokens
 never join; stale appendices are stripped before each run; prose-skill
 files that the graphs do not AST-extract land in named exclusions.
 Blocker 2 is fully closed.
+
+## Closure pass 5 — source-file identity (Sol re-gate, 2026-10-26)
+
+The maestro side of the join now matches each node's source_file
+(X.rs -> nodes whose source_file is src/X.rs), never id tokens; the
+framework side honours both token delimiters; prose-skill extraction
+gaps re-emit their notes with every run. False joins are impossible by
+construction: an owner module with no crate file lands in a named
+exclusion.
