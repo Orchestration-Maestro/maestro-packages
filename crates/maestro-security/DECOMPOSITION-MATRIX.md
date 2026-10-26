@@ -434,3 +434,19 @@ None-to-FTS fallback, one timestamp per batch, first_id+i synthesis,
 falsy-metadata-to-{} and the embedding dropped on read. Fix, not copy:
 full-table Python scan in the vector path, invented batch ids, unclosed
 connections. Target 4 closed: 69 rows.
+
+## Campaign target 5: cloudflare-check (issue #14)
+
+Decomposed 2026-10-26 (mission `rea-v2/fw-cloudflare-check/`): 52 rows,
+50 proven. It is a self-test framework, not a scanner: check.sh runs the
+two validators' own 65 tests in a pinned, networkless container; the
+product is the contract — a 461-line report schema, a hand-written
+16-keyword JSON-Schema-subset validator, and a 19-field, 8-state run-plan
+ledger. The three verdicts are separated by forbidden fields (the whole
+producer discipline); not_applicable/out_of_scope/deferred require a
+non-empty unresolved and no owner; candidate is the only state allowed
+result_fingerprints; overall_severity rank is capped by impact.score rank;
+every exit path is 1 except success; diagnostics escaped and clipped to
+256 chars against terminal-control forgery. Ruled: validate.rs producer
+gate, coverage.rs as-is, surface.rs diagnostics. Graph: 145 nodes / 310
+edges.
