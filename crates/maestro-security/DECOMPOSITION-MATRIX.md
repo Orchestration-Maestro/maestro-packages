@@ -581,3 +581,15 @@ inventory corrected, registry precedent confirms the manifest design,
 the HTTP tools map to sourcehunt.rs, the failure shape lands in
 pipeline.rs, empty categories stay taxonomy-only. Slice 3: the executor
 output contract.
+
+## Campaign target 10, slice 3: the cai executor contract — target closed
+
+Decomposed 2026-10-26 (mission `rea-v2/fw-cai/`): 42 rows, 41 proven.
+The executor never truncates; truncation happens twice above it — cai's
+env-gated rule (off by default) plus the SDK's hard 10,000-char cap
+(first 5000 + marker + last 5000). One event carries three timeout
+strings (async/sync/SSH). SECURITY FIX, never ported: a failed
+container/SSH run silently re-executes the command on the HOST at five
+call sites — the port refuses with ExecutionFailed and never falls back.
+execute_code is a permanent file with a 14-language table and a timeout
+parameter. Target 10 closed: 112 rows over three slices.
