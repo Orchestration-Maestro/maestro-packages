@@ -687,3 +687,17 @@ dicts against the docstring's ValueError; privacy defaults to DEGRADE;
 the sanitizer's any-tool exception path fails open. Ruled: one shared
 validator, one allowlist, explicit registration, fail-closed sanitizer,
 strict redaction default. Target 13 closed: 112 rows.
+
+## Campaign target 14: hackingBuddyGPT — target closed
+
+Decomposed 2026-10-26 (mission `rea-v2/fw-hbgpt/`): 124 rows, 120
+proven. The registry is class-name-as-tool-name: a Capability ABC builds
+a pydantic model from __call__'s signature, the union is the catalogue,
+duplicates are a hard ValueError. Concurrency is a flag (asyncio.gather
+default, sequential opt-in), history order is the model's order, with no
+cancellation and no per-call timeout. privEsc has no state enum — three
+template strings rewritten per command; the real states live in
+Limits.RunState. The no-repeat rule is prompt text only. Limits.reached()
+checks COMPLETED before any budget — a last-round solve scores success.
+Fixed in the port: cancellation and timeouts, a real seen-set, a typed
+CoT error, credential-type keying. Target 14 closed.
