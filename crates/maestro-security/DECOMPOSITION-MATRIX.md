@@ -744,3 +744,14 @@ granularity rows are labelled likely, never proven. Ruled: the
 three-tier boundary discipline lands on maestro.security; the
 constraint floors land on maestro.proof. Slice 2: the box's 135
 skills.
+
+## Campaign target 20, slice 2: the box skill library — campaign complete
+
+The box carries 41 SKILL.md files, not 135 — the 135 figure was a
+host-side count; most box skills are vendored typer/playwright tool
+docs, not security knowledge. The security-relevant skill corpus was
+fully covered by slice 1, the reverse-skill (target 1) and the box's
+own maestro-security skill. Target 20 closed. THE CAMPAIGN IS COMPLETE:
+all 16 frameworks, REA, the reverse-skill, leanrea and the skills are
+decomposed byte-per-byte with evidence and graph agreement. Next: P2,
+the fusion.
