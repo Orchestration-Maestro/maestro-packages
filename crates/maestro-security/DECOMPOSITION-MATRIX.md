@@ -347,3 +347,16 @@ normalisation happens after the provider's invalid_format, CLI-only.
 Dispatch arity is (operation, parameters, options). Ruling: runner.rs owns
 the six-decision pre-dispatch gate, validate.rs the two post-dispatch
 identity checks.
+
+## Campaign target 3, slice 4: the analysis + process/capture families (issue #14)
+
+Decomposed 2026-10-26 (mission `rea-v2/rea/`): 34 rows, 12 unknowns. The
+three families are 29 tools in six contract kinds (browser/electron/
+runtime/artifact providers, application, session) with transport and
+filesystem coordinates — never document/address/procedure, so no session
+claim fires. Process capture owns four deadlines in one 20 ms poll,
+precedence cancel > finalization > timeout > idle, exactly-once
+SIGTERM→SIGKILL on a monotonic clock, undeliverable SIGKILL ends
+`unobserved: true` with no invented exit. The terminal budget is a
+rejection, never a clamp. Per-family failure types name the remote thing.
+Owners ruled: runner.rs, browser.rs, reverse.rs, tools.rs, evidence.rs.
