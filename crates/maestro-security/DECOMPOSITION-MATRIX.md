@@ -478,3 +478,15 @@ deterministic-failure aware (4xx fatal except 408/429, nine typed
 refusals, budget 3) — mapped onto the shared maestro-http policy, not
 forked. Schema closed for 11 of 12 later tables; the LangChain vector
 pair is not ported (no new backends). Slice 3: the web UI data contracts.
+
+## Campaign target 6, slice 3: pentagi UI data contracts — target closed
+
+Decomposed 2026-10-26 (in-session mission, REA-observed artifact
+frontend.zip, sha256 aa91d7ae…): 10 rows. The flow entity (title, status,
+terminals, provider), a five-state machine (created/failed/finished/
+running/waiting — the run-state precedent), task/subtask ledgers with
+input/result, typed terminal sessions (primary/secondary, connected) with
+a three-kind log stream, live updates by GraphQL subscription (replaced by
+the event seam), user-initiated run grammar with an agent-assisted
+variant, form fields as the assess arguments, and provider caches as the
+board view-model precedent. Target 6 closed: 211 rows over three slices.
