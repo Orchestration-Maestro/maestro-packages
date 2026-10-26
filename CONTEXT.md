@@ -74,10 +74,21 @@ outputs, spend — readable through the command surface, not the transcript.
 _Avoid_: Transcript, console output
 
 **Command surface**:
-The one grammar `/maestro-security <verb>` (assess, stop, steer, list,
-board, logs, report) exposed on all four Maestro transports: session
-commands, CLI, MCP, RPC.
+The one grammar `/maestro-security <verb>` (assess, stop, pause, resume,
+steer, list, board, logs, report) exposed on all four Maestro transports:
+session commands, CLI, MCP, RPC.
 _Avoid_: CLI, tool, endpoint (each names one transport, not the surface)
+
+**Security package**:
+The one catalog package the extension installs into Maestro: the runner,
+the source tools, the pipeline, the agents, the skills, the instructions
+and the workflow — defined in the catalog manifest.
+_Avoid_: Plugin, bundle
+
+**Manifest**:
+The catalog file that describes the security package, per Maestro's
+manifest schema; manifests live in the maestro-manifests repository.
+_Avoid_: Config, spec
 
 **Campaign**:
 A queued sequence of assessments worked through one after another; the
