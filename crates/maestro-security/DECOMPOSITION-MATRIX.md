@@ -464,3 +464,17 @@ entry. Identity: ce/2.1.0-ce.h87ac00f, pinned worker image. Ruled: the
 shim's preflight becomes the doctor probe; the compose forwarder is
 replaced by the crate's own grammar. Slice 2: the Go engine + remaining
 migrations.
+
+## Campaign target 6, slice 2: the pentagi Go engine (issue #14)
+
+Decomposed 2026-10-26 (mission `rea-v2/fw-pentagi/`): 106 rows, 103
+proven. MSGCHAIN_TYPE grew to 15 values (tool_call_fixer, assistant);
+MSGLOG_TYPE is 11. memorist runs on the searcher role; 15 chain types
+collapse onto 13 provider roles. There is no supervisor agent —
+supervision is performPlanner/performMentor inside performers plus the
+flow worker's Report budget loop. Every chain gets the summarizer as its
+8th argument; chaining is a message-array value, not a service. Retry is
+deterministic-failure aware (4xx fatal except 408/429, nine typed
+refusals, budget 3) — mapped onto the shared maestro-http policy, not
+forked. Schema closed for 11 of 12 later tables; the LangChain vector
+pair is not ported (no new backends). Slice 3: the web UI data contracts.
