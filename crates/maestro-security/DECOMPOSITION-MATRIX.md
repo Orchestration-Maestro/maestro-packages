@@ -671,3 +671,19 @@ validates every segment. The doctor is shell: a probe ladder
 /run/darkmoon-gpu.env, gating hashcat viability. Ruled: every-segment
 validation, typed doctor with the same ladder, domain files as catalog
 knowledge packs. Slice 2: the 13 MCP tools + workflow discovery.
+
+## Campaign target 13, slice 2: Dark-Moon tools + discovery — target closed
+
+Decomposed 2026-10-26 (mission `rea-v2/fw-darkmoon/`): 67 rows, 66
+proven. The validation hole is on BOTH execution paths (shlex.split then
+token-0-only, in base.py and executor.py) — the every-segment validator
+must live in the shared runner validation. Two allowlists disagree (142
+with classify pre-flight vs 38 without) — a tool refused on one path is
+reachable on the other. Discovery is glob + importlib over public
+BaseWorkflow subclasses keyed by module stem; two subclasses silently
+keep the last; get_workflow_info has no tool wrapper (dead surface).
+execute_command returns prose, not JSON; registry failures are {error}
+dicts against the docstring's ValueError; privacy defaults to DEGRADE;
+the sanitizer's any-tool exception path fails open. Ruled: one shared
+validator, one allowlist, explicit registration, fail-closed sanitizer,
+strict redaction default. Target 13 closed: 112 rows.
