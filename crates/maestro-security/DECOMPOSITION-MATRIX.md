@@ -309,3 +309,15 @@ economy rules, not a second methodology. Owner homes: prohibitions and
 gates → validate.rs, ledger → evidence.rs, views → report.rs, target
 selection → router.rs, recipes → tools.rs, the 8 steps →
 pipeline.rs/phases.rs. Graph agreement: 11 nodes / 1 community, 0 unmapped.
+
+## Campaign target 3, slice 1: the REA implementation surface (issue #14)
+
+Decomposed 2026-10-26 by the REA-only agent (mission `rea-v2/rea/`): 29
+rows, 28 proven, 7 unknowns. Target identity: rea-agents 6.7.0, tarball
+sha256 20958a66…f51f90, 1,775 shipped files. Two faces, one registry: 153
+CLI commands and 207 MCP tools generated from one declarative table, one
+contract (closed-world schemas, four annotation hints, 11 signature
+clusters covering 74 tools). Providers are external subprocesses (26
+bridge sources + one Windows .node). Graph: 1,482 nodes / 62 communities.
+Slice 2 order: the session/evidence family and the registry machinery
+first — the foundation every family sits on.
