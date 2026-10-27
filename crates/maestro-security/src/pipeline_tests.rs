@@ -40,7 +40,7 @@ impl Fixture {
         let seen = Arc::clone(&requests);
         let done = Arc::clone(&stop);
         let worker =
-            std::thread::spawn(move || serve_until_stopped(listener, &seen, &done, replies));
+            std::thread::spawn(move || serve_until_stopped(&listener, &seen, &done, replies));
         Ok(Self {
             url,
             requests,
@@ -80,7 +80,7 @@ impl Drop for Fixture {
 
 /// Serve until the owning fixture drops, without blocking failed tests.
 fn serve_until_stopped(
-    listener: TcpListener,
+    listener: &TcpListener,
     seen: &Mutex<Vec<(String, Value)>>,
     done: &AtomicBool,
     replies: Vec<Value>,
@@ -90,7 +90,7 @@ fn serve_until_stopped(
         match listener.accept() {
             Ok((stream, _)) => serve(stream, seen, &mut replies)?,
             Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                std::thread::sleep(std::time::Duration::from_millis(1))
+                std::thread::sleep(std::time::Duration::from_millis(1));
             }
             Err(e) => return Err(e.to_string()),
         }
