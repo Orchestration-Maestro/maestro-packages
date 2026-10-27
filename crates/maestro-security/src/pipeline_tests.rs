@@ -327,9 +327,10 @@ fn baseline_full_run_checkpoints_and_retains_report() -> Result<(), String> {
             json!({"threats":[{"asset":"accounts","actor":"remote","path":"admin","impact":"read","likelihood":"high","hardening":"require auth"}]}),
             json!({"summary":"No demonstrated findings.","runtime_mechanics":["observed redirect"]}),
         ])?;
-        let mut checkpoints = Vec::new();
-        let mut checkpoint = |ledger: &crate::Ledger, target: &str, role: &str| {
-            checkpoints.push((
+        let checkpoints = Arc::new(Mutex::new(Vec::new()));
+        let captured = Arc::clone(&checkpoints);
+        let mut checkpoint = move |ledger: &crate::Ledger, target: &str, role: &str| {
+            captured.lock().unwrap().push((
                 ledger
                     .phases()
                     .iter()
@@ -353,6 +354,7 @@ fn baseline_full_run_checkpoints_and_retains_report() -> Result<(), String> {
         assert_eq!(report.runtime_mechanics, ["observed redirect"]);
         assert_eq!(report.threats.len(), 1);
         assert_eq!(report.threats[0].hardening, "require auth");
+        let checkpoints = checkpoints.lock().map_err(|e| e.to_string())?;
         assert_eq!(checkpoints.len(), 4);
         assert!(
             checkpoints.iter().all(
