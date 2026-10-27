@@ -12,3 +12,16 @@ mod reverse;
 mod sourcehunt;
 #[path = "capabilities/support.rs"]
 mod support;
+
+#[path = "capabilities/audit.rs"]
+mod audit;
+#[path = "capabilities/bench.rs"]
+mod bench;
+#[path = "capabilities/coverage.rs"]
+mod coverage;
+#[path = "capabilities/doctor.rs"]
+mod doctor;
+#[path = "support/handler.rs"]
+mod handler_support;
+#[path = "capabilities/report.rs"]
+mod report;

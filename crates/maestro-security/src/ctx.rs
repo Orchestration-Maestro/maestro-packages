@@ -51,3 +51,7 @@ impl CapabilityCtx {
             .map(|reply| reply.content)
     }
 }
+
+#[cfg(test)]
+#[path = "ctx_tests.rs"]
+mod tests;

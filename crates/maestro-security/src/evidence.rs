@@ -310,3 +310,7 @@ pub fn load_report(run_id: &str) -> Result<crate::report::Assessment, String> {
         .map_err(|_| format!("no report for run {run_id} at {}", path.display()))?;
     serde_json::from_str(&text).map_err(|error| format!("report {run_id}: {error}"))
 }
+
+#[cfg(test)]
+#[path = "evidence_tests.rs"]
+mod tests;
