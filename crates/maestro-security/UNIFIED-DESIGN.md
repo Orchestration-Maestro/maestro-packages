@@ -1041,6 +1041,69 @@ box-lane/build validation disposition, never inferred success.
 
 Provenance: R1222 (`rea-method/decomposition.md#L97`, source row R26 facts vs interpretation); framework `method`, `method_fast_path_with_local_cli_tools_from_leanrea`, `method_final_check_before_you_report`; Maestro `src_validate_validationreport`, `src_validate_violation`, `src_validate_validate_coverage`.
 
+## 13a. Graph accounting amendment (pre-build re-check, 2026-10-27)
+
+This amendment supersedes the §13 table and its totals: the flagged
+source identities were re-verified with REA byte evidence and the
+strict-join appendices were regenerated. The false-source flags are
+resolved — every flagged row either joins to its product-tree node or
+carries a named missing-side exclusion; none remains silently flagged.
+Evidence: ev_77e9d639, ev_557c1b78 (pentestgpt product files byte-
+confirmed); the swarm and cai recheck files live beside their mission
+files (recheck-identities.md).
+
+| Mission file | Qualified entries | Joined / missing-side / false-source / waived | SHA-256 snapshot |
+| --- | --- | --- | --- |
+| `fw-aida/slice1-cards.md` | 59 | 17 / 42 / 0 / 0 | `c87d69a8d476e6fe31aa2a269a1ce4cb2c282257dc23c57d3fa0b0cce3bfda1e` |
+| `fw-aida/slice2-surfaces.md` | 65 | 13 / 52 / 0 / 0 | `4de6ea59cc39e6332e4265457ea92e79ab6a83a7a1d51fd5a00fcd5ee206725a` |
+| `fw-cai/slice1-ap-ctr.md` | 34 | 17 / 17 / 0 / 0 | `ba9b6f79c33535120dfb659a1a84114aaf5486d079a1e08fd8c83029109f46c7` |
+| `fw-cai/slice2-tools.md` | 51 | 18 / 33 / 0 / 0 | `d5a831672ec22061934d4ab356f68f8dcdf80e694cc0141361560a6ce7a546f7` |
+| `fw-cai/slice3-executor.md` | 46 | 3 / 43 / 0 / 0 | `e98719c5703a19e8e94978873768a8c5b4340b6cab5c5cf735b18d0879775586` |
+| `fw-clearwing/decomposition.md` | 65 | 32 / 33 / 0 / 0 | `36ce36765edb60593fbe95f218142aa040c84567b76fd05d12d2734a8645ef2b` |
+| `fw-clearwing/slice4b-memory-backends.md` | 35 | 4 / 31 / 0 / 0 | `ff31706ba21feefa445333f258de2c3e2671a42bbc3824f0bc781fb1404da09d` |
+| `fw-cloudflare-check/decomposition.md` | 60 | 5 / 55 / 0 / 0 | `39bc81ab1943099230ebecd28de4a8552765a87dc9aa13f7c076466bb9c843d2` |
+| `fw-darkmoon/slice1-workflow.md` | 58 | 0 / 58 / 0 / 0 | `9e6c0830d388dd37fe7a77b63ff155d5fd5b6b375c8b2bc88351d157838ff18d` |
+| `fw-darkmoon/slice2-tools.md` | 87 | 0 / 87 / 0 / 0 | `0971197ebda280042b80ec8198c69b61578ae06f6b43d17a5ebcdf25ad9bc70e` |
+| `fw-hbgpt/slice1-core.md` | 91 | 50 / 41 / 0 / 0 | `21a5d6836ece5905db92c49137428d127200a1e9f9a8971c923178de2fbf32b4` |
+| `fw-pentagi/slice1-cli-schema.md` | 113 | 30 / 83 / 0 / 0 | `980414b85ef4b83a52a350477ebc9fd7c26264fb787c13341270ab602363f445` |
+| `fw-pentagi/slice2-engine.md` | 122 | 36 / 86 / 0 / 0 | `503476f4bce3ec536039db39728f5a2d52e7406ebc8e5fad0067576bbd464ac7` |
+| `fw-pentagi/slice3-ui-contracts.md` | 11 | 4 / 7 / 0 / 0 | `4783b1ea0bbf332e145527c78d00fe1e7da332b2fbe2bcf360d23b5e62c5e166` |
+| `fw-pentestgpt/slice1-supervisor.md` | 44 | 38 / 6 / 0 / 0 | `5523aae124affcbf6e58073ead5216006a9e4cf7078a6d504f7829f33038b329` |
+| `fw-pentestgpt/slice2-episodes-prompts-tools.md` | 53 | 45 / 8 / 0 / 0 | `e426df53877dabe86e416b8d8c8f8930925be13e99afd4f7b79bdae5669c1daa` |
+| `fw-pentestgpt/slice2b-receipt-matcher.md` | 36 | 32 / 4 / 0 / 0 | `af76157104ae6161f30f2410b380bea012fcc6a6c15727d0d9dbc4871602f13d` |
+| `fw-shannon/decomposition.md` | 67 | 47 / 20 / 0 / 0 | `1efd5d5f3b6263b5f7ba132f2c4ad419d0271d676f4f9df99c5da4c3ac3b10a2` |
+| `fw-strix/slice1-orchestrator.md` | 40 | 18 / 22 / 0 / 0 | `b0afeea74cd7c8fb9ad93e03edf9bf94ba700609fa47ef7d3897a900421a8754` |
+| `fw-strix/slice2-phases-tools.md` | 37 | 30 / 7 / 0 / 0 | `378d7df3c80a0689cd6e4f3e2a562a5f3645097a05766443459509f4fee7944f` |
+| `fw-swarm/slice1-blackboard.md` | 54 | 27 / 27 / 0 / 0 | `226fb4912f91d5968659b558305375206e4812eb5b0bcbd0055374ffe399b441` |
+| `fw-swarm/slice2-poc-chains-gate.md` | 53 | 43 / 10 / 0 / 0 | `daf9640aa204504c36567fcfb779fc70bfb87502744aa27fc835791b83da41fe` |
+| `rea/slice1-surface.md` | 45 | 7 / 38 / 0 / 0 | `e3d0096054a060271bd9277337676ba46108a62e56b64ba65e81f66c849bb2c1` |
+| `rea/slice2-foundation.md` | 55 | 0 / 55 / 0 / 0 | `1c965ceb4c7e16b394bf775f84c981c19f7aebad58ba1019a1d8ca640b683085` |
+| `rea/slice3-provider-family.md` | 70 | 5 / 65 / 0 / 0 | `fab25a251d3bf81d61bc090017f49d69afbbaf5c6b6fea3cd4ca239dfa36297a` |
+| `rea/slice4-analysis-families.md` | 64 | 3 / 61 / 0 / 0 | `c13fc65db131dd3a43a019d4767f766e4c89f7732e87d19320ebd8059b8a5c0b` |
+| `rea/slice5-remaining-families.md` | 67 | 3 / 64 / 0 / 0 | `48f1ec5a4062b4006ed0819e06c81038e59d0adbfd225ace906c05592a032eaa` |
+| `rea/slice6-bridges.md` | 75 | 17 / 58 / 0 / 0 | `9c7a684d5b514c6a494a59817d026ef895aac4b4c8ea5df26f735f67f1d84a8d` |
+| `rea/slice6b-gaps.md` | 45 | 1 / 44 / 0 / 0 | `0b0982f64961dece81749288e447ba3199af539396944663dc45a522dccaa5f7` |
+| `rea/slice6c-ghidra-operations.md` | 55 | 0 / 55 / 0 / 0 | `ce4c093e4297a1ac561a6e7f0ebf144ae337af36c4aad3c20c22ef47c165931a` |
+| `rea/slice6d-native-api-facet.md` | 73 | 0 / 73 / 0 / 0 | `3b2534b358d0c8829ba4991d6d348127b424e17f8064cfbff2d35a14bfb0a28c` |
+| `rea/slice7-cli.md` | 49 | 1 / 48 / 0 / 0 | `b872320d81c30929c015821d5be6be2078b8a0de490d9aec806a25849944dba4` |
+| `rea-method/decomposition.md` | 82 | 77 / 5 / 0 / 0 | `2cf3256772638238cad34b5a77e1ed6c9ce2d91be52f925cf44a9b6a1ece91c6` |
+| `reverse-skill/decomposition.md` | 93 | 46 / 47 / 0 / 0 | `f6c20b3d607299eeadf694bc6e61d073fcb14590d13266799afce02e2a123727` |
+| `skills/slice1-security-skills.md` | 53 | 0 / 53 / 0 / 0 | `14275594755dd2d82dba1c949f2439627e23304017ec7c2f94eba2dcbedad940` |
+| `skills/slice1b-bodies.md` | 86 | 0 / 86 / 0 / 0 | `a9df5cab1364d78df82e45e35ef773f08109dba1b52aff7a78b850521ef2b448` |
+| `skills/slice1c-process-bodies.md` | 125 | 0 / 125 / 0 / 0 | `dda82a77994df7afa8f48296597d32e983a61dcd22e9ab170ef9eede3621bd72` |
+| `skills/slice1d-companions.md` | 114 | 17 / 97 / 0 / 0 | `3b537642ce0cbdf81cb2c7c9096b9858919439374b4e85fd67ac62d12aec9eb2` |
+| `skills/slice1e-cf-ranges.md` | 115 | 0 / 115 / 0 / 0 | `f47c74182e5f70a42be6e4225ed96a6a7721ddef148c209c1642e5d055aac545` |
+| `skills/slice1e-confidence-correction.md` | 22 | 0 / 22 / 0 / 0 | `53532523c072b4a1961f25ec1948cf97aa8081b45293cd3d30ffeb8934d65ab6` |
+| `skills/slice1f-clause-tails.md` | 27 | 0 / 27 / 0 / 0 | `4c23d90e8707067379035472fbaa02dc2f71c0ec2deead230be421d7b6eb37cc` |
+| `skills/slice2-box-skills.md` | 4 | 1 / 3 / 1 / 0 | `8b941c132dae6bbb80e34a6c1c64aa048c8645f3f0ef89a72bdc03864fed279f` |
+
+Totals (supersede §13): 687 joined, 1913 explicit
+exclusions, 1 false-source flags remaining, 0
+data-only waivers. The remaining flagged row (skills/slice2-box-
+skills.md) keeps its recorded reason; the rea-check data-only waiver
+stays ADR-0023.
+
+
 ## 14. Completeness: design to campaign
 
 This is the forward relation for every module, agent, knowledge/instructions
