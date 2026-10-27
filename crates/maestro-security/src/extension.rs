@@ -1,16 +1,19 @@
-//! The wasm extension surface: registers the framework's tools with the
-//! Maestro host.
+//! The wasm extension surface: registers the framework's tools and trigger
+//! commands with the Maestro host.
 
 use std::fmt::Write;
 use std::rc::Rc;
 
 use maestro_extensions_wasm::{
-    AgentToolResult, ExtensionAPI, ExtensionFuture, Presence, TextContent, ToolDefinition,
-    ToolMetadata, UserBlock,
+    AgentToolResult, CallbackEmitter, CommandOptions, EventBus, EventListener, ExtensionAPI,
+    ExtensionCommandContext, ExtensionFuture, NotificationType, Presence, TextContent,
+    ToolDefinition, ToolMetadata, UserBlock,
 };
 use serde::Deserialize;
-use serde_json::json;
+use serde_json::{Value, json};
 
+use crate::autonomy;
+use crate::autonomy::run::{EventSink, SessionEntry};
 use crate::pipeline::{AssessParams, assess, evidence_for};
 use crate::report::Assessment;
 use crate::tools;
@@ -322,6 +325,101 @@ fn disclose_tool() -> ToolDefinition {
     }
 }
 
+/// The session entry type that opens a run's live thread.
+const RUN_ENTRY: &str = "security-run";
+
+/// Emit the lifecycle's events on the host bus.
+struct BusSink(EventBus);
+
+impl EventSink for BusSink {
+    fn emit<'a>(&'a mut self, channel: &'a str, payload: Value) -> ExtensionFuture<'a, ()> {
+        self.0.emit(channel, payload)
+    }
+}
+
+/// Append the run's live entries through the host API.
+struct ApiEntry(ExtensionAPI);
+
+impl SessionEntry for ApiEntry {
+    fn append(&mut self, body: &Value) -> Result<(), String> {
+        self.0.append_entry(RUN_ENTRY, Some(body.clone()))
+    }
+}
+
+/// The synchronous trigger prefix: hand the lifecycle to an independently
+/// owned tail, so the command answers at once.
+fn trigger_listener(api: ExtensionAPI) -> EventListener {
+    Rc::new(move |payload: Value, _emitter: CallbackEmitter<'_>| {
+        let api = api.clone();
+        Ok(Some(Box::pin(async move {
+            let mut sink = BusSink(api.events());
+            let mut entry = ApiEntry(api);
+            autonomy::run_trigger(&mut sink, &mut entry, &payload).await
+        })))
+    })
+}
+
+/// Register the trigger commands and their listener with the host.
+fn register_autonomy(api: &ExtensionAPI) -> Result<(), String> {
+    api.events()
+        .on(autonomy::TRIGGER_CHANNEL, trigger_listener(api.clone()))
+        .map_err(|error| format!("trigger listener: {error}"))?;
+    for command in autonomy::COMMANDS {
+        let bus = api.events();
+        api.register_command(
+            command.name,
+            CommandOptions {
+                description: Some(command.description.to_string()),
+                handler: Rc::new(move |args, ctx| {
+                    let bus = bus.clone();
+                    Box::pin(async move {
+                        assess_command(&bus, &ctx, &args).await;
+                        Ok(())
+                    })
+                }),
+                get_argument_completions: None,
+            },
+        )
+        .map_err(|error| format!("register /{}: {error}", command.name))?;
+    }
+    Ok(())
+}
+
+/// `/assess <target>`: record the run, emit the trigger, answer with the id.
+async fn assess_command(bus: &EventBus, ctx: &ExtensionCommandContext, args: &str) {
+    let target = match autonomy::parse_target(args) {
+        Ok(target) => target,
+        Err(error) => return notify(ctx, &error, true),
+    };
+    let run_id = match autonomy::start_run(&target) {
+        Ok(run_id) => run_id,
+        Err(error) => return notify(ctx, &format!("could not record the run: {error}"), true),
+    };
+    let failed = bus
+        .emit(
+            autonomy::TRIGGER_CHANNEL,
+            autonomy::trigger_payload(&run_id, &target),
+        )
+        .await;
+    if let Err(error) = failed {
+        let _ = autonomy::finish_run(&run_id, Err(error.as_str()));
+        return notify(ctx, &format!("could not start the run: {error}"), true);
+    }
+    notify(ctx, &format!("Assessment {run_id} started."), false);
+}
+
+/// Show one notification; failures use the error severity.
+fn notify(ctx: &ExtensionCommandContext, message: &str, failure: bool) {
+    let kind = if failure {
+        NotificationType::Error
+    } else {
+        NotificationType::Info
+    };
+    if let Ok(ui) = ctx.ui() {
+        let _ = ui.notify(message, Some(kind));
+    }
+}
+
 /// Register the security tools with the extension host.
 #[must_use]
 pub fn factory(api: ExtensionAPI) -> ExtensionFuture<'static, ()> {
@@ -335,6 +433,11 @@ pub fn factory(api: ExtensionAPI) -> ExtensionFuture<'static, ()> {
         api.register_tool(evidence_page_tool())?;
         api.register_tool(validate_tool())?;
         api.register_tool(disclose_tool())?;
+        register_autonomy(&api)?;
         Ok(())
     })
 }
+
+#[cfg(test)]
+#[path = "extension_tests.rs"]
+mod tests;

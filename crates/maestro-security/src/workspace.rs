@@ -359,7 +359,7 @@ fn finish_start(
             workspace.updated_at = now_secs();
             let findings = workspace.findings;
             store.upsert_workspace(workspace.revision, &workspace)?;
-            record_run(store, &assessment, Some(name), Status::Completed)?;
+            record_run(store, &assessment, Some(name))?;
             Ok(Board {
                 schema: SCHEMA,
                 action: params.action.clone(),
@@ -487,21 +487,15 @@ fn record_run(
     store: Store,
     assessment: &Assessment,
     workspace: Option<&str>,
-    status: Status,
 ) -> Result<(), String> {
-    let record = RunRecord {
-        run_id: assessment.run_id.clone(),
-        target: assessment.target.clone(),
-        agent: assessment.agent.clone(),
-        model: assessment.model.clone(),
-        status,
-        started_at: now_secs(),
-        finished_at: Some(now_secs()),
-        findings: assessment.findings.len(),
-        refuted: assessment.refuted.len(),
-        summary: assessment.summary.clone(),
-        workspace: workspace.map(str::to_string),
-    };
+    let mut record = RunRecord::starting(
+        assessment.run_id.clone(),
+        &assessment.target,
+        &assessment.agent,
+        &assessment.model,
+        workspace,
+    );
+    record.settle(Ok(assessment));
     store.upsert_run(&record)
 }
 

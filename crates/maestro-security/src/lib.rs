@@ -20,6 +20,7 @@
 
 mod agents;
 pub mod audit;
+pub mod autonomy;
 pub mod bench;
 pub mod browser;
 pub mod campaign;
@@ -50,7 +51,7 @@ pub mod visualize;
 mod webui;
 pub mod workspace;
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(target_arch = "wasm32", test))]
 mod extension;
 // The MCP stdio surface is host-side; the WASM surface is the extension.
 #[cfg(not(target_family = "wasm"))]

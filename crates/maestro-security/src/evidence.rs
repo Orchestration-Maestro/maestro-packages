@@ -228,12 +228,36 @@ impl Ledger {
     }
 }
 
+#[cfg(test)]
+thread_local! {
+    /// Per-thread test override of the base directory, so parallel tests and
+    /// the developer's real state directory never meet.
+    static TEST_HOME: std::cell::RefCell<Option<PathBuf>> =
+        const { std::cell::RefCell::new(None) };
+}
+
+/// Run `body` with this thread's state directory redirected to `home`.
+///
+/// Test-only: keeps a test's writes out of the real home and out of every
+/// other test's state.
+#[cfg(test)]
+pub(crate) fn with_home<T>(home: &std::path::Path, body: impl FnOnce() -> T) -> T {
+    let previous = TEST_HOME.with(|slot| slot.replace(Some(home.to_path_buf())));
+    let value = body();
+    TEST_HOME.with(|slot| slot.replace(previous));
+    value
+}
+
 /// The base state directory: `$MAESTRO_SECURITY_HOME/.maestro-security` or
 /// `$HOME/.maestro-security`.
 ///
 /// # Errors
 /// Fails if neither environment variable is set or `$HOME` is missing.
 pub fn base_dir() -> Result<PathBuf, String> {
+    #[cfg(test)]
+    if let Some(home) = TEST_HOME.with(|slot| slot.borrow().clone()) {
+        return Ok(home);
+    }
     let base = std::env::var("MAESTRO_SECURITY_HOME")
         .ok()
         .filter(|value| !value.is_empty())
