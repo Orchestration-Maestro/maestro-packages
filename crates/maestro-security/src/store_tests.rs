@@ -48,6 +48,19 @@ fn baseline_empty_indexes_and_unknown_ids() {
         assert!(Store.get_run("absent").unwrap().is_none());
         assert!(Store.list_workspaces().unwrap().is_empty());
         assert!(Store.get_workspace("absent").unwrap().is_none());
+        for (id, started_at) in [("one", 10), ("two", 20)] {
+            let mut record = RunRecord::starting(id.into(), "target", "agent", "model", None);
+            record.started_at = started_at;
+            Store.upsert_run(&record).unwrap();
+            let mut workspace = workspace();
+            workspace.name = id.into();
+            workspace.updated_at = started_at;
+            Store.upsert_workspace(0, &workspace).unwrap();
+        }
+        assert_eq!(Store.get_run("two").unwrap().unwrap().run_id, "two");
+        assert!(Store.get_run("absent").unwrap().is_none());
+        assert_eq!(Store.get_workspace("one").unwrap().unwrap().name, "one");
+        assert!(Store.get_workspace("absent").unwrap().is_none());
     });
 }
 
@@ -66,15 +79,15 @@ fn baseline_workspace_revisions_and_ordering() {
         workspace.updated_at = 30;
         Store.upsert_workspace(1, &workspace).unwrap();
         workspace.name = "second".into();
-        workspace.updated_at = 20;
+        workspace.updated_at = 40;
         Store.upsert_workspace(0, &workspace).unwrap();
         let listed = Store.list_workspaces().unwrap();
         assert_eq!(
             listed.iter().map(|w| w.name.as_str()).collect::<Vec<_>>(),
-            ["first", "second"]
+            ["second", "first"]
         );
-        assert_eq!(listed[0].revision, 2);
-        assert_eq!(listed[0].phases_done, 2);
+        assert_eq!(listed[1].revision, 2);
+        assert_eq!(listed[1].phases_done, 2);
     });
 }
 

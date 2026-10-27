@@ -1,20 +1,39 @@
 //! Baseline context behaviour against ephemeral loopback services.
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
+use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread::JoinHandle;
 
 use super::CapabilityCtx;
 use crate::pipeline::Config;
 
-/// Serve a bounded sequence of HTTP replies and capture each request.
-fn service(replies: Vec<(u16, &'static str)>) -> (String, JoinHandle<Vec<String>>) {
+/// Keep recording requests until the test explicitly shuts down the listener.
+struct Service {
+    /// Signal that the caller has completed its HTTP operations.
+    shutdown: Sender<()>,
+    /// The listener thread and its captured requests.
+    thread: JoinHandle<Vec<String>>,
+}
+
+impl Service {
+    /// Stop accepting requests and return everything received.
+    fn finish(self) -> Vec<String> {
+        self.shutdown.send(()).unwrap();
+        self.thread.join().unwrap()
+    }
+}
+
+/// Serve canned replies, then reject and record any unexpected requests.
+fn service(replies: Vec<(u16, &'static str)>) -> (String, Service) {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     listener.set_nonblocking(true).unwrap();
     let url = format!("http://{}", listener.local_addr().unwrap());
+    let (shutdown, stopped) = channel();
     let thread = std::thread::spawn(move || {
         let mut requests = Vec::new();
-        for (status, body) in replies {
-            let mut stream = accept(&listener);
+        let mut replies = replies.into_iter();
+        while let Some(mut stream) = accept(&listener, &stopped) {
+            let (status, body) = replies.next().unwrap_or((500, "unexpected request"));
             let request = read_request(&mut stream);
             requests.push(request);
             write!(
@@ -26,15 +45,18 @@ fn service(replies: Vec<(u16, &'static str)>) -> (String, JoinHandle<Vec<String>
         }
         requests
     });
-    (url, thread)
+    (url, Service { shutdown, thread })
 }
 
-/// Accept one loopback connection within the fixture deadline.
-fn accept(listener: &TcpListener) -> TcpStream {
+/// Accept a connection until explicit shutdown or the fixture deadline.
+fn accept(listener: &TcpListener, stopped: &Receiver<()>) -> Option<TcpStream> {
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(15);
     loop {
+        if stopped.try_recv() != Err(std::sync::mpsc::TryRecvError::Empty) {
+            return None;
+        }
         match listener.accept() {
-            Ok((stream, _)) => return stream,
+            Ok((stream, _)) => return Some(stream),
             Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
                 assert!(std::time::Instant::now() < deadline, "request not received");
                 std::thread::sleep(std::time::Duration::from_millis(5));
@@ -97,7 +119,7 @@ fn baseline_discovery_and_chat() {
         ctx.chat("verify access", "observed response", 123).unwrap(),
         "answer"
     );
-    let requests = server.join().unwrap();
+    let requests = server.finish();
     assert!(requests[0].starts_with("GET /models "));
     assert!(requests[1].starts_with("POST /chat/completions "));
     assert!(
@@ -123,7 +145,7 @@ fn baseline_model_fallback() {
     let (bridge, server) = service(vec![(200, r#"{"data":[{"id":"first"},{"id":"second"}]}"#)]);
     let ctx = CapabilityCtx::build(&config(bridge), None).unwrap();
     assert_eq!(ctx.model, "first");
-    assert_eq!(server.join().unwrap().len(), 1);
+    assert_eq!(server.finish().len(), 1);
 }
 
 /// Baseline: overrides skip discovery; chat failures remain failures.
@@ -139,7 +161,7 @@ fn baseline_override_and_chat_errors() {
         assert_eq!(ctx.model, "override");
         let error = ctx.chat("role", "request", 1).unwrap_err();
         assert!(error.contains(cause), "{error}");
-        let requests = server.join().unwrap();
+        let requests = server.finish();
         assert_eq!(requests.len(), 1);
         assert!(requests[0].starts_with("POST /chat/completions "));
     }
@@ -148,10 +170,15 @@ fn baseline_override_and_chat_errors() {
 /// Baseline: discovery failures stop context construction.
 #[test]
 fn baseline_discovery_errors() {
-    for (status, reply) in [(200, r#"{"data":[]}"#), (401, "denied"), (200, "{bad")] {
+    for (status, reply, cause) in [
+        (200, r#"{"data":[]}"#, "bridge /models returned no models"),
+        (401, "denied", "bridge http 401 on /models"),
+        (200, "{bad", "bridge json:"),
+    ] {
         let (bridge, server) = service(vec![(status, reply)]);
-        assert!(CapabilityCtx::build(&config(bridge), None).is_err());
-        assert_eq!(server.join().unwrap().len(), 1);
+        let error = CapabilityCtx::build(&config(bridge), None).err().unwrap();
+        assert!(error.contains(cause), "{error}");
+        assert_eq!(server.finish().len(), 1);
     }
 }
 
@@ -163,5 +190,5 @@ fn baseline_sandbox_endpoint() {
     config.runner = runner;
     let ctx = CapabilityCtx::build(&config, Some("override")).unwrap();
     ctx.sandbox.health().unwrap();
-    assert!(server.join().unwrap()[0].starts_with("GET /health "));
+    assert!(server.finish()[0].starts_with("GET /health "));
 }
