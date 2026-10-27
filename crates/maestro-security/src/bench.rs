@@ -106,12 +106,7 @@ pub fn bench(params: &Suite) -> Result<Scorecard, String> {
     let summary = match &compare {
         Some(c) => format!(
             "A/B: {} {}/{} vs {} {}/{}",
-            params.model,
-            primary.correct,
-            primary.total,
-            c.model,
-            c.correct,
-            c.total
+            params.model, primary.correct, primary.total, c.model, c.correct, c.total
         ),
         None => format!(
             "{}: {}/{} correct",
@@ -130,7 +125,9 @@ pub fn bench(params: &Suite) -> Result<Scorecard, String> {
 fn score(ctx: &CapabilityCtx, model: &str) -> Result<Score, String> {
     let mut answers = Vec::new();
     for item in ITEMS {
-        let reply = ctx.client.chat(model, "Answer concisely.", item.prompt, 512)?;
+        let reply = ctx
+            .client
+            .chat(model, "Answer concisely.", item.prompt, 512)?;
         let answer = reply.content;
         let correct = judge(ctx, item, &answer)?;
         answers.push(Answer {
@@ -155,21 +152,25 @@ fn judge(ctx: &CapabilityCtx, item: &Item, answer: &str) -> Result<bool, String>
 Return JSON: {{\"correct\":true|false}}.",
         item.prompt, item.expected, answer
     );
-    let reply = ctx.client
+    let reply = ctx
+        .client
         .chat(&ctx.model, "You are the grader.", &user, 256)?;
     let raw = reply.content;
     let json = crate::pipeline::extract_json(&raw);
     let Ok(value) = serde_json::from_str::<serde_json::Value>(&json) else {
         return Ok(false);
     };
-    Ok(value.get("correct").and_then(serde_json::Value::as_bool).unwrap_or(false))
+    Ok(value
+        .get("correct")
+        .and_then(serde_json::Value::as_bool)
+        .unwrap_or(false))
 }
 
 #[cfg(test)]
 mod tests {
     //! Unit tests for the benchmark.
 
-    use super::{bench, Suite};
+    use super::{Suite, bench};
 
     /// An empty model is rejected before any call.
     #[test]

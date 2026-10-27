@@ -6,14 +6,14 @@
 
 use std::future::Future;
 
+use rmcp::ErrorData as McpError;
 use rmcp::handler::server::ServerHandler;
 use rmcp::model::{
     CallToolRequestParams, CallToolResponse, CallToolResult, ContentBlock, Implementation,
     JsonObject, ListToolsResult, PaginatedRequestParams, ServerCapabilities, ServerConfig, Tool,
 };
-use rmcp::service::{serve_server, RequestContext, RoleServer};
+use rmcp::service::{RequestContext, RoleServer, serve_server};
 use rmcp::transport::stdio;
-use rmcp::ErrorData as McpError;
 
 use crate::tools;
 
@@ -24,7 +24,11 @@ impl SecurityServer {
     /// The tool registry, built from the shared names and schemas.
     fn registry() -> Vec<Tool> {
         [
-            (tools::ASSESS, tools::ASSESS_DESCRIPTION, tools::assess_schema()),
+            (
+                tools::ASSESS,
+                tools::ASSESS_DESCRIPTION,
+                tools::assess_schema(),
+            ),
             (
                 tools::EVIDENCE,
                 tools::EVIDENCE_DESCRIPTION,
@@ -35,8 +39,16 @@ impl SecurityServer {
                 tools::WORKSPACE_DESCRIPTION,
                 tools::workspace_schema(),
             ),
-            (tools::DOCTOR, tools::DOCTOR_DESCRIPTION, serde_json::json!({})),
-            (tools::ROUTE, tools::ROUTE_DESCRIPTION, tools::route_schema()),
+            (
+                tools::DOCTOR,
+                tools::DOCTOR_DESCRIPTION,
+                serde_json::json!({}),
+            ),
+            (
+                tools::ROUTE,
+                tools::ROUTE_DESCRIPTION,
+                tools::route_schema(),
+            ),
             (
                 tools::REPORT_PAGE,
                 tools::REPORT_PAGE_DESCRIPTION,
@@ -47,7 +59,11 @@ impl SecurityServer {
                 tools::EVIDENCE_PAGE_DESCRIPTION,
                 tools::page_schema(),
             ),
-            (tools::VALIDATE, tools::VALIDATE_DESCRIPTION, tools::page_schema()),
+            (
+                tools::VALIDATE,
+                tools::VALIDATE_DESCRIPTION,
+                tools::page_schema(),
+            ),
             (
                 tools::DISCLOSE,
                 tools::DISCLOSE_DESCRIPTION,
@@ -85,8 +101,9 @@ fn schema_object(schema: &serde_json::Value) -> JsonObject {
 impl ServerHandler for SecurityServer {
     /// The server identity and capabilities.
     fn get_info(&self) -> ServerConfig {
-        ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
-            .with_server_info(Implementation::new("maestro-security", env!("CARGO_PKG_VERSION")))
+        ServerConfig::new(ServerCapabilities::builder().enable_tools().build()).with_server_info(
+            Implementation::new("maestro-security", env!("CARGO_PKG_VERSION")),
+        )
     }
 
     /// The full tool registry.

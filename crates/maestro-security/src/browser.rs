@@ -132,7 +132,11 @@ page shows.",
         .and_then(serde_json::Value::as_array)
         .map_or_else(
             || vec!["javascript-rendered content not captured".into()],
-            |arr| arr.iter().filter_map(|u| u.as_str().map(str::to_string)).collect(),
+            |arr| {
+                arr.iter()
+                    .filter_map(|u| u.as_str().map(str::to_string))
+                    .collect()
+            },
         );
     Ok((summary, unknown))
 }
@@ -146,7 +150,9 @@ fn extract_title(html: &str) -> String {
     let Some(end) = lower[start..].find("</title>") else {
         return String::new();
     };
-    html[start + "<title>".len()..start + end].trim().to_string()
+    html[start + "<title>".len()..start + end]
+        .trim()
+        .to_string()
 }
 
 /// Extract `<a href="...">text</a>` links.
@@ -203,10 +209,7 @@ fn extract_inputs(html: &str) -> Vec<String> {
 
 /// Strip tags and collapse whitespace into visible text, capped.
 fn extract_text(html: &str) -> String {
-    let no_tags: String = html
-        .chars()
-        .filter(|c| !(*c == '<' || *c == '>'))
-        .collect();
+    let no_tags: String = html.chars().filter(|c| !(*c == '<' || *c == '>')).collect();
     let words: Vec<&str> = no_tags.split_whitespace().collect();
     let joined = words.join(" ");
     joined.chars().take(2000).collect()

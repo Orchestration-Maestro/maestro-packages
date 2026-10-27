@@ -188,8 +188,7 @@ fn regex_match(pattern: &str, text: &str) -> bool {
     if pattern == r"^$" {
         return text.trim().is_empty();
     }
-    text.lines().any(|line| line.trim() == pattern)
-        || text.contains(pattern)
+    text.lines().any(|line| line.trim() == pattern) || text.contains(pattern)
 }
 
 /// Cap a string for reports.

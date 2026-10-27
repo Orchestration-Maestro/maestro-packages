@@ -69,7 +69,7 @@ mod component;
 
 #[cfg(test)]
 mod tests {
-    use super::{decide, INPUT_EVENT, SUFFIX};
+    use super::{INPUT_EVENT, SUFFIX, decide};
     use maestro_extensions_wasm::{InputEventResult, InputSource, Presence};
 
     /// Interactive prompts are transformed with the instruction appended.
