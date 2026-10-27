@@ -191,6 +191,7 @@ fn extract_name(code: &str) -> String {
 fn caller_for(file: &str) -> String {
     let name = file.rsplit('/').next().unwrap_or(file);
     name.rsplit_once('.')
+        .filter(|(stem, _)| !stem.is_empty())
         .map_or(name, |(stem, _)| stem)
         .to_string()
 }
