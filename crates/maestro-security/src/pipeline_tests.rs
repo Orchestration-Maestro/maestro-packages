@@ -370,7 +370,15 @@ fn baseline_full_run_checkpoints_and_retains_report() -> Result<(), String> {
                 |(_, target, role)| target == "https://example.test" && role == "maestro.cyber"
             )
         );
-        assert_eq!(checkpoints[0].0, ["recon", "recon", "recon"]);
+        let recon = vec!["recon", "recon", "recon"];
+        let mut modeled = recon.clone();
+        modeled.push("target-model");
+        let mut threatened = modeled.clone();
+        threatened.push("threat");
+        assert_eq!(
+            checkpoints.iter().map(|c| c.0.clone()).collect::<Vec<_>>(),
+            [recon, modeled, threatened.clone(), threatened]
+        );
         assert_eq!(crate::load_report(&report.run_id)?.summary, report.summary);
         assert!(crate::evidence_for(&report.run_id)?.contains("probe evidence"));
         Ok(())
@@ -387,7 +395,7 @@ fn baseline_hypotheses_filter_invalid_entries_and_enforce_limit() -> Result<(), 
         ];
         hypotheses.extend((0..8).map(|_| hypothesis()));
         let mut replies = vec![json!({"hypotheses":hypotheses})];
-        for _ in 0..4 {
+        for _ in 0..8 {
             replies.extend([
                 json!({"command":"probe"}),
                 json!({"evidence_level":"REFUTED"}),
@@ -395,7 +403,22 @@ fn baseline_hypotheses_filter_invalid_entries_and_enforce_limit() -> Result<(), 
         }
         let fixture = Fixture::new(replies)?;
         let report = run(&fixture, &[PhaseKind::Hypotheses, PhaseKind::Verify])?;
-        assert_eq!(report.refuted.len(), 4);
+        assert_eq!(
+            report
+                .refuted
+                .iter()
+                .map(|r| r.hypothesis.as_str())
+                .collect::<Vec<_>>(),
+            ["exposed admin"; 4]
+        );
+        assert_eq!(
+            fixture
+                .requests()?
+                .iter()
+                .filter(|(p, _)| p == "/chat/completions")
+                .count(),
+            9
+        );
         assert!(report.findings.is_empty());
         Ok(())
     })
@@ -412,12 +435,26 @@ fn baseline_malformed_optional_phases_preserve_report() -> Result<(), String> {
         ])?;
         let report = run(
             &fixture,
-            &[PhaseKind::Hypotheses, PhaseKind::Threat, PhaseKind::Report],
+            &[
+                PhaseKind::Hypotheses,
+                PhaseKind::Verify,
+                PhaseKind::Threat,
+                PhaseKind::Report,
+            ],
         )?;
         assert!(report.findings.is_empty());
         assert!(report.threats.is_empty());
         assert!(!report.summary.trim().is_empty());
         assert_eq!(report.runtime_mechanics, ["redirect"]);
+        let requests = fixture.requests()?;
+        assert_eq!(
+            requests
+                .iter()
+                .filter(|(p, _)| p == "/chat/completions")
+                .count(),
+            3
+        );
+        assert!(!requests.iter().any(|(p, _)| p == "/exec"));
         Ok(())
     })
 }
