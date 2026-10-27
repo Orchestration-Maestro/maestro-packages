@@ -18,12 +18,15 @@ pub struct Reply {
     status: u16,
     /// Wire response body.
     body: String,
+    /// Command supplied by the model that the runner must execute.
+    command: Option<&'static str>,
 }
 
 impl Reply {
     /// Return a model completion containing the supplied answer.
     pub fn chat(answer: &str) -> Self {
         Self {
+            command: None,
             path: "/chat/completions",
             status: 200,
             body: json!({"choices":[{"message":{"content":answer}}]}).to_string(),
@@ -33,6 +36,7 @@ impl Reply {
     /// Return the runner's observed output and process status.
     pub fn exec(output: &str, code: i32) -> Self {
         Self {
+            command: None,
             path: "/exec",
             status: 200,
             body: format!(
@@ -40,6 +44,22 @@ impl Reply {
                 json!({"type":"out", "data":output}),
                 json!({"type":"exit", "code":code})
             ),
+        }
+    }
+
+    /// Require the runner to execute the model's proposed command unchanged.
+    pub fn command(mut self, command: &'static str) -> Self {
+        self.command = Some(command);
+        self
+    }
+
+    /// Simulate a service rejecting a request.
+    pub fn failure(path: &'static str) -> Self {
+        Self {
+            path,
+            status: 403,
+            body: "fixture unavailable".into(),
+            command: None,
         }
     }
 }
@@ -92,6 +112,11 @@ fn serve(listener: &TcpListener, replies: Vec<Reply>) -> Result {
             request.starts_with(&format!("POST {} HTTP/1.1", reply.path)),
             "{request}"
         );
+        if let Some(command) = reply.command {
+            let (_, body) = request.split_once("\r\n\r\n").ok_or("missing body")?;
+            let value: serde_json::Value = serde_json::from_str(body)?;
+            assert_eq!(value["command"], command);
+        }
         write!(
             stream,
             "HTTP/1.1 {} OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
