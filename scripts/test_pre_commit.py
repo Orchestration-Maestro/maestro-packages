@@ -1,7 +1,9 @@
 """Regression checks for staged-file formatting and package selection."""
 
+import os
 import pathlib
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -13,7 +15,9 @@ class PreCommitTests(unittest.TestCase):
     """Keep unrelated work outside the commit and check reverse dependents."""
 
     def setUp(self):
-        """Describe a chain and an unrelated workspace member."""
+        """Isolate fixture repositories and describe workspace dependencies."""
+        environment = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
+        self.enterContext(patch.dict(os.environ, environment, clear=True))
         self.metadata = {
             "workspace_root": "/repo",
             "workspace_members": ["a", "b", "c", "other"],
@@ -72,6 +76,45 @@ class PreCommitTests(unittest.TestCase):
             self.assertNotIn(b"unstaged.rs", staged)
             content = subprocess.check_output(["git", "-C", directory, "show", ":staged space.rs"])
             self.assertEqual(content, b"formatted\n")
+
+    def test_fixture_git_cannot_change_linked_worktree_index(self):
+        """Hook-inherited Git state cannot redirect fixture writes to its caller."""
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            checkout, worktree = root / "checkout", root / "linked"
+            subprocess.run(["git", "init", "-q", str(checkout)], check=True)
+            subprocess.run(
+                ["git", "-C", str(checkout), "-c", "user.name=Test",
+                 "-c", "user.email=test@example.invalid", "commit", "-qm", "initial",
+                 "--allow-empty"], check=True,
+            )
+            subprocess.run(
+                ["git", "-C", str(checkout), "worktree", "add", "-q", "--detach", str(worktree)],
+                check=True,
+            )
+            git_dir = subprocess.check_output(
+                ["git", "-C", str(worktree), "rev-parse", "--absolute-git-dir"], text=True,
+            ).strip()
+            (worktree / "caller.txt").write_text("keep staged\n")
+            subprocess.run(["git", "-C", str(worktree), "add", "caller.txt"], check=True)
+            index = pathlib.Path(git_dir) / "index"
+            before = index.read_bytes()
+            for explicit_worktree in [False, True]:
+                with self.subTest(explicit_worktree=explicit_worktree):
+                    environment = dict(os.environ, GIT_DIR=git_dir, GIT_INDEX_FILE=str(index))
+                    if explicit_worktree:
+                        environment["GIT_WORK_TREE"] = str(worktree)
+                    result = subprocess.run(
+                        [sys.executable, str(pathlib.Path(__file__).resolve()),
+                         "PreCommitTests.test_formatting_restages_only_captured_surviving_paths"],
+                        cwd=worktree, env=environment, capture_output=True, text=True,
+                    )
+                    staged = subprocess.check_output(
+                        ["git", "-C", str(worktree), "diff", "--cached", "--name-only"],
+                        text=True,
+                    )
+                    self.assertEqual(index.read_bytes(), before, "Caller index staged:\n" + staged)
+                    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_formatter_failure_prevents_restaging(self):
         """A failing formatter cannot reach git add or later checks."""

@@ -164,7 +164,7 @@ fn doctor_tool() -> ToolDefinition {
             name: tools::DOCTOR.into(),
             label: "Security Doctor".into(),
             description: tools::DOCTOR_DESCRIPTION.into(),
-            parameters: json!("{}").into(),
+            parameters: json!({}).into(),
             prompt_snippet: Presence::Missing,
             prompt_guidelines: Presence::Missing,
             render_shell: Presence::Missing,

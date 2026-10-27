@@ -92,4 +92,6 @@ pub use workspace::{Board, LogLine, Order};
 maestro_extensions_wasm::export_extension!(extension::factory);
 
 #[cfg(test)]
+mod pipeline_tests;
+#[cfg(test)]
 mod test_support;

@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::ctx::CapabilityCtx;
 use crate::pipeline::Config;
+use crate::runner::shell_quote;
 
 /// Schema tag for the call graph.
 pub const SCHEMA: &str = "maestro-security/visualize/1";
@@ -69,7 +70,7 @@ pub fn visualize(params: &Trace) -> Result<CallGraph, String> {
     }
     let ctx = CapabilityCtx::build(&Config::from_env(), params.model.as_deref())?;
     let definitions = discover_definitions(&ctx, &params.path)?;
-    let edges = discover_calls(&ctx, &params.path, &definitions);
+    let edges = discover_calls(&ctx, &params.path, &definitions)?;
     let nodes: Vec<CallNode> = definitions
         .iter()
         .map(|(name, file, line)| CallNode {
@@ -104,11 +105,14 @@ fn discover_definitions(
 }
 
 /// Discover call edges between the discovered functions.
+///
+/// # Errors
+/// Fails when any call-site inspection fails.
 fn discover_calls(
     ctx: &CapabilityCtx,
     path: &str,
     definitions: &[(String, String, u32)],
-) -> Vec<CallEdge> {
+) -> Result<Vec<CallEdge>, String> {
     let mut edges = Vec::new();
     for def in definitions {
         let command = format!(
@@ -119,9 +123,10 @@ fn discover_calls(
             def.0,
             def.0
         );
-        let Ok(result) = ctx.sandbox.exec(&command, 60) else {
-            continue;
-        };
+        let result = ctx
+            .sandbox
+            .exec(&command, 60)
+            .map_err(|e| format!("visualize calls: {e}"))?;
         for line in result.output.lines() {
             let file = line
                 .split_once(':')
@@ -141,7 +146,7 @@ fn discover_calls(
             });
         }
     }
-    edges
+    Ok(edges)
 }
 
 /// Parse `file:line:definition` grep lines into `(name, file, line)`.
@@ -184,12 +189,10 @@ fn extract_name(code: &str) -> String {
 
 /// A coarse caller label from a file path (its file stem).
 fn caller_for(file: &str) -> String {
-    file.rsplit('/')
-        .next()
-        .unwrap_or(file)
-        .rsplit('.')
-        .next()
-        .unwrap_or(file)
+    let name = file.rsplit('/').next().unwrap_or(file);
+    name.rsplit_once('.')
+        .filter(|(stem, _)| !stem.is_empty())
+        .map_or(name, |(stem, _)| stem)
         .to_string()
 }
 
@@ -203,11 +206,6 @@ fn render_mermaid(nodes: &[CallNode], edges: &[CallEdge]) -> String {
         let _ = writeln!(out, "  {} --> {}", edge.from, edge.to);
     }
     out
-}
-
-/// Single-quote a string for safe shell interpolation.
-fn shell_quote(s: &str) -> String {
-    format!("'{}'", s.replace('\'', r"'\''"))
 }
 
 #[cfg(test)]
