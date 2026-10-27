@@ -261,3 +261,21 @@ fn baseline_logs_read_the_latest_run_ledger() {
         assert_eq!(logs[2].note, "é".repeat(120));
     });
 }
+
+/// A stop response must expose the committed revision, not the pre-update value.
+#[test]
+fn stop_response_revision_matches_the_retained_workspace() {
+    isolated(|| {
+        seed_workspace();
+        let stopped = dispatch(&order("stop", None))
+            .expect("stop")
+            .workspace
+            .expect("stopped workspace");
+        let retained = dispatch(&order("status", None))
+            .expect("status")
+            .workspace
+            .expect("retained workspace");
+        assert_eq!(stopped.revision, retained.revision);
+        assert!(matches!(stopped.status, Status::Stopped));
+    });
+}

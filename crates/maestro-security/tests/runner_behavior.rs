@@ -90,3 +90,31 @@ fn prestage_propagates_runner_inspection_failure() {
     let error = prestage().expect_err("inspection must fail");
     assert!(error.contains("401"));
 }
+
+/// Baseline: a failed start keeps its failed state and committed revision.
+#[test]
+fn baseline_failed_start_retains_the_committed_workspace_revision() {
+    if !support::runner(
+        "baseline_failed_start_retains_the_committed_workspace_revision",
+        vec![(401, "runner denied".into())],
+    ) {
+        return;
+    }
+    let error = maestro_security::workspace::dispatch(&maestro_security::workspace::Order {
+        action: "start".into(),
+        name: Some("review".into()),
+        target: Some("example.test".into()),
+        model: Some("fixture".into()),
+        ..Default::default()
+    })
+    .expect_err("runner preflight must fail");
+    assert!(error.contains("401"));
+    let workspace = maestro_security::Store
+        .get_workspace("review")
+        .expect("workspace table")
+        .expect("failed workspace");
+    assert!(matches!(workspace.status, maestro_security::Status::Failed));
+    assert_eq!(workspace.revision, 2);
+    assert_eq!(workspace.target, "example.test");
+    assert_eq!(workspace.model.as_deref(), Some("fixture"));
+}
