@@ -3,7 +3,7 @@
 //! Every channel is a literal shared-bus channel; every payload names the run
 //! so one subscriber can follow many concurrent runs.
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use crate::pipeline::PhaseKind;
 

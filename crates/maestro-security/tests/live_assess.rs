@@ -5,7 +5,7 @@
 //! The model is whatever the bridge serves at run time (or `ASSESS_MODEL`
 //! when set), so this test follows a bridge model swap without code changes.
 
-use maestro_security::{assess, evidence_for, AssessParams, Client, Config, Finding};
+use maestro_security::{AssessParams, Client, Config, Finding, assess, evidence_for};
 
 /// Fail the test on an error, otherwise return the value.
 fn ok_or_fail<T, E>(result: Result<T, E>, what: &str) -> T
@@ -28,8 +28,16 @@ where
 /// Assert the phase sequence invariants: recon opens, report closes, and
 /// every required middle phase is present.
 fn assert_phases(names: &[&str]) {
-    assert_eq!(names.first().copied(), Some("recon"), "recon opens: {names:?}");
-    assert_eq!(names.last().copied(), Some("report"), "report closes: {names:?}");
+    assert_eq!(
+        names.first().copied(),
+        Some("recon"),
+        "recon opens: {names:?}"
+    );
+    assert_eq!(
+        names.last().copied(),
+        Some("report"),
+        "report closes: {names:?}"
+    );
     for required in ["target-model", "hypotheses", "verify", "threat"] {
         assert!(names.contains(&required), "{required} missing: {names:?}");
     }
@@ -61,8 +69,8 @@ fn live_assessment_report_invariants() {
         eprintln!("bridge unreachable: live assessment skipped");
         return;
     }
-    let target = std::env::var("ASSESS_TARGET")
-        .unwrap_or_else(|_| "host.docker.internal".to_string());
+    let target =
+        std::env::var("ASSESS_TARGET").unwrap_or_else(|_| "host.docker.internal".to_string());
     let params = AssessParams {
         target,
         agent: None,
@@ -74,7 +82,10 @@ fn live_assessment_report_invariants() {
 
     assert_eq!(report.schema, "maestro-security/report/3");
     assert!(!report.run_id.trim().is_empty());
-    assert!(!report.model.trim().is_empty(), "model resolved at run time");
+    assert!(
+        !report.model.trim().is_empty(),
+        "model resolved at run time"
+    );
     let names: Vec<&str> = report.phases.iter().map(|p| p.name.as_str()).collect();
     assert_phases(&names);
     for finding in &report.findings {
@@ -88,7 +99,10 @@ fn live_assessment_report_invariants() {
     let out_dir = std::env::var("ASSESS_OUT")
         .unwrap_or_else(|_| "/home/franc/workspace/maestro-kali/evidence".to_string());
     let path = format!("{out_dir}/unified-assessment-{}.json", report.run_id);
-    let json = ok_or_fail(serde_json::to_string_pretty(&report), "report serialization");
+    let json = ok_or_fail(
+        serde_json::to_string_pretty(&report),
+        "report serialization",
+    );
     ok_or_fail(std::fs::create_dir_all(&out_dir), "evidence dir");
     ok_or_fail(std::fs::write(&path, json), "report save");
 

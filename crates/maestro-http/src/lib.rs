@@ -130,28 +130,26 @@ fn request_head(
 
 /// Plain-TCP request: connect, send, read until close.
 fn plain_request(host: &str, port: u16, head: &str, body: &[u8]) -> Result<Response, String> {
-    let mut stream = TcpStream::connect((host, port))
-        .map_err(|e| format!("connect {host}:{port}: {e}"))?;
+    let mut stream =
+        TcpStream::connect((host, port)).map_err(|e| format!("connect {host}:{port}: {e}"))?;
     send_and_read(&mut stream, head, body, host, port)
 }
 
 /// TLS request: rustls session over TCP, then the same send-and-read path.
 fn tls_request(host: &str, port: u16, head: &str, body: &[u8]) -> Result<Response, String> {
-    use rustls::pki_types::ServerName;
     use rustls::ClientConfig;
+    use rustls::pki_types::ServerName;
 
-    let server_name = ServerName::try_from(host.to_string())
-        .map_err(|e| format!("bad tls name {host}: {e}"))?;
-    let roots = rustls::RootCertStore::from_iter(
-        webpki_roots::TLS_SERVER_ROOTS.iter().cloned(),
-    );
+    let server_name =
+        ServerName::try_from(host.to_string()).map_err(|e| format!("bad tls name {host}: {e}"))?;
+    let roots = rustls::RootCertStore::from_iter(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
     let config = ClientConfig::builder()
         .with_root_certificates(roots)
         .with_no_client_auth();
     let session = rustls::ClientConnection::new(std::sync::Arc::new(config), server_name)
         .map_err(|e| format!("tls session {host}: {e}"))?;
-    let stream = TcpStream::connect((host, port))
-        .map_err(|e| format!("connect {host}:{port}: {e}"))?;
+    let stream =
+        TcpStream::connect((host, port)).map_err(|e| format!("connect {host}:{port}: {e}"))?;
     let mut tls = rustls::StreamOwned::new(session, stream);
     send_and_read(&mut tls, head, body, host, port)
 }
@@ -232,8 +230,8 @@ fn decode_chunked(input: &[u8]) -> Vec<u8> {
         };
         let size_line = &input[i..i + rel];
         let size_hex = size_line.split(|&b| b == b';').next().unwrap_or_default();
-        let size = usize::from_str_radix(std::str::from_utf8(size_hex).unwrap_or("0"), 16)
-            .unwrap_or(0);
+        let size =
+            usize::from_str_radix(std::str::from_utf8(size_hex).unwrap_or("0"), 16).unwrap_or(0);
         i += rel + 2;
         if size == 0 {
             break;
@@ -255,8 +253,8 @@ mod tests {
     use super::*;
     use std::io::{BufRead, BufReader};
     use std::net::TcpListener;
-    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::thread;
     use std::time::{Duration, Instant};
 
@@ -300,7 +298,11 @@ mod tests {
     }
 
     /// Spin up a one-shot loopback server that answers with a fixed body.
-    fn one_shot_server(status_line: &str, headers: &str, body: &str) -> (String, thread::JoinHandle<()>) {
+    fn one_shot_server(
+        status_line: &str,
+        headers: &str,
+        body: &str,
+    ) -> (String, thread::JoinHandle<()>) {
         let (listener, url) = bind_loopback();
         let status_line = status_line.to_string();
         let headers = headers.to_string();
@@ -366,14 +368,14 @@ mod tests {
 
     /// Answer one connection with the next scripted entry.
     fn serve_one(sock: &mut TcpStream, script: &[(u16, String, String)], n: usize) {
-        let Some((status, extra, body)) =
-            script.get(n - 1).or_else(|| script.last())
-        else {
+        let Some((status, extra, body)) = script.get(n - 1).or_else(|| script.last()) else {
             die("scripted_server: empty script");
         };
         let status_line = format!("HTTP/1.1 {status} X\r\n");
-        let headers =
-            format!("content-length: {}\r\nconnection: close\r\n{extra}", body.len());
+        let headers = format!(
+            "content-length: {}\r\nconnection: close\r\n{extra}",
+            body.len()
+        );
         let payload = format!("{status_line}{headers}\r\n{body}");
         let mut reader = BufReader::new(&mut *sock);
         read_head(&mut reader);
@@ -425,8 +427,7 @@ mod tests {
 
     #[test]
     fn retries_transient_status_then_succeeds() {
-        let (url, seen, _handle) =
-            scripted_server(vec![(503, "", "unavailable"), (200, "", "ok")]);
+        let (url, seen, _handle) = scripted_server(vec![(503, "", "unavailable"), (200, "", "ok")]);
         let resp = request_with_attempts("GET", &url, &[], &[], 3)
             .unwrap_or_else(|e| die(&format!("request: {e}")));
         assert_eq!(resp.status, 200);
@@ -464,6 +465,9 @@ mod tests {
         let elapsed = started.elapsed();
         assert_eq!(resp.status, 200);
         assert_eq!(seen.load(Ordering::SeqCst), 2);
-        assert!(elapsed >= Duration::from_millis(900), "slept only {elapsed:?}");
+        assert!(
+            elapsed >= Duration::from_millis(900),
+            "slept only {elapsed:?}"
+        );
     }
 }

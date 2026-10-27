@@ -13,9 +13,7 @@ use crate::agents::{Agent, Pattern};
 use crate::evidence::Ledger;
 use crate::llm::Client;
 use crate::methodology;
-use crate::report::{
-    Evidence, Execution, Finding, Refuted, Verdict, Assessment, Threat, SCHEMA,
-};
+use crate::report::{Assessment, Evidence, Execution, Finding, Refuted, SCHEMA, Threat, Verdict};
 use crate::runner::Sandbox;
 
 /// The canonical phase order.
@@ -110,7 +108,9 @@ impl Config {
             ("MAESTRO_SECURITY_RUNNER", &mut config.runner),
             ("MAESTRO_SECURITY_MODEL", &mut config.default_model),
         ] {
-            if let Ok(value) = std::env::var(key) && !value.is_empty() {
+            if let Ok(value) = std::env::var(key)
+                && !value.is_empty()
+            {
                 *field = value;
             }
         }
@@ -437,12 +437,8 @@ impl Engine {
                 state.recon = self.phase_recon(&state.target, &mut state.ledger)?;
             }
             PhaseKind::Model => {
-                state.target_model = self.phase_target_model(
-                    ctx,
-                    &state.target,
-                    &state.recon,
-                    &mut state.ledger,
-                )?;
+                state.target_model =
+                    self.phase_target_model(ctx, &state.target, &state.recon, &mut state.ledger)?;
             }
             PhaseKind::Hypotheses => {
                 state.hypotheses =
@@ -451,8 +447,7 @@ impl Engine {
             PhaseKind::Verify => self.phase_verify(ctx, state),
             PhaseKind::Deepen => self.phase_deepen(ctx, state),
             PhaseKind::Threat => {
-                state.threats =
-                    self.phase_threat(ctx, &state.target_model, &mut state.ledger);
+                state.threats = self.phase_threat(ctx, &state.target_model, &mut state.ledger);
             }
             PhaseKind::Report => {}
         }
@@ -502,7 +497,9 @@ impl Engine {
             spend: Some(spend),
             summary,
         };
-        state.ledger.save(run_id, &state.target, agent.name, &ctx.model)?;
+        state
+            .ledger
+            .save(run_id, &state.target, agent.name, &ctx.model)?;
         crate::evidence::save_report(run_id, &report)?;
         Ok(report)
     }
@@ -725,16 +722,16 @@ See the findings list for evidence ids."
 
 /// Deterministic fallback summary for agents without a report phase.
 fn default_summary(target: &str, findings: &[Finding], refuted: &[Refuted]) -> String {
-format!(
-"Assessed {target}. {} findings ({} confirmed), {} hypotheses refuted. \
+    format!(
+        "Assessed {target}. {} findings ({} confirmed), {} hypotheses refuted. \
 See the findings list for evidence ids.",
-findings.len(),
-findings
-.iter()
-.filter(|f| f.verdict == Verdict::Confirmed)
-.count(),
-refuted.len()
-)
+        findings.len(),
+        findings
+            .iter()
+            .filter(|f| f.verdict == Verdict::Confirmed)
+            .count(),
+        refuted.len()
+    )
 }
 
 /// Pull the outermost JSON object out of a model response.
