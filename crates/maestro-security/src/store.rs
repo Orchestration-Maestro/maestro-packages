@@ -488,49 +488,5 @@ fn apply_workspace_update(
 }
 
 #[cfg(test)]
-mod tests {
-    //! Unit tests for the file-backed store.
-
-    use super::{Status, Store, Workspace, apply_workspace_update};
-
-    /// A missing run index is an empty list, not an error.
-    #[test]
-    fn missing_run_index_is_empty() {
-        let store = Store;
-        let runs = store.list_runs(10).expect("list runs");
-        assert!(runs.is_empty() || store.get_run("nope").unwrap().is_none());
-    }
-
-    /// Status round-trips through its `snake_case` wire form.
-    #[test]
-    fn status_wire_form_is_snake_case() {
-        let json = serde_json::to_string(&Status::Completed).unwrap();
-        assert_eq!(json, "\"completed\"");
-    }
-
-    /// A stale base revision is rejected; a matching base is accepted and
-    /// bumps the stored revision by one.
-    #[test]
-    fn workspace_update_is_optimistic() {
-        let ws = Workspace {
-            name: "w1".into(),
-            run_id: String::new(),
-            target: "t".into(),
-            agent: "a".into(),
-            model: None,
-            status: Status::Running,
-            created_at: 1,
-            updated_at: 1,
-            phases_done: 0,
-            findings: 0,
-            revision: 0,
-        };
-        let mut workspaces = Vec::new();
-        apply_workspace_update(&mut workspaces, 0, &ws).expect("new workspace");
-        assert_eq!(workspaces[0].revision, 1);
-        let err = apply_workspace_update(&mut workspaces, 0, &ws).unwrap_err();
-        assert!(err.contains("revision conflict"), "unexpected error: {err}");
-        apply_workspace_update(&mut workspaces, 1, &ws).expect("matching base");
-        assert_eq!(workspaces[0].revision, 2);
-    }
-}
+#[path = "store_tests.rs"]
+mod tests;
