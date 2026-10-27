@@ -173,7 +173,8 @@ fn dedup_lines(text: &str, max: usize) -> Vec<String> {
         .filter(|l| !l.is_empty())
         .map(str::to_string)
         .collect();
-    out.dedup();
+    let mut seen = std::collections::HashSet::new();
+    out.retain(|line| seen.insert(line.clone()));
     out.truncate(max);
     out
 }
