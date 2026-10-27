@@ -60,114 +60,117 @@ impl Router {
     /// The core domains: web, network, and binary.
     fn core_domains() -> Vec<Domain> {
         vec![
-                    Domain {
-                        id: "web".into(),
-                        name: "Web applications".into(),
-                        hints: vec![
-                            "http".into(),
-                            "web".into(),
-                            "api".into(),
-                            "rest".into(),
-                            "graphql".into(),
-                            "sqli".into(),
-                            "xss".into(),
-                            "csrf".into(),
-                            "endpoint".into(),
-                        ],
-                        primary: "surface".into(),
-                        topics: vec![
-                            "owasp-top-10".into(),
-                            "injection".into(),
-                            "authentication".into(),
-                            "authorization".into(),
-                        ],
-                    },
-                    Domain {
-                        id: "network".into(),
-                        name: "Network services".into(),
-                        hints: vec![
-                            "port".into(),
-                            "tcp".into(),
-                            "udp".into(),
-                            "scan".into(),
-                            "service".into(),
-                            "banner".into(),
-                        ],
-                        primary: "surface".into(),
-                        topics: vec!["service-enumeration".into(), "protocol-abuse".into()],
-                    },
-                    Domain {
-                        id: "binary".into(),
-                        name: "Binary and reverse engineering".into(),
-                        hints: vec![
-                            "binary".into(),
-                            "elf".into(),
-                            "pe".into(),
-                            "disassemble".into(),
-                            "decompile".into(),
-                            "crackme".into(),
-                        ],
-                        primary: "reverse".into(),
-                        topics: vec!["static-analysis".into(), "dynamic-analysis".into()],
-                    },
+            Domain {
+                id: "web".into(),
+                name: "Web applications".into(),
+                hints: vec![
+                    "http".into(),
+                    "web".into(),
+                    "api".into(),
+                    "rest".into(),
+                    "graphql".into(),
+                    "sqli".into(),
+                    "xss".into(),
+                    "csrf".into(),
+                    "endpoint".into(),
+                ],
+                primary: "surface".into(),
+                topics: vec![
+                    "owasp-top-10".into(),
+                    "injection".into(),
+                    "authentication".into(),
+                    "authorization".into(),
+                ],
+            },
+            Domain {
+                id: "network".into(),
+                name: "Network services".into(),
+                hints: vec![
+                    "port".into(),
+                    "tcp".into(),
+                    "udp".into(),
+                    "scan".into(),
+                    "service".into(),
+                    "banner".into(),
+                ],
+                primary: "surface".into(),
+                topics: vec!["service-enumeration".into(), "protocol-abuse".into()],
+            },
+            Domain {
+                id: "binary".into(),
+                name: "Binary and reverse engineering".into(),
+                hints: vec![
+                    "binary".into(),
+                    "elf".into(),
+                    "pe".into(),
+                    "disassemble".into(),
+                    "decompile".into(),
+                    "crackme".into(),
+                ],
+                primary: "reverse".into(),
+                topics: vec!["static-analysis".into(), "dynamic-analysis".into()],
+            },
         ]
     }
 
     /// The extended domains: source, cloud, identity, and ctf.
     fn extended_domains() -> Vec<Domain> {
         vec![
-                    Domain {
-                        id: "source".into(),
-                        name: "Source code hunting".into(),
-                        hints: vec![
-                            "source".into(),
-                            "repository".into(),
-                            "repo".into(),
-                            "code".into(),
-                            "sink".into(),
-                            "taint".into(),
-                        ],
-                        primary: "sourcehunt".into(),
-                        topics: vec!["sink-tracing".into(), "config-audit".into()],
-                    },
-                    Domain {
-                        id: "cloud".into(),
-                        name: "Cloud and infrastructure".into(),
-                        hints: vec![
-                            "aws".into(),
-                            "azure".into(),
-                            "gcp".into(),
-                            "kubernetes".into(),
-                            "k8s".into(),
-                            "terraform".into(),
-                            "iac".into(),
-                        ],
-                        primary: "audit".into(),
-                        topics: vec!["iam".into(), "misconfiguration".into(), "supply-chain".into()],
-                    },
-                    Domain {
-                        id: "identity".into(),
-                        name: "Identity and access".into(),
-                        hints: vec![
-                            "ldap".into(),
-                            "ad".into(),
-                            "kerberos".into(),
-                            "oauth".into(),
-                            "saml".into(),
-                            "jwt".into(),
-                            "privilege".into(),
-                        ],
-                        primary: "exploit".into(),
-                        topics: vec!["privilege-escalation".into(), "token-abuse".into()],
-                    },
-                    Domain {
-                        id: "ctf".into(),
-                        name: "Capture the flag".into(),
-                        hints: vec!["ctf".into(), "flag".into(), "pwn".into(), "crypto".into()],
-                        primary: "exploit".into(),
-                        topics: vec!["pwn".into(), "crypto".into(), "forensics".into()],
-                    },
-                
+            Domain {
+                id: "source".into(),
+                name: "Source code hunting".into(),
+                hints: vec![
+                    "source".into(),
+                    "repository".into(),
+                    "repo".into(),
+                    "code".into(),
+                    "sink".into(),
+                    "taint".into(),
+                ],
+                primary: "sourcehunt".into(),
+                topics: vec!["sink-tracing".into(), "config-audit".into()],
+            },
+            Domain {
+                id: "cloud".into(),
+                name: "Cloud and infrastructure".into(),
+                hints: vec![
+                    "aws".into(),
+                    "azure".into(),
+                    "gcp".into(),
+                    "kubernetes".into(),
+                    "k8s".into(),
+                    "terraform".into(),
+                    "iac".into(),
+                ],
+                primary: "audit".into(),
+                topics: vec![
+                    "iam".into(),
+                    "misconfiguration".into(),
+                    "supply-chain".into(),
+                ],
+            },
+            Domain {
+                id: "identity".into(),
+                name: "Identity and access".into(),
+                hints: vec![
+                    "ldap".into(),
+                    "ad".into(),
+                    "kerberos".into(),
+                    "oauth".into(),
+                    "saml".into(),
+                    "jwt".into(),
+                    "privilege".into(),
+                ],
+                primary: "exploit".into(),
+                topics: vec!["privilege-escalation".into(), "token-abuse".into()],
+            },
+            Domain {
+                id: "ctf".into(),
+                name: "Capture the flag".into(),
+                hints: vec!["ctf".into(), "flag".into(), "pwn".into(), "crypto".into()],
+                primary: "exploit".into(),
+                topics: vec!["pwn".into(), "crypto".into(), "forensics".into()],
+            },
         ]
     }
 
@@ -199,9 +202,7 @@ impl Router {
                 .iter()
                 .filter(|h| task.contains(&h.to_lowercase()))
                 .count();
-            if hits > 0
-                && best.is_none_or(|(_, score)| hits > score)
-            {
+            if hits > 0 && best.is_none_or(|(_, score)| hits > score) {
                 best = Some((domain, hits));
             }
         }
@@ -220,4 +221,3 @@ impl From<DomainsDoc> for Router {
         Self { doc }
     }
 }
-
