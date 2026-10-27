@@ -1,0 +1,8 @@
+{
+  "name": "maestro-prompt-suffix",
+  "version": "0.1.0",
+  "description": "Showcase event-hook extension: appends an instruction to every user-submitted prompt.",
+  "maestro": {
+    "component": "maestro_prompt_suffix"
+  }
+}
