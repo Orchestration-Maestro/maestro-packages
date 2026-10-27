@@ -3,6 +3,7 @@
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::process::Command;
+use std::sync::mpsc::{self, Receiver};
 use std::time::{Duration, Instant};
 
 use serde_json::json;
@@ -72,15 +73,18 @@ pub fn case(name: &str, replies: Vec<Reply>, check: impl FnOnce() -> Result) -> 
     let listener = TcpListener::bind("127.0.0.1:0")?;
     listener.set_nonblocking(true)?;
     let url = format!("http://{}", listener.local_addr()?);
-    let server = std::thread::spawn(move || serve(&listener, replies));
+    let (completed, completion) = mpsc::channel();
+    let server = std::thread::spawn(move || serve(&listener, replies, &completion));
     let child = Command::new(std::env::current_exe()?)
         .args(["--exact", name, "--nocapture"])
         .env("CAPABILITY_CHILD", name)
         .env("MAESTRO_SECURITY_BRIDGE", &url)
         .env("MAESTRO_SECURITY_RUNNER", &url)
         .env("MAESTRO_SECURITY_BRIDGE_KEY", "fixture-key")
-        .output()?;
+        .output();
+    let _ = completed.send(());
     let exchanges = server.join().map_err(|_| "fixture server panicked")?;
+    let child = child?;
     assert!(
         child.status.success(),
         "child failed:\n{}\n{}",
@@ -90,9 +94,10 @@ pub fn case(name: &str, replies: Vec<Reply>, check: impl FnOnce() -> Result) -> 
     exchanges
 }
 
-/// Serve the scripted exchanges, failing rather than hanging on a missing request.
-fn serve(listener: &TcpListener, replies: Vec<Reply>) -> Result {
-    for reply in replies {
+/// Observe all requests until child completion, rejecting unscripted exchanges.
+fn serve(listener: &TcpListener, replies: Vec<Reply>, completion: &Receiver<()>) -> Result {
+    let mut replies = replies.into_iter().peekable();
+    'requests: loop {
         let deadline = Instant::now() + Duration::from_secs(20);
         let mut stream = loop {
             match listener.accept() {
@@ -100,14 +105,18 @@ fn serve(listener: &TcpListener, replies: Vec<Reply>) -> Result {
                 Err(error) if error.kind() != std::io::ErrorKind::WouldBlock => {
                     return Err(error.into());
                 }
-                Err(_) if Instant::now() >= deadline => {
-                    return Err(format!("missing request to {}", reply.path).into());
+                Err(_) if completion.try_recv().is_ok() => break 'requests,
+                Err(_) if Instant::now() >= deadline && replies.peek().is_some() => {
+                    return Err("timed out waiting for a scripted request".into());
                 }
                 Err(_) => std::thread::sleep(Duration::from_millis(5)),
             }
         };
         stream.set_read_timeout(Some(Duration::from_secs(10)))?;
         let request = read_request(&mut stream)?;
+        let reply = replies
+            .next()
+            .ok_or_else(|| format!("unscripted request: {request}"))?;
         assert!(
             request.starts_with(&format!("POST {} HTTP/1.1", reply.path)),
             "{request}"
@@ -125,7 +134,9 @@ fn serve(listener: &TcpListener, replies: Vec<Reply>) -> Result {
             reply.body
         )?;
     }
-    Ok(())
+    replies.peek().map_or(Ok(()), |reply| {
+        Err(format!("missing request to {}", reply.path).into())
+    })
 }
 
 /// Read headers and the complete request body before responding.

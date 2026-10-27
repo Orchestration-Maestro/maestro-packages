@@ -22,7 +22,7 @@ fn requires_target_and_findings() {
     );
 }
 
-/// Baseline: irreversible fixes are reported without executing either fix or recheck.
+/// Baseline: irreversible fixes are reported with zero runner requests until child exit.
 #[test]
 fn policy_blocks_irreversible_fixes() -> Result {
     case(
