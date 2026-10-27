@@ -157,3 +157,29 @@ fn read_request(
         }
     }
 }
+
+/// A swallowed runner failure must still fail the parent fixture.
+#[test]
+fn rejects_unscripted_runner_requests() -> Result {
+    let name = "support::rejects_unscripted_runner_requests";
+    let result = case(name, vec![Reply::chat("plan")], || {
+        let url = std::env::var("MAESTRO_SECURITY_RUNNER")?;
+        let address = url.strip_prefix("http://").ok_or("invalid fixture URL")?;
+        let mut stream = TcpStream::connect(address)?;
+        write!(
+            stream,
+            "POST /chat/completions HTTP/1.1\r\nContent-Length: 0\r\n\r\n"
+        )?;
+        stream.read_to_end(&mut Vec::new())?;
+        if let Ok(mut runner) = TcpStream::connect(address) {
+            let _ = write!(runner, "POST /exec HTTP/1.1\r\nContent-Length: 0\r\n\r\n");
+            let _ = runner.read_to_end(&mut Vec::new());
+        }
+        Ok(())
+    });
+    if std::env::var("CAPABILITY_CHILD").as_deref() == Ok(name) {
+        return result;
+    }
+    assert!(result.is_err(), "unscripted runner request went unobserved");
+    Ok(())
+}
