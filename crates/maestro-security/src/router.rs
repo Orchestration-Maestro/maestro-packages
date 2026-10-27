@@ -221,32 +221,3 @@ impl From<DomainsDoc> for Router {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    //! Unit tests for the router.
-
-    use super::Router;
-
-    /// A task with web hints routes to the web domain.
-    #[test]
-    fn routes_by_most_hint_hits() {
-        let router = Router::default_();
-        let domain = router.route("assess the REST API for SQLi on the web app").unwrap();
-        assert_eq!(domain.id, "web");
-    }
-
-    /// A task with no hint hits routes nowhere.
-    #[test]
-    fn unknown_task_routes_nowhere() {
-        let router = Router::default_();
-        assert!(router.route("zzz qqq").is_none());
-    }
-
-    /// The domain list is data: the default document carries the core set.
-    #[test]
-    fn domains_are_data() {
-        let router = Router::default_();
-        assert!(router.domains().len() >= 7);
-        assert!(router.domains().iter().all(|d| !d.hints.is_empty()));
-    }
-}

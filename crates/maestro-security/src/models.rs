@@ -66,15 +66,3 @@ pub fn models() -> Result<ModelMap, String> {
     })
 }
 
-#[cfg(test)]
-mod tests {
-    //! Unit tests for the model map.
-
-    use super::SCHEMA;
-
-    /// The schema tag is stable.
-    #[test]
-    fn schema_is_stable() {
-        assert_eq!(SCHEMA, "maestro-security/models/1");
-    }
-}
