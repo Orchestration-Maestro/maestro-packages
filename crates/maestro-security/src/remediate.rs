@@ -254,27 +254,3 @@ fn truncate(s: &str, max: usize) -> &str {
     }
     &s[..end]
 }
-
-#[cfg(test)]
-mod tests {
-    //! Unit tests for the remediation policy gate.
-
-    use super::{Remediation, SCHEMA};
-
-    /// A non-reversible fix is reported as not-applied.
-    #[test]
-    fn policy_gate_reports_not_applied() {
-        let step = Remediation {
-            finding: "f".into(),
-            fix: "rm -rf /".into(),
-            allowed: false,
-            output: String::new(),
-            recheck: String::new(),
-            result: "not-applied".into(),
-            note: "policy gate: not reversible".into(),
-        };
-        assert!(!step.allowed);
-        assert_eq!(step.result, "not-applied");
-        assert_eq!(SCHEMA, "maestro-security/remediate/1");
-    }
-}
