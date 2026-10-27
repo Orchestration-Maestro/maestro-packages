@@ -90,6 +90,27 @@ fn read_request(socket: &mut TcpStream) -> std::io::Result<String> {
     Ok(head)
 }
 
+/// Valid header-name casing must not cause the fixture to discard a body.
+#[test]
+fn request_framing_accepts_header_name_casing() -> TestResult {
+    for name in [
+        "content-length",
+        "Content-Length",
+        "CONTENT-LENGTH",
+        "cOnTeNt-LeNgTh",
+    ] {
+        let (url, server) = bridge_url(200, "")?;
+        let address = url.trim_start_matches("http://").trim_end_matches("/v1");
+        let mut socket = TcpStream::connect(address)?;
+        socket.set_read_timeout(Some(Duration::from_secs(10)))?;
+        let request = format!("POST /v1 HTTP/1.1\r\n{name}: 4\r\n\r\nbody");
+        socket.write_all(request.as_bytes())?;
+        socket.read_to_string(&mut String::new())?;
+        assert_eq!(captured(server)?, request, "{name}");
+    }
+    Ok(())
+}
+
 /// Join the fixture and surface server-side failures to the test runner.
 pub fn captured(handle: Capture) -> Result<String, Box<dyn std::error::Error>> {
     Ok(handle

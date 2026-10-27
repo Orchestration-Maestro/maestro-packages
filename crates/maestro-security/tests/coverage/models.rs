@@ -17,12 +17,19 @@ fn baseline_models_resolve_every_role_and_mark_availability() -> TestResult {
         assert_eq!(map.roles.len(), ROSTER.len());
         for (resolved, agent) in map.roles.iter().zip(ROSTER) {
             assert_eq!(resolved.role, agent.name);
-            assert_eq!(resolved.model, case);
+            assert_eq!(
+                resolved.model,
+                if case == "preferred" {
+                    "preferred"
+                } else {
+                    "catalog-first"
+                }
+            );
             assert_eq!(resolved.explicit, case == "preferred");
         }
         return Ok(());
     }
-    for case in ["preferred", "absent", "error"] {
+    for case in ["preferred", "unavailable", "error"] {
         let body = if case == "error" {
             r#"{"data":[]}"#
         } else {
@@ -44,7 +51,7 @@ fn baseline_models_resolve_every_role_and_mark_availability() -> TestResult {
         assert!(
             output.status.success(),
             "{}",
-            String::from_utf8_lossy(&output.stdout)
+            String::from_utf8_lossy(&output.stderr)
         );
         assert!(request.starts_with("GET /v1/models HTTP/1.1\r\n"));
         assert!(request.contains("\r\nauthorization: Bearer fixture-key\r\n"));
