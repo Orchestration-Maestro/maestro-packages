@@ -1,12 +1,11 @@
-//! The autonomous trigger surface: three chat commands and the run registry.
+//! The autonomous assessment trigger and run registry.
 //!
 //! Only an explicit command starts a run. `/assess <target>` records the run
 //! in the run index and the host wiring emits the trigger event; the trigger
 //! listener's tail runs the lifecycle in [`run`] under that same run id.
-//! `/security-stop` and `/security-steer` answer an acknowledgement until the
-//! progress task owns the control.
+//! Run controls are registered only when the run machinery implements them.
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 pub mod events;
 pub mod run;
@@ -37,20 +36,10 @@ pub struct Command {
 }
 
 /// The trigger commands, in registration order.
-pub const COMMANDS: [Command; 3] = [
-    Command {
-        name: ASSESS_COMMAND,
-        description: "Assess a target in the background; answers with the run id",
-    },
-    Command {
-        name: STOP_COMMAND,
-        description: "Stop a running assessment by run id",
-    },
-    Command {
-        name: STEER_COMMAND,
-        description: "Steer a running assessment with a message",
-    },
-];
+pub const COMMANDS: [Command; 1] = [Command {
+    name: ASSESS_COMMAND,
+    description: "Assess a target in the background; answers with the run id",
+}];
 
 /// The target of `/assess`, trimmed.
 ///

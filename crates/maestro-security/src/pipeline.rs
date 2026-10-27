@@ -539,20 +539,33 @@ pub fn assess(params: &AssessParams) -> Result<Assessment, String> {
 /// # Errors
 /// Fails if the target is empty or the pipeline run fails.
 pub fn assess_identified(params: &AssessParams, run_id: &str) -> Result<Assessment, String> {
+    let (engine, agent, mut opts) = assessment_setup(params)?;
+    engine.run_identified(agent, &params.target, run_id, &mut opts)
+}
+
+/// Resolve the shared target validation, environment and per-run options.
+///
+/// # Errors
+/// Returns an error when the assessment target is blank.
+pub(crate) fn assessment_setup(
+    params: &AssessParams,
+) -> Result<(Engine, &'static Agent, RunOptions<'static>), String> {
     if params.target.trim().is_empty() {
         return Err("target is required".into());
     }
     let mut config = Config::from_env();
-    if let Some(n) = params.max_hypotheses && n > 0 {
+    if let Some(n) = params.max_hypotheses
+        && n > 0
+    {
         config.max_hypotheses = n;
     }
     let agent = crate::agents::resolve_agent(params.agent.as_deref());
-    let mut opts = RunOptions {
+    let opts = RunOptions {
         model: params.model.clone(),
         pattern: Pattern::parse(params.pattern.as_deref().unwrap_or_default()),
         checkpoint: None,
     };
-    Engine::new(config).run_identified(agent, &params.target, run_id, &mut opts)
+    Ok((Engine::new(config), agent, opts))
 }
 
 /// Retrieve the retained evidence ledger for a finished run.

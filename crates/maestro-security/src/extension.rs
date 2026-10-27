@@ -368,7 +368,7 @@ fn register_autonomy(api: &ExtensionAPI) -> Result<(), String> {
                 handler: Rc::new(move |args, ctx| {
                     let bus = bus.clone();
                     Box::pin(async move {
-                        trigger_command(command.name, &bus, &ctx, &args).await;
+                        assess_command(&bus, &ctx, &args).await;
                         Ok(())
                     })
                 }),
@@ -378,21 +378,6 @@ fn register_autonomy(api: &ExtensionAPI) -> Result<(), String> {
         .map_err(|error| format!("register /{}: {error}", command.name))?;
     }
     Ok(())
-}
-
-/// Dispatch one trigger command to its single-purpose handler.
-async fn trigger_command(
-    name: &str,
-    bus: &EventBus,
-    ctx: &ExtensionCommandContext,
-    args: &str,
-) {
-    match name {
-        autonomy::ASSESS_COMMAND => assess_command(bus, ctx, args).await,
-        autonomy::STOP_COMMAND => stop_command(ctx, args),
-        autonomy::STEER_COMMAND => steer_command(ctx, args),
-        _ => {}
-    }
 }
 
 /// `/assess <target>`: record the run, emit the trigger, answer with the id.
@@ -415,40 +400,7 @@ async fn assess_command(bus: &EventBus, ctx: &ExtensionCommandContext, args: &st
         let _ = autonomy::finish_run(&run_id, Err(error.as_str()));
         return notify(ctx, &format!("could not start the run: {error}"), true);
     }
-    notify(
-        ctx,
-        &format!("Assessment {run_id} started. /security-stop {run_id} stops it."),
-        false,
-    );
-}
-
-/// `/security-stop <run_id>`: acknowledge; the abort lands with the run task.
-fn stop_command(ctx: &ExtensionCommandContext, args: &str) {
-    match autonomy::parse_run_id(args) {
-        Ok(run_id) => notify(
-            ctx,
-            &format!(
-                "Stop noted for {run_id}; the abort control lands in T3, so the run keeps going for now."
-            ),
-            false,
-        ),
-        Err(error) => notify(ctx, &error, true),
-    }
-}
-
-/// `/security-steer <run_id> <message>`: acknowledge; steering lands with the
-/// run task.
-fn steer_command(ctx: &ExtensionCommandContext, args: &str) {
-    match autonomy::parse_steer(args) {
-        Ok((run_id, message)) => notify(
-            ctx,
-            &format!(
-                "Steer noted for {run_id}: {message}; the steering queue lands in T3."
-            ),
-            false,
-        ),
-        Err(error) => notify(ctx, &error, true),
-    }
+    notify(ctx, &format!("Assessment {run_id} started."), false);
 }
 
 /// Show one notification; failures use the error severity.

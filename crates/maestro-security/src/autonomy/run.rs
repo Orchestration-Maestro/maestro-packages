@@ -4,8 +4,7 @@
 use maestro_extensions_wasm::ExtensionFuture;
 use serde_json::Value;
 
-use crate::agents::{Pattern, resolve_agent};
-use crate::pipeline::{self, AssessParams, Config, Engine, PhaseKind, RunOptions};
+use crate::pipeline::{self, AssessParams, PhaseKind};
 use crate::report::Assessment;
 
 use super::events;
@@ -106,22 +105,7 @@ pub async fn execute<S: EventSink, E: SessionEntry>(
     params: &AssessParams,
     run_id: &str,
 ) -> Result<Assessment, String> {
-    if params.target.trim().is_empty() {
-        return Err("target is required".into());
-    }
-    let mut config = Config::from_env();
-    if let Some(n) = params.max_hypotheses
-        && n > 0
-    {
-        config.max_hypotheses = n;
-    }
-    let agent = resolve_agent(params.agent.as_deref());
-    let engine = Engine::new(config);
-    let opts = RunOptions {
-        model: params.model.clone(),
-        pattern: Pattern::parse(params.pattern.as_deref().unwrap_or_default()),
-        checkpoint: None,
-    };
+    let (engine, agent, opts) = pipeline::assessment_setup(params)?;
     let (ctx, mut state) = engine.prepare(agent, &params.target, &opts)?;
     let phases: Vec<PhaseKind> = pipeline::planned_phases(agent).collect();
     let plan = Plan {
@@ -232,19 +216,7 @@ mod tests {
         outcomes: Vec<Result<StepReport, String>>,
     ) -> impl FnMut(PhaseKind) -> Result<StepReport, String> {
         let mut queue = outcomes.into_iter();
-        move |_phase| queue.next().unwrap_or_default_result()
-    }
-
-    /// The continuation of the scripted step helper.
-    trait DefaultResult {
-        /// The next scripted outcome, or an empty success.
-        fn unwrap_or_default_result(self) -> Result<StepReport, String>;
-    }
-
-    impl DefaultResult for Option<Result<StepReport, String>> {
-        fn unwrap_or_default_result(self) -> Result<StepReport, String> {
-            self.unwrap_or_else(|| Ok(StepReport::default()))
-        }
+        move |_phase| queue.next().unwrap_or_else(|| Ok(StepReport::default()))
     }
 
     /// The plan used by the lifecycle tests.

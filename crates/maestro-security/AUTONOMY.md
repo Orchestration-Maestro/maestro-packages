@@ -35,7 +35,7 @@ All decisions are recorded as ADRs and are binding:
 
 Owner decisions from the earlier grills: steering shapes priorities and
 guidance, never the evidence (verdicts are sacred); the curated timeline
-carries phase transitions and findings only; campaigns compose missions
+carries phase transitions and findings only; campaigns compose assessments
 and open as a follow-up ticket.
 
 ## 3. The run
@@ -202,8 +202,7 @@ The four transports are thin adapters; no logic outside the core.
 
 ## 14. Size plan
 
-About 900–1,200 production lines across T1–T10 (the four transports are
-thin adapters over one core); every file under the 500-line bar. Each
-piece maps to the extension contract (OD-354 + host.wit); nothing is a
-Pi-port item. The deferred native-hosting gap ticket opens when maestro is
-fully set up (ADR-0003).
+The planned run layer is about 900–1,200 production lines across the ten
+tasks. The four transports remain thin adapters over one core. The current
+extension provides assessment triggering and lifecycle events; controls,
+isolated process hosting and recovery remain open implementation tasks.
