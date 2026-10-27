@@ -159,6 +159,7 @@ impl Store {
         } else {
             runs.push(record.clone());
         }
+        runs.sort_by_key(|run| run.started_at);
         Self::write_jsonl(&path, &runs)
     }
 
@@ -436,9 +437,11 @@ pub struct Credential {
 }
 
 /// Read one JSON document; a missing file is the empty value.
-fn read_doc<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T, String> {
-    let Ok(text) = std::fs::read_to_string(path) else {
-        return serde_json::from_str("null").map_err(|e| e.to_string());
+fn read_doc<T: serde::de::DeserializeOwned + Default>(path: &Path) -> Result<T, String> {
+    let text = match std::fs::read_to_string(path) {
+        Ok(text) => text,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(T::default()),
+        Err(error) => return Err(format!("{}: {error}", path.display())),
     };
     serde_json::from_str(&text).map_err(|e| format!("{}: {e}", path.display()))
 }
