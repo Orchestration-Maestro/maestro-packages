@@ -10,6 +10,7 @@ use maestro_security::{browser, surface};
 fn baseline_browser_captures_page_and_summary() {
     support::isolated(
         "baseline_browser_captures_page_and_summary",
+        "fixture-model",
         &[r#"{"summary":"Login surface","unknown":["dynamic routes",7]}"#],
         |base| {
             let capture = browser::browse(&browser::Visit {
@@ -36,6 +37,7 @@ fn baseline_browser_captures_page_and_summary() {
 fn baseline_browser_preserves_unstructured_summary() {
     support::isolated(
         "baseline_browser_preserves_unstructured_summary",
+        "fixture-override",
         &["Login page", r#"{"summary":"No scripts observed"}"#],
         |base| {
             let visit = browser::Visit {
@@ -78,6 +80,7 @@ fn baseline_surface_monitors_retained_discoveries() {
 ```"#;
     support::isolated(
         "baseline_surface_monitors_retained_discoveries",
+        "fixture-model",
         &[first, next, next],
         |_| {
             let mut probe = surface::Probe {
@@ -112,6 +115,7 @@ fn baseline_surface_monitors_retained_discoveries() {
 fn baseline_surface_without_baseline_or_structured_output() {
     support::isolated(
         "baseline_surface_without_baseline_or_structured_output",
+        "fixture-override",
         &[
             r#"{"elements":[{"kind":"service","detail":"ssh"}]}"#,
             "not json",

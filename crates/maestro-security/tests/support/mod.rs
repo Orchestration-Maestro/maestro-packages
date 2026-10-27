@@ -9,7 +9,7 @@ use std::sync::{
 use std::time::{Duration, Instant};
 
 /// Run the named test in a child with isolated state and loopback services.
-pub fn isolated(name: &str, replies: &[&str], check: impl FnOnce(&str)) {
+pub fn isolated(name: &str, model: &str, replies: &[&str], check: impl FnOnce(&str)) {
     if let Ok(base) = std::env::var("CAPABILITY_TEST_BASE") {
         check(&base);
         return;
@@ -22,7 +22,8 @@ pub fn isolated(name: &str, replies: &[&str], check: impl FnOnce(&str)) {
     let stop = Arc::new(AtomicBool::new(false));
     let worker_stop = Arc::clone(&stop);
     let replies: Vec<String> = replies.iter().map(ToString::to_string).collect();
-    let worker = std::thread::spawn(move || serve(&listener, &worker_stop, &replies));
+    let model = model.to_string();
+    let worker = std::thread::spawn(move || serve(&listener, &worker_stop, &model, &replies));
     let output = std::process::Command::new(std::env::current_exe().unwrap())
         .args(["--exact", name, "--nocapture"])
         .env("CAPABILITY_TEST_BASE", &base)
@@ -44,26 +45,29 @@ pub fn isolated(name: &str, replies: &[&str], check: impl FnOnce(&str)) {
 }
 
 /// Serve only the deterministic page, bridge and sandbox responses.
-fn serve(listener: &TcpListener, stop: &AtomicBool, replies: &[String]) {
+fn serve(listener: &TcpListener, stop: &AtomicBool, model: &str, replies: &[String]) {
     let deadline = Instant::now() + Duration::from_secs(60);
     let mut chats = 0;
-    let mut observed = "no page or probe has been requested";
+    let mut observed = None;
     while !stop.load(Ordering::Relaxed) && Instant::now() < deadline {
         match listener.accept() {
             Ok((mut stream, _)) => {
                 let request = read_request(&mut stream);
                 let body = if request.starts_with("GET /page ") {
-                    observed = "Login";
+                    observed = Some("Login");
                     "<title>Login</title><a href='/login'>Sign in</a><form action='/auth' method='post'><input name='user'></form>".to_string()
                 } else if request.starts_with("POST /chat/completions ") {
                     assert!(
-                        request.contains(observed),
+                        request.contains(
+                            observed
+                                .take()
+                                .expect("each chat requires a fresh page or probe")
+                        ),
                         "captured data must reach the model"
                     );
-                    assert!(
-                        request.contains("fixture-model"),
-                        "resolved model must reach the bridge"
-                    );
+                    let (_, body) = request.split_once("\r\n\r\n").unwrap();
+                    let body: serde_json::Value = serde_json::from_str(body).unwrap();
+                    assert_eq!(body["model"], model, "resolved model must reach the bridge");
                     let reply = &replies[chats];
                     chats += 1;
                     serde_json::json!({"choices":[{"message":{"content":reply}}]}).to_string()
@@ -72,7 +76,7 @@ fn serve(listener: &TcpListener, stop: &AtomicBool, replies: &[String]) {
                         request.contains("example.test"),
                         "requested target must reach the sandbox"
                     );
-                    observed = "22/tcp open ssh";
+                    observed = Some("22/tcp open ssh");
                     "{\"type\":\"out\",\"data\":\"22/tcp open ssh\"}\n{\"type\":\"exit\",\"code\":0}\n".to_string()
                 } else {
                     assert!(request.starts_with("GET /models "), "{request}");
@@ -91,6 +95,11 @@ fn serve(listener: &TcpListener, stop: &AtomicBool, replies: &[String]) {
             Err(error) => panic!("fixture accept: {error}"),
         }
     }
+    assert_eq!(
+        chats,
+        replies.len(),
+        "every scripted reply must be consumed"
+    );
 }
 
 /// Read headers and the complete declared body before answering.
