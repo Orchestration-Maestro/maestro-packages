@@ -184,12 +184,9 @@ fn extract_name(code: &str) -> String {
 
 /// A coarse caller label from a file path (its file stem).
 fn caller_for(file: &str) -> String {
-    file.rsplit('/')
-        .next()
-        .unwrap_or(file)
-        .rsplit('.')
-        .next()
-        .unwrap_or(file)
+    let name = file.rsplit('/').next().unwrap_or(file);
+    name.rsplit_once('.')
+        .map_or(name, |(stem, _)| stem)
         .to_string()
 }
 
