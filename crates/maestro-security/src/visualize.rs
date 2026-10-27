@@ -70,7 +70,7 @@ pub fn visualize(params: &Trace) -> Result<CallGraph, String> {
     }
     let ctx = CapabilityCtx::build(&Config::from_env(), params.model.as_deref())?;
     let definitions = discover_definitions(&ctx, &params.path)?;
-    let edges = discover_calls(&ctx, &params.path, &definitions);
+    let edges = discover_calls(&ctx, &params.path, &definitions)?;
     let nodes: Vec<CallNode> = definitions
         .iter()
         .map(|(name, file, line)| CallNode {
@@ -105,11 +105,14 @@ fn discover_definitions(
 }
 
 /// Discover call edges between the discovered functions.
+///
+/// # Errors
+/// Fails when any call-site inspection fails.
 fn discover_calls(
     ctx: &CapabilityCtx,
     path: &str,
     definitions: &[(String, String, u32)],
-) -> Vec<CallEdge> {
+) -> Result<Vec<CallEdge>, String> {
     let mut edges = Vec::new();
     for def in definitions {
         let command = format!(
@@ -120,9 +123,10 @@ fn discover_calls(
             def.0,
             def.0
         );
-        let Ok(result) = ctx.sandbox.exec(&command, 60) else {
-            continue;
-        };
+        let result = ctx
+            .sandbox
+            .exec(&command, 60)
+            .map_err(|e| format!("visualize calls: {e}"))?;
         for line in result.output.lines() {
             let file = line
                 .split_once(':')
@@ -142,7 +146,7 @@ fn discover_calls(
             });
         }
     }
-    edges
+    Ok(edges)
 }
 
 /// Parse `file:line:definition` grep lines into `(name, file, line)`.

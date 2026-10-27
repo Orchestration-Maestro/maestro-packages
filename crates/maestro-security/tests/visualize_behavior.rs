@@ -82,11 +82,11 @@ fn baseline_graph_propagates_discovery_failure() {
     assert!(error.contains("401"));
 }
 
-/// Baseline: unavailable call-site discovery keeps definitions but invents no edges.
+/// Call-site inspection failure must not be presented as a successful partial graph.
 #[test]
-fn baseline_graph_retains_definitions_when_call_discovery_fails() {
+fn graph_propagates_call_discovery_failure() {
     if !support::runner(
-        "baseline_graph_retains_definitions_when_call_discovery_fails",
+        "graph_propagates_call_discovery_failure",
         vec![
             support::output("src/service.rs:3:pub fn handle() {\n"),
             (401, "runner denied".into()),
@@ -94,12 +94,10 @@ fn baseline_graph_retains_definitions_when_call_discovery_fails() {
     ) {
         return;
     }
-    let graph = visualize(&Trace {
+    let error = visualize(&Trace {
         path: "src".into(),
         model: Some("fixture".into()),
     })
-    .expect("partial graph");
-    assert_eq!(graph.nodes.len(), 1);
-    assert_eq!(graph.nodes[0].name, "handle");
-    assert!(graph.edges.is_empty());
+    .expect_err("call-site inspection must fail");
+    assert!(error.contains("401"));
 }

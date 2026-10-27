@@ -225,3 +225,13 @@ fn sample_assessment() -> crate::report::Assessment {
         summary: "s".into(),
     }
 }
+
+/// Untrusted severity text cannot escape the report's quoted class attribute.
+#[test]
+fn report_severity_cannot_inject_an_event_handler() {
+    let mut report = sample_assessment();
+    report.findings[0].severity = "high' onclick='alert(1)".into();
+    let page = render(&report);
+    assert!(!page.html.contains("class='sev high' onclick="));
+    assert!(page.html.contains("high&#39; onclick=&#39;alert(1)"));
+}

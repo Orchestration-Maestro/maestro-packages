@@ -77,3 +77,16 @@ fn baseline_campaign_collects_each_target_failure_in_input_order() {
     assert_eq!(tally.budget.spent_tokens, 0);
     assert!(!tally.budget_warned);
 }
+
+/// An unavailable runner is an inspection error, not an empty image inventory.
+#[test]
+fn prestage_propagates_runner_inspection_failure() {
+    if !support::runner(
+        "prestage_propagates_runner_inspection_failure",
+        vec![(401, "runner denied".into())],
+    ) {
+        return;
+    }
+    let error = prestage().expect_err("inspection must fail");
+    assert!(error.contains("401"));
+}
