@@ -22,7 +22,7 @@ impl ExtensionHost for Rc<Host> {
     fn register_flag(&self, _name: &str, _options: FlagOptions) -> ExtensionResult<()> { Err("unused capability".into()) }
     fn get_flag(&self, _name: &str) -> ExtensionResult<Option<FlagValue>> { Err("unused capability".into()) }
     fn register_tool(&self, _tool: ToolDefinition) -> ExtensionResult<()> { Err("unused capability".into()) }
-    fn register_message_renderer(&self, _custom_type: &str, _renderer: _crate::MessageRenderer) -> ExtensionResult<()> { Err("unused capability".into()) }
+    fn register_message_renderer(&self, _custom_type: &str, _renderer: crate::MessageRenderer) -> ExtensionResult<()> { Err("unused capability".into()) }
     fn append_entry(&self, _custom_type: &str, _data: Option<Value>) -> ExtensionResult<()> { Err("unused capability".into()) }
     fn send_message(&self, _message: CustomMessageInput, _options: Option<SendMessageOptions>) -> ExtensionResult<()> { Err("unused capability".into()) }
     fn send_user_message(&self, _content: UserContent, _options: Option<SendUserMessageOptions>) -> ExtensionResult<()> { Err("unused capability".into()) }
@@ -82,9 +82,9 @@ impl ContextPort for CommandContext {
     fn session_manager(&self) -> ExtensionResult<ReadonlySessionManager> { Err("unused capability".into()) }
 }
 impl CommandContextPort for CommandContext {
-    fn fork<'a>(&'a self, _entry_id: &'a str, _options: Option<_crate::ForkOptions>,) -> ExtensionFuture<'a, SessionChangeResult> { Box::pin(async { Err("unused command capability".into()) }) }
-    fn navigate_tree<'a>(&'a self, _target_id: &'a str, _options: Option<_crate::NavigateTreeOptions>,) -> ExtensionFuture<'a, SessionChangeResult> { Box::pin(async { Err("unused command capability".into()) }) }
-    fn switch_session<'a>(&'a self, _path: &'a str, _options: Option<_crate::SwitchSessionOptions>,) -> ExtensionFuture<'a, SessionChangeResult> { Box::pin(async { Err("unused command capability".into()) }) }
+    fn fork<'a>(&'a self, _entry_id: &'a str, _options: Option<crate::ForkOptions>,) -> ExtensionFuture<'a, SessionChangeResult> { Box::pin(async { Err("unused command capability".into()) }) }
+    fn navigate_tree<'a>(&'a self, _target_id: &'a str, _options: Option<crate::NavigateTreeOptions>,) -> ExtensionFuture<'a, SessionChangeResult> { Box::pin(async { Err("unused command capability".into()) }) }
+    fn switch_session<'a>(&'a self, _path: &'a str, _options: Option<crate::SwitchSessionOptions>,) -> ExtensionFuture<'a, SessionChangeResult> { Box::pin(async { Err("unused command capability".into()) }) }
     fn reload(&self) -> ExtensionFuture<'_, ()> { Box::pin(async { Err("unused command capability".into()) }) }
     fn wait_for_idle(&self) -> ExtensionFuture<'_, ()> { Box::pin(async { Err("unused command capability".into()) }) }
     fn new_session(&self, _options: Option<NewSessionCommandOptions>,) -> ExtensionFuture<'_, SessionChangeResult> { Box::pin(async { Err("unused command capability".into()) }) }
