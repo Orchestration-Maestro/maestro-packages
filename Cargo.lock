@@ -891,6 +891,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "maestro-prompt-suffix"
+version = "0.1.0"
+dependencies = [
+ "maestro-extensions-wasm",
+]
+
+[[package]]
 name = "maestro-request"
 version = "0.1.0"
 source = "git+https://github.com/Orchestration-Maestro/maestro#a0718577de5c8ba09c0ed69ef576d89dca59fd45"
