@@ -536,3 +536,7 @@ mod tests {
         assert_eq!(result.action, "list");
     }
 }
+
+#[cfg(test)]
+#[path = "workspace_tests.rs"]
+mod behavior_tests;
