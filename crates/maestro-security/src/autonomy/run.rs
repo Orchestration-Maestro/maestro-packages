@@ -376,4 +376,101 @@ mod tests {
         assert_eq!(completed["phase"], "verify");
         assert_eq!(completed["findings"], 2);
     }
+    /// A bus that rejects one selected event.
+    struct RejectingBus {
+        /// Event whose delivery the host refuses.
+        reject: &'static str,
+        /// Events attempted before the driver returns.
+        attempted: Vec<String>,
+    }
+
+    impl EventSink for RejectingBus {
+        fn emit<'a>(&'a mut self, channel: &'a str, _payload: Value) -> ExtensionFuture<'a, ()> {
+            self.attempted.push(channel.into());
+            let outcome = if channel == self.reject {
+                Err("bus refused".into())
+            } else {
+                Ok(())
+            };
+            Box::pin(async move { outcome })
+        }
+    }
+
+    /// Baseline: rejected checkpoints stop before another phase can execute.
+    #[test]
+    fn baseline_checkpoint_delivery_failure_stops_the_run() {
+        let mut bus = RejectingBus {
+            reject: events::CHECKPOINT,
+            attempted: Vec::new(),
+        };
+        let mut entry = EntryRecorder::default();
+        let mut calls = Vec::new();
+        let mut step = |phase: PhaseKind| {
+            calls.push(phase.name());
+            Ok(StepReport::default())
+        };
+        let error = ready(drive(
+            &plan(&[PhaseKind::Recon, PhaseKind::Model]),
+            &mut bus,
+            &mut entry,
+            &mut step,
+        ))
+        .unwrap_err();
+        assert_eq!(error, "bus refused");
+        assert_eq!(calls, ["recon"]);
+        assert_eq!(
+            bus.attempted,
+            [events::STARTED, events::PHASE, events::CHECKPOINT]
+        );
+        assert_eq!(
+            entry.bodies().last().expect("running entry")["status"],
+            "running"
+        );
+    }
+
+    /// An entry port refusing the first live run entry.
+    struct RejectingEntry;
+    impl SessionEntry for RejectingEntry {
+        fn append(&mut self, _body: &Value) -> Result<(), String> {
+            Err("entry refused".into())
+        }
+    }
+
+    /// Baseline: a refused opening entry prevents all phase work.
+    #[test]
+    fn baseline_opening_entry_failure_prevents_phase_work() {
+        let mut bus = BusRecorder::default();
+        let mut called = false;
+        let mut step = |_| {
+            called = true;
+            Ok(StepReport::default())
+        };
+        let error = ready(drive(
+            &plan(&[PhaseKind::Recon]),
+            &mut bus,
+            &mut RejectingEntry,
+            &mut step,
+        ))
+        .unwrap_err();
+        assert_eq!(error, "entry refused");
+        assert!(!called);
+        assert_eq!(bus.channels(), [events::STARTED]);
+    }
+
+    /// Baseline: target validation fails before lifecycle events or session entries.
+    #[test]
+    fn baseline_empty_target_emits_no_lifecycle_events() {
+        let mut bus = BusRecorder::default();
+        let mut entry = EntryRecorder::default();
+        let error = ready(super::execute(
+            &mut bus,
+            &mut entry,
+            &crate::pipeline::AssessParams::default(),
+            "run-blank",
+        ))
+        .unwrap_err();
+        assert_eq!(error, "target is required");
+        assert!(bus.channels().is_empty());
+        assert!(entry.bodies().is_empty());
+    }
 }

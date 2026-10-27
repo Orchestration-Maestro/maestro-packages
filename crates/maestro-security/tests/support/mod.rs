@@ -1,4 +1,4 @@
-//! Loopback fixtures for public-client and isolated capability tests.
+//! Loopback fixtures for public clients and isolated capability and runner tests.
 
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream};
@@ -41,22 +41,7 @@ pub fn bridge_url(
     let url = format!("http://{}/v1", listener.local_addr()?);
     let body = body.to_owned();
     let handle = thread::spawn(move || {
-        let start = Instant::now();
-        let mut socket = loop {
-            if start.elapsed() > Duration::from_secs(10) {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::TimedOut,
-                    "no request",
-                ));
-            }
-            match listener.accept() {
-                Ok((socket, _)) => break socket,
-                Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
-                    thread::sleep(Duration::from_millis(5));
-                }
-                Err(error) => return Err(error),
-            }
-        };
+        let mut socket = accept(&listener, Duration::from_secs(10))?;
         socket.set_read_timeout(Some(Duration::from_secs(10)))?;
         socket.set_write_timeout(Some(Duration::from_secs(10)))?;
         let request = read_request(&mut socket)?;
@@ -226,7 +211,10 @@ fn serve(listener: &TcpListener, stop: &AtomicBool, model: &str, replies: &[Stri
                     observed = Some("22/tcp open ssh");
                     "{\"type\":\"out\",\"data\":\"22/tcp open ssh\"}\n{\"type\":\"exit\",\"code\":0}\n".to_string()
                 } else {
-                    assert!(request.starts_with("GET /models "), "{request}");
+                    assert!(
+                        request.starts_with("GET /models ") || request.starts_with("GET /health "),
+                        "{request}"
+                    );
                     "{\"data\":[{\"id\":\"fixture-model\"}]}".to_string()
                 };
                 write!(
@@ -247,4 +235,80 @@ fn serve(listener: &TcpListener, stop: &AtomicBool, model: &str, replies: &[Stri
         replies.len(),
         "every scripted reply must be consumed"
     );
+}
+
+/// Accept one loopback request before the fixture's timeout.
+fn accept(listener: &TcpListener, timeout: Duration) -> std::io::Result<TcpStream> {
+    let start = Instant::now();
+    loop {
+        if start.elapsed() > timeout {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::TimedOut,
+                "no request",
+            ));
+        }
+        match listener.accept() {
+            Ok((socket, _)) => return Ok(socket),
+            Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                thread::sleep(Duration::from_millis(5));
+            }
+            Err(error) => return Err(error),
+        }
+    }
+}
+
+/// Run this test in a child with a scripted runner, returning true in the child.
+///
+/// # Panics
+/// Panics if fixture setup, a request, or the child test fails.
+#[must_use]
+pub fn runner(test: &str, replies: Vec<(u16, String)>) -> bool {
+    if std::env::var("SECURITY_TEST_CHILD").as_deref() == Ok(test) {
+        return true;
+    }
+    let listener = TcpListener::bind("127.0.0.1:0").expect("loopback runner");
+    listener.set_nonblocking(true).expect("nonblocking");
+    let url = format!("http://{}", listener.local_addr().expect("address"));
+    let home = std::env::temp_dir().join(format!("security-runner-{}-{test}", std::process::id()));
+    let server = std::thread::spawn(move || {
+        for (status, body) in replies {
+            let mut stream =
+                accept(&listener, Duration::from_secs(30)).expect("runner request timed out");
+            stream
+                .set_read_timeout(Some(Duration::from_secs(5)))
+                .expect("read timeout");
+            read_request(&mut stream).expect("runner request");
+            write!(stream, "HTTP/1.1 {status} Fixture\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len()).expect("response");
+        }
+    });
+    let output = std::process::Command::new(std::env::current_exe().expect("test executable"))
+        .args(["--exact", test, "--nocapture"])
+        .env("SECURITY_TEST_CHILD", test)
+        .env("MAESTRO_SECURITY_RUNNER", url)
+        .env("MAESTRO_SECURITY_HOME", &home)
+        .env("MAESTRO_SECURITY_BRIDGE", "http://127.0.0.1:1")
+        .output()
+        .expect("child test");
+    server.join().expect("runner fixture");
+    let _ = std::fs::remove_dir_all(home);
+    assert!(
+        output.status.success(),
+        "{}\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    false
+}
+
+/// Encode the runner's output stream for one successful command.
+#[must_use]
+pub fn output(text: &str) -> (u16, String) {
+    (
+        200,
+        format!(
+            "{}\n{}\n",
+            serde_json::json!({"type":"out", "data":text}),
+            serde_json::json!({"type":"exit", "code":0})
+        ),
+    )
 }
