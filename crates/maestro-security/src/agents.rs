@@ -206,7 +206,7 @@ pub fn resolve_agent(name: Option<&str>) -> &'static Agent {
 mod tests {
     //! Unit tests for the roster and patterns.
 
-    use super::{Pattern, PANEL, ROSTER};
+    use super::{PANEL, Pattern, ROSTER};
 
     /// Unknown pattern names fall back to the default.
     #[test]

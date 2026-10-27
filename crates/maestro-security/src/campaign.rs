@@ -176,7 +176,11 @@ pub fn run(params: &Targets) -> Result<Tally, String> {
         total_findings,
         total_refuted,
         failed.len(),
-        if budget_warned { " budget warning raised" } else { "" }
+        if budget_warned {
+            " budget warning raised"
+        } else {
+            ""
+        }
     );
     Ok(Tally {
         schema: SCHEMA,
@@ -203,7 +207,7 @@ fn campaign_totals(assessments: &[Assessment]) -> (usize, usize) {
 mod tests {
     //! Unit tests for campaign aggregation.
 
-    use super::{run, AgentBudget, Decision, Targets};
+    use super::{AgentBudget, Decision, Targets, run};
 
     /// An empty target list is rejected before any pipeline work.
     #[test]
