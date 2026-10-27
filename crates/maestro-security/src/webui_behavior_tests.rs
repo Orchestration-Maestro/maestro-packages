@@ -7,29 +7,50 @@ use crate::webui::{render, render_evidence};
 #[test]
 fn baseline_report_escapes_untrusted_data_in_every_section() {
     let mut report = sample_assessment();
-    let hostile = "<script>\"&";
-    report.target = hostile.into();
-    report.agent = hostile.into();
-    report.model = hostile.into();
-    report.run_id = hostile.into();
-    report.summary = hostile.into();
-    report.findings[0].title = hostile.into();
-    report.findings[0].severity = hostile.into();
-    report.findings[0].impact = hostile.into();
-    report.findings[0].evidence.command = hostile.into();
-    report.refuted[0].hypothesis = hostile.into();
-    report.refuted[0].evidence_id = hostile.into();
-    report.threats[0].asset = hostile.into();
-    report.threats[0].path = hostile.into();
-    report.threats[0].impact = hostile.into();
-    report.threats[0].hardening = hostile.into();
-    report.unknown[0] = hostile.into();
+    let hostile = |field| format!("<{field}>\"&");
+    report.target = hostile("target");
+    report.agent = hostile("agent");
+    report.model = hostile("model");
+    report.run_id = hostile("run");
+    report.summary = hostile("summary");
+    report.findings[0].title = hostile("finding");
+    report.findings[0].severity = hostile("severity");
+    report.findings[0].impact = hostile("impact");
+    report.findings[0].evidence.command = hostile("command");
+    report.refuted[0].hypothesis = hostile("hypothesis");
+    report.refuted[0].evidence_id = hostile("evidence");
+    report.threats[0].asset = hostile("asset");
+    report.threats[0].path = hostile("path");
+    report.threats[0].impact = hostile("threat");
+    report.threats[0].hardening = hostile("hardening");
+    report.unknown[0] = hostile("unknown");
     let page = render(&report);
-    assert_eq!(page.run_id, hostile);
+    assert_eq!(page.run_id, hostile("run"));
     assert_eq!(page.page, "report");
-    assert!(!page.html.contains(hostile));
-    assert!(page.html.contains("&lt;script&gt;&quot;&amp;"));
-    assert!(!page.html.contains("<script>"));
+    for field in [
+        "target",
+        "agent",
+        "model",
+        "run",
+        "summary",
+        "finding",
+        "severity",
+        "impact",
+        "command",
+        "hypothesis",
+        "evidence",
+        "asset",
+        "path",
+        "threat",
+        "hardening",
+        "unknown",
+    ] {
+        assert!(!page.html.contains(&hostile(field)), "unescaped {field}");
+        assert!(
+            page.html.contains(&format!("&lt;{field}&gt;&quot;&amp;")),
+            "missing {field}"
+        );
+    }
 }
 
 /// Baseline: verdicts and spend remain visible, including rejected graph nodes.
@@ -116,8 +137,12 @@ fn baseline_evidence_escapes_notes_and_counts_only_matching_entry_kinds() {
     ] {
         assert!(!page.html.contains(raw), "unescaped or wrong note: {raw}");
     }
-    assert!(page.html.contains("&lt;command&gt;"));
-    assert!(page.html.contains("&lt;prompt&gt;"));
+    for field in ["run", "target", "command", "prompt", "model", "recon"] {
+        assert!(
+            page.html.contains(&format!("&lt;{field}&gt;")),
+            "missing {field}"
+        );
+    }
     assert!(page.html.contains(&format!(">{}<", "é".repeat(120))));
     assert!(page.html.contains("1 llm calls"));
     assert!(page.html.contains("1 executions"));
