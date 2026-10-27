@@ -1,6 +1,6 @@
 //! Model maps resolved against isolated bridge catalogs.
 
-use super::support::{TestResult, bridge_url, captured};
+use super::support::{TestResult, bridge_url, captured, header_value};
 use maestro_security::{ROSTER, models};
 
 /// Resolve in a child process so environment overrides cannot race other tests.
@@ -54,7 +54,10 @@ fn baseline_models_resolve_every_role_and_mark_availability() -> TestResult {
             String::from_utf8_lossy(&output.stderr)
         );
         assert!(request.starts_with("GET /v1/models HTTP/1.1\r\n"));
-        assert!(request.contains("\r\nauthorization: Bearer fixture-key\r\n"));
+        assert_eq!(
+            header_value(&request, "Authorization"),
+            Some("Bearer fixture-key")
+        );
     }
     Ok(())
 }

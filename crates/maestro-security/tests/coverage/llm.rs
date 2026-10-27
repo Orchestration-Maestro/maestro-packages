@@ -1,6 +1,6 @@
 //! Model calls exercised over a loopback HTTP bridge.
 
-use super::support::{TestResult, bridge, captured};
+use super::support::{TestResult, bridge, captured, header_value};
 
 /// An HTTP error remains an error when its byte cap splits a Unicode character.
 #[test]
@@ -26,7 +26,10 @@ fn baseline_catalog_preserves_order_and_authorizes() -> TestResult {
     assert_eq!(client.available_models()?, ["second", "first"]);
     let request = captured(server)?;
     assert!(request.starts_with("GET /v1/models HTTP/1.1\r\n"));
-    assert!(request.contains("\r\nauthorization: Bearer fixture-key\r\n"));
+    assert_eq!(
+        header_value(&request, "Authorization"),
+        Some("Bearer fixture-key")
+    );
     Ok(())
 }
 
@@ -64,8 +67,14 @@ fn baseline_chat_sends_inputs_and_returns_content_and_tokens() -> TestResult {
     assert_eq!(reply.tokens_out, 17);
     let request = captured(server)?;
     assert!(request.starts_with("POST /v1/chat/completions HTTP/1.1\r\n"));
-    assert!(request.contains("\r\nauthorization: Bearer fixture-key\r\n"));
-    assert!(request.contains("\r\ncontent-type: application/json\r\n"));
+    assert_eq!(
+        header_value(&request, "Authorization"),
+        Some("Bearer fixture-key")
+    );
+    assert_eq!(
+        header_value(&request, "Content-Type"),
+        Some("application/json")
+    );
     let (_, body) = request
         .split_once("\r\n\r\n")
         .ok_or("missing request body")?;

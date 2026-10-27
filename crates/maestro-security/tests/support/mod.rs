@@ -60,6 +60,15 @@ pub fn bridge_url(
     Ok((url, handle))
 }
 
+/// Read a header value without depending on the sender's header-name casing.
+pub fn header_value<'a>(request: &'a str, name: &str) -> Option<&'a str> {
+    request
+        .lines()
+        .take_while(|line| !line.is_empty())
+        .filter_map(|line| line.split_once(':'))
+        .find_map(|(key, value)| key.eq_ignore_ascii_case(name).then_some(value.trim()))
+}
+
 /// Read the framed request before replying, including a POST body.
 fn read_request(socket: &mut TcpStream) -> std::io::Result<String> {
     let mut reader = BufReader::new(socket);
@@ -77,9 +86,8 @@ fn read_request(socket: &mut TcpStream) -> std::io::Result<String> {
         if line == "\r\n" {
             break;
         }
-        if let Some(value) = line.strip_prefix("content-length: ") {
+        if let Some(value) = header_value(&line, "Content-Length") {
             length = value
-                .trim()
                 .parse()
                 .map_err(|error| std::io::Error::new(std::io::ErrorKind::InvalidData, error))?;
         }
@@ -93,20 +101,32 @@ fn read_request(socket: &mut TcpStream) -> std::io::Result<String> {
 /// Valid header-name casing must not cause the fixture to discard a body.
 #[test]
 fn request_framing_accepts_header_name_casing() -> TestResult {
-    for name in [
-        "content-length",
-        "Content-Length",
-        "CONTENT-LENGTH",
-        "cOnTeNt-LeNgTh",
+    for (auth, kind, length) in [
+        ("authorization", "content-type", "content-length"),
+        ("Authorization", "Content-Type", "Content-Length"),
+        ("AUTHORIZATION", "CONTENT-TYPE", "CONTENT-LENGTH"),
+        ("aUtHoRiZaTiOn", "cOnTeNt-TyPe", "cOnTeNt-LeNgTh"),
     ] {
         let (url, server) = bridge_url(200, "")?;
         let address = url.trim_start_matches("http://").trim_end_matches("/v1");
         let mut socket = TcpStream::connect(address)?;
         socket.set_read_timeout(Some(Duration::from_secs(10)))?;
-        let request = format!("POST /v1 HTTP/1.1\r\n{name}: 4\r\n\r\nbody");
+        let request = format!(
+            "POST /v1 HTTP/1.1\r\n{auth}: Bearer fixture-key\r\n{kind}: application/json\r\n{length}: 4\r\n\r\nbody"
+        );
         socket.write_all(request.as_bytes())?;
         socket.read_to_string(&mut String::new())?;
-        assert_eq!(captured(server)?, request, "{name}");
+        let captured = captured(server)?;
+        assert_eq!(captured, request, "{length}");
+        assert_eq!(
+            header_value(&captured, "Authorization"),
+            Some("Bearer fixture-key")
+        );
+        assert_eq!(
+            header_value(&captured, "Content-Type"),
+            Some("application/json")
+        );
+        assert_eq!(header_value(&captured, "Content-Length"), Some("4"));
     }
     Ok(())
 }

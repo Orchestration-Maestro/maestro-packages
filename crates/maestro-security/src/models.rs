@@ -54,7 +54,11 @@ pub fn models() -> Result<ModelMap, String> {
         let explicit = available.contains(&config.default_model);
         roles.push(RoleModel {
             role: agent.name.to_string(),
-            model: config.default_model.clone(),
+            model: if explicit {
+                config.default_model.clone()
+            } else {
+                available[0].clone()
+            },
             explicit,
         });
     }
