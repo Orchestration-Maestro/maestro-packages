@@ -472,3 +472,17 @@ fn baseline_registered_read_tools_return_report_ledger_and_validation() {
     });
     std::fs::remove_dir_all(home).expect("remove retained state");
 }
+
+/// Doctor registration must supply a schema object, not serialized schema text.
+#[test]
+fn doctor_registers_an_object_parameter_schema() {
+    let host = Rc::new(Host::default());
+    ready(factory(ExtensionAPI::new(Rc::new(ApiHost(host.clone()))))).expect("register");
+    assert!(
+        host.tools.borrow()["security_doctor"]
+            .metadata
+            .parameters
+            .as_json()
+            .is_object()
+    );
+}
