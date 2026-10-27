@@ -28,6 +28,15 @@ Extension packages for Maestro. This repository follows the same strict governan
 - Lane models: every lane, planning and review runs on deepseek/deepseek-flash; the supervisor names the model in each dispatch.
 - Every issue is labelled `packages` and opens with "Repository: maestro-packages" so it never mixes with maestro core work.
 
+## CI contract
+
+[Shared Rust CI](https://github.com/Orchestration-Maestro/rust-workflows/blob/4a05e4c4c6cb82451af0b585255881bb7d860c81/README.md)
+defines the caller in `.github/workflows/ci.yml` and its SARIF and coverage
+upload jobs. CI checks the root workspace with `rust-toolchain.toml`, a 90%
+coverage floor and the automatic license policy. Keep the caller's Rust version
+in sync with the toolchain file. An administrator must register the shared
+`Required Rust CI` job as a required check after this workflow lands.
+
 ## Agent skills
 
 ### Issue tracker
