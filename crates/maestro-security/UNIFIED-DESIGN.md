@@ -1099,7 +1099,7 @@ label shape, so double-backtick labels count too.
 | `skills/slice1e-cf-ranges.md` | 115 | 0 / 115 / 0 / 0 | `f47c74182e5f70a42be6e4225ed96a6a7721ddef148c209c1642e5d055aac545` |
 | `skills/slice1e-confidence-correction.md` | 22 | 0 / 22 / 0 / 0 | `53532523c072b4a1961f25ec1948cf97aa8081b45293cd3d30ffeb8934d65ab6` |
 | `skills/slice1f-clause-tails.md` | 27 | 0 / 27 / 0 / 0 | `4c23d90e8707067379035472fbaa02dc2f71c0ec2deead230be421d7b6eb37cc` |
-| `skills/slice2-box-skills.md` | 4 | 1 / 3 / 0 / 0 | `8b941c132dae6bbb80e34a6c1c64aa048c8645f3f0ef89a72bdc03864fed279f` |
+| `skills/slice2-box-skills.md` | 4 | 1 / 3 / 1 / 0 | `8b941c132dae6bbb80e34a6c1c64aa048c8645f3f0ef89a72bdc03864fed279f` |
 
 Totals (supersede §13): 798 joined, 1913 explicit exclusions,
 0 false-source flags remaining, 0 data-only waivers.
