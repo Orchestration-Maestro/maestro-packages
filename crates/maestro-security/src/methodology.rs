@@ -92,7 +92,7 @@ STYLE: terse. Facts over adjectives. One line per fact. No filler.";
 
 /// Deterministic recon commands for a target: (command, timeout seconds).
 pub fn recon_commands(target: &str) -> Vec<(String, u32)> {
-    let quoted = format!("'{}'", target.replace('\'', "'\\''"));
+    let quoted = crate::runner::shell_quote(target);
     let mut cmds = vec![
         (format!("nmap -Pn -sV --top-ports 100 -- {quoted}"), 600),
         (format!("curl -sS -m 15 -D - -o /dev/null -- {quoted}"), 120),

@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::ctx::CapabilityCtx;
 use crate::pipeline::Config;
+use crate::runner::shell_quote;
 
 /// Schema tag for the source-hunt result.
 pub const SCHEMA: &str = "maestro-security/sourcehunt/1";
@@ -208,11 +209,6 @@ fn apply_judgements(raw: &[Hit], raw_json: &str) -> Vec<Hit> {
             })
         })
         .collect()
-}
-
-/// Single-quote a string for safe shell interpolation.
-fn shell_quote(s: &str) -> String {
-    format!("'{}'", s.replace('\'', r"'\''"))
 }
 
 #[cfg(test)]
