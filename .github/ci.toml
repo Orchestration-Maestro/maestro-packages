@@ -3,7 +3,8 @@ browser_test_crates = []
 test_tools = true
 test_inputs = {}
 reserved_ports = []
-spelling_words = ["temH"]
+# Nmap's -Pn flag and the parser term unparseable are intentional.
+spelling_words = ["temH", "Pn", "unparseable"]
 check_targets = [
     "aarch64-unknown-linux-gnu",
     "x86_64-apple-darwin",
