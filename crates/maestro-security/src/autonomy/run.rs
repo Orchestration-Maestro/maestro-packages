@@ -61,7 +61,12 @@ pub async fn drive<S: EventSink, E: SessionEntry>(
     let mut findings = 0usize;
     for kind in plan.phases {
         let kind = *kind;
-        entry.append(&events::phase_entry(run_id, kind, events::RUNNING, findings))?;
+        entry.append(&events::phase_entry(
+            run_id,
+            kind,
+            events::RUNNING,
+            findings,
+        ))?;
         match step(kind) {
             Ok(report) => {
                 findings += report.findings.len();
@@ -80,7 +85,12 @@ pub async fn drive<S: EventSink, E: SessionEntry>(
                 }
                 sink.emit(events::CHECKPOINT, events::checkpoint(run_id, kind))
                     .await?;
-                entry.append(&events::phase_entry(run_id, kind, events::COMPLETED, findings))?;
+                entry.append(&events::phase_entry(
+                    run_id,
+                    kind,
+                    events::COMPLETED,
+                    findings,
+                ))?;
             }
             Err(error) => {
                 sink.emit(events::PHASE, events::phase(run_id, kind, events::FAILED))
@@ -147,8 +157,8 @@ mod tests {
     use serde_json::{Value, json};
 
     use super::{EventSink, Plan, SessionEntry, StepReport, drive};
-    use crate::pipeline::PhaseKind;
     use crate::autonomy::events;
+    use crate::pipeline::PhaseKind;
 
     /// Poll one future that never waits on real input.
     fn ready<T>(future: impl Future<Output = T>) -> T {
@@ -319,10 +329,7 @@ mod tests {
     fn a_failing_phase_reports_failed_and_stops() {
         let mut bus = BusRecorder::default();
         let mut entry = EntryRecorder::default();
-        let mut step = scripted(vec![
-            Ok(StepReport::default()),
-            Err("runner down".into()),
-        ]);
+        let mut step = scripted(vec![Ok(StepReport::default()), Err("runner down".into())]);
         let result = ready(drive(
             &plan(&[PhaseKind::Recon, PhaseKind::Model, PhaseKind::Hypotheses]),
             &mut bus,

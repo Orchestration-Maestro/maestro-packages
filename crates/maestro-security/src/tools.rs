@@ -190,8 +190,8 @@ pub fn page_schema() -> serde_json::Value {
 pub fn run_assess(arguments: &serde_json::Value) -> Result<String, String> {
     let params: crate::pipeline::AssessParams =
         serde_json::from_value(arguments.clone()).map_err(|e| e.to_string())?;
-    let report = crate::pipeline::assess(&params)
-        .map_err(|error| format!("assessment failed: {error}"))?;
+    let report =
+        crate::pipeline::assess(&params).map_err(|error| format!("assessment failed: {error}"))?;
     serde_json::to_string(&report).map_err(|e| e.to_string())
 }
 
@@ -270,8 +270,8 @@ pub fn run_report_page(arguments: &serde_json::Value) -> Result<String, String> 
         .get("run_id")
         .and_then(serde_json::Value::as_str)
         .ok_or("run_id is required")?;
-    let report = crate::evidence::load_report(run_id)
-        .map_err(|e| format!("report lookup failed: {e}"))?;
+    let report =
+        crate::evidence::load_report(run_id).map_err(|e| format!("report lookup failed: {e}"))?;
     let page = crate::webui::render(&report);
     Ok(page.html)
 }
@@ -285,8 +285,7 @@ pub fn run_evidence_page(arguments: &serde_json::Value) -> Result<String, String
         .get("run_id")
         .and_then(serde_json::Value::as_str)
         .ok_or("run_id is required")?;
-    let text = crate::evidence::load(run_id)
-        .map_err(|e| format!("evidence lookup failed: {e}"))?;
+    let text = crate::evidence::load(run_id).map_err(|e| format!("evidence lookup failed: {e}"))?;
     let doc: crate::evidence::LedgerDoc =
         serde_json::from_str(&text).map_err(|e| format!("ledger {run_id}: {e}"))?;
     crate::webui::render_evidence(&doc).map(|page| page.html)
@@ -331,8 +330,8 @@ pub fn run_validate(arguments: &serde_json::Value) -> Result<String, String> {
         .get("run_id")
         .and_then(serde_json::Value::as_str)
         .ok_or("run_id is required")?;
-    let report = crate::evidence::load_report(run_id)
-        .map_err(|e| format!("report lookup failed: {e}"))?;
+    let report =
+        crate::evidence::load_report(run_id).map_err(|e| format!("report lookup failed: {e}"))?;
     let verdict = crate::validate::validate_assessment(&report);
     serde_json::to_string(&verdict).map_err(|e| e.to_string())
 }
@@ -378,7 +377,10 @@ mod tests {
     #[test]
     fn evidence_requires_run_id_or_agent() {
         let err = run_evidence(&serde_json::json!({})).unwrap_err();
-        assert!(err.contains("run_id or agent is required"), "unexpected: {err}");
+        assert!(
+            err.contains("run_id or agent is required"),
+            "unexpected: {err}"
+        );
     }
 
     /// Evidence for an agent with no retained runs is a clear error.
