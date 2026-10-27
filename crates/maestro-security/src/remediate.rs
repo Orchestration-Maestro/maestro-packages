@@ -216,7 +216,10 @@ output.",
             let Ok(value) = serde_json::from_str::<serde_json::Value>(&json) else {
                 return (false, text.chars().take(200).collect());
             };
-            let held = value.get("held").and_then(serde_json::Value::as_bool).unwrap_or(false);
+            let held = value
+                .get("held")
+                .and_then(serde_json::Value::as_bool)
+                .unwrap_or(false);
             let note = value
                 .get("note")
                 .and_then(serde_json::Value::as_str)

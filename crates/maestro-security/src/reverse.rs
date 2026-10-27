@@ -57,7 +57,10 @@ pub fn reverse(params: &Artifact) -> Result<Analysis, String> {
     let ctx = CapabilityCtx::build(&Config::from_env(), params.model.as_deref())?;
     let facts = Facts {
         file_type: run(&ctx, &format!("file {}", sh(&params.path))),
-        strings: run(&ctx, &format!("strings {} 2>/dev/null | head -200", sh(&params.path))),
+        strings: run(
+            &ctx,
+            &format!("strings {} 2>/dev/null | head -200", sh(&params.path)),
+        ),
         symbols: run(
             &ctx,
             &format!(
@@ -78,7 +81,12 @@ pub fn reverse(params: &Artifact) -> Result<Analysis, String> {
     Ok(Analysis {
         schema: SCHEMA,
         path: params.path.clone(),
-        file_type: facts.file_type.lines().next().unwrap_or_default().to_string(),
+        file_type: facts
+            .file_type
+            .lines()
+            .next()
+            .unwrap_or_default()
+            .to_string(),
         strings: dedup_lines(&facts.strings, 120),
         symbols: dedup_lines(&facts.symbols, 80),
         sections: dedup_lines(&facts.sections, 40),
@@ -110,7 +118,11 @@ struct Facts {
 }
 
 /// Have the model interpret the collected artifact facts.
-fn interpret(ctx: &CapabilityCtx, path: &str, facts: &Facts) -> Result<(String, Vec<String>), String> {
+fn interpret(
+    ctx: &CapabilityCtx,
+    path: &str,
+    facts: &Facts,
+) -> Result<(String, Vec<String>), String> {
     let user = format!(
         "Artifact: {path}\n\nfile: {}\n\nNotable strings:\n{}\n\nSymbols:\
 \n{}\n\nSections:\n{}\n\nInterpret this artifact. Return JSON: \

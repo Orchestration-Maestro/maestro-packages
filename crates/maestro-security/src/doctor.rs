@@ -89,7 +89,12 @@ fn check_runner(config: &Config) -> HealthCheck {
     let sandbox = Sandbox::local().with_base_url(config.runner.clone());
     match sandbox.health() {
         Ok(()) => ok("runner", &config.runner),
-        Err(e) => drift("runner", &config.runner, &e, "point MAESTRO_SECURITY_RUNNER at the live runner"),
+        Err(e) => drift(
+            "runner",
+            &config.runner,
+            &e,
+            "point MAESTRO_SECURITY_RUNNER at the live runner",
+        ),
     }
 }
 
@@ -100,7 +105,12 @@ fn check_bridge(config: &Config) -> HealthCheck {
         .with_key(config.bridge_key.clone());
     match client.available_models() {
         Ok(_) => ok("bridge", &config.bridge),
-        Err(e) => drift("bridge", &config.bridge, &e, "point MAESTRO_SECURITY_BRIDGE at the live bridge"),
+        Err(e) => drift(
+            "bridge",
+            &config.bridge,
+            &e,
+            "point MAESTRO_SECURITY_BRIDGE at the live bridge",
+        ),
     }
 }
 
@@ -114,7 +124,12 @@ fn check_models(config: &Config) -> HealthCheck {
             "models",
             &format!("{} models, default={}", models.len(), config.default_model),
         ),
-        Err(e) => drift("models", "bridge /models", &e, "start the model router or fix the bridge key"),
+        Err(e) => drift(
+            "models",
+            "bridge /models",
+            &e,
+            "start the model router or fix the bridge key",
+        ),
     }
 }
 
@@ -216,7 +231,7 @@ fn missing(name: &str, target: &str, error: &str, remediation: &str) -> HealthCh
 mod tests {
     //! Unit tests for the doctor helpers.
 
-    use super::{ok, Classification};
+    use super::{Classification, ok};
 
     /// ok is healthy with no remediation; the classification is serializable.
     #[test]
