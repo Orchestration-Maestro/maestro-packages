@@ -101,3 +101,25 @@ fn graph_propagates_call_discovery_failure() {
     .expect_err("call-site inspection must fail");
     assert!(error.contains("401"));
 }
+
+/// A hidden extensionless source file keeps its nonempty file stem as caller.
+#[test]
+fn graph_preserves_hidden_extensionless_caller_stems() {
+    if !support::runner(
+        "graph_preserves_hidden_extensionless_caller_stems",
+        vec![
+            support::output("src/service.rs:3:pub fn handle() {\n"),
+            support::output("src/.client:8: handle();\n"),
+        ],
+    ) {
+        return;
+    }
+    let graph = visualize(&Trace {
+        path: "src".into(),
+        model: Some("fixture".into()),
+    })
+    .expect("call graph");
+    assert_eq!(graph.edges.len(), 1);
+    assert_eq!(graph.edges[0].from, ".client");
+    assert_eq!(graph.edges[0].to, "handle");
+}
