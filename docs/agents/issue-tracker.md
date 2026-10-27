@@ -1,7 +1,8 @@
 # Issue tracker: GitHub
 
-Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for
-all operations.
+Issues for this repo live in GitHub Issues. Each issue links to one spec
+document on main, which lands before implementation as the first commit
+of the ticket's PR. Use the `gh` CLI for issue operations.
 
 ## Conventions
 

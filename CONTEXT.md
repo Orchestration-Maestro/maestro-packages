@@ -58,14 +58,12 @@ The live view over all runs: id, target, state, phase, elapsed, findings.
 _Avoid_: Dashboard, task list
 
 **Box**:
-The Kali image carrying raw tools, skills and models — the pipeline's
-hands, never the brain.
+The assessment environment that provides raw tools, skills and models.
 _Avoid_: Sandbox, VM, container
 
 **Run entry**:
 The curated timeline of one run in the session: phase transitions and
-findings only; the run itself lives in its own isolated process, never in
-the session's context.
+findings only.
 _Avoid_: Run thread, run panel
 
 **Run log**:
@@ -87,12 +85,11 @@ _Avoid_: Plugin, bundle
 
 **Manifest**:
 The catalog file that describes the security package, per Maestro's
-manifest schema; manifests live in the maestro-manifests repository.
+manifest schema.
 _Avoid_: Config, spec
 
 **Campaign**:
-A queued sequence of assessments worked through one after another; the
-mission is the core, campaigns compose missions.
+A queued sequence of assessments worked through one after another.
 _Avoid_: Batch, queue
 
 **Event seam**:
@@ -103,5 +100,4 @@ _Avoid_: API, hook, callback
 
 ## Decisions
 
-Decisions live in `docs/adr/`. Settled so far: ADR-0001 (the trigger),
-ADR-0002 (the run as a session citizen).
+Decisions live in the [decision directory](docs/adr/).
