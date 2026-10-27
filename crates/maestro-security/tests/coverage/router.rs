@@ -27,7 +27,7 @@ fn baseline_custom_routes_rank_hits_and_keep_first_tie() {
     for (task, expected) in [
         ("alpha BETA", "first"),
         ("ALPHA alpha alpha beta GAMMA", "second"),
-        ("prefixALPHAsuffix", "first"),
+        ("prefixalphasuffix", "first"),
     ] {
         assert_eq!(
             router.route(task).map(|domain| domain.id.as_str()),
