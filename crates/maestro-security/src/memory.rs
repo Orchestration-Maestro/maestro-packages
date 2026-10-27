@@ -216,51 +216,5 @@ fn fnv1a(bytes: &[u8]) -> u64 {
 }
 
 #[cfg(test)]
-mod tests {
-    //! Unit tests for the embedder and the memory index.
-
-    use super::{Memory, cosine, embed, tokenize};
-
-    /// The same text always embeds to the same vector.
-    #[test]
-    fn embed_is_deterministic() {
-        assert_eq!(embed("open port 22 ssh"), embed("open port 22 ssh"));
-    }
-
-    /// Identical vectors score 1.0; unrelated text scores lower.
-    #[test]
-    fn cosine_ranks_related_higher() {
-        let q = embed("ssh root login exposed");
-        let related = embed("ssh root login is exposed on port 22");
-        let unrelated = embed("the http cache is stale and returns 304");
-        assert!(cosine(&q, &related) > cosine(&q, &unrelated));
-    }
-
-    /// Search returns the most similar entry first.
-    #[test]
-    fn search_orders_by_similarity() {
-        let mut mem = Memory::new();
-        mem.entries
-            .push(entry("mem-0001", "ssh root login exposed"));
-        mem.entries.push(entry("mem-0002", "http cache stale 304"));
-        let hits = mem.search("ssh root login", 1);
-        assert_eq!(hits.len(), 1);
-        assert_eq!(hits[0].id, "mem-0001");
-    }
-
-    /// Tokenizer keeps words of two or more characters, lowercased.
-    #[test]
-    fn tokenizer_filters_short_and_lowercases() {
-        assert_eq!(tokenize("Port 22 SSH"), vec!["port", "22", "ssh"]);
-    }
-
-    fn entry(id: &str, text: &str) -> super::MemoryEntry {
-        super::MemoryEntry {
-            id: id.into(),
-            target: "t".into(),
-            text: text.into(),
-            vector: embed(text),
-            created_at: 0,
-        }
-    }
-}
+#[path = "memory_tests.rs"]
+mod tests;
