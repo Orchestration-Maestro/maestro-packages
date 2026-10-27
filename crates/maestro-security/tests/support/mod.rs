@@ -27,6 +27,7 @@ pub fn isolated(name: &str, replies: &[&str], check: impl FnOnce(&str)) {
         .args(["--exact", name, "--nocapture"])
         .env("CAPABILITY_TEST_BASE", &base)
         .env("MAESTRO_SECURITY_BRIDGE", &base)
+        .env("MAESTRO_SECURITY_BRIDGE_KEY", "fixture-key")
         .env("MAESTRO_SECURITY_RUNNER", &base)
         .env("MAESTRO_SECURITY_HOME", &home)
         .output()
