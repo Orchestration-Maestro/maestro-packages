@@ -211,7 +211,10 @@ fn serve(listener: &TcpListener, stop: &AtomicBool, model: &str, replies: &[Stri
                     observed = Some("22/tcp open ssh");
                     "{\"type\":\"out\",\"data\":\"22/tcp open ssh\"}\n{\"type\":\"exit\",\"code\":0}\n".to_string()
                 } else {
-                    assert!(request.starts_with("GET /models "), "{request}");
+                    assert!(
+                        request.starts_with("GET /models ") || request.starts_with("GET /health "),
+                        "{request}"
+                    );
                     "{\"data\":[{\"id\":\"fixture-model\"}]}".to_string()
                 };
                 write!(

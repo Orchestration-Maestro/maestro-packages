@@ -51,6 +51,21 @@ fn baseline_report_escapes_untrusted_data_in_every_section() {
             "missing {field}"
         );
     }
+    let graph = page
+        .html
+        .split_once("<h2>Attack graph</h2>")
+        .expect("graph heading")
+        .1
+        .split_once("<h2>Findings</h2>")
+        .expect("end of graph")
+        .0;
+    for node in [
+        "class='gnode'>&lt;asset&gt;&quot;&amp; <span class='gdet'>&lt;threat&gt;&quot;&amp;</span>",
+        "class='gnode dead'>&lt;hypothesis&gt;&quot;&amp; <span class='gdet'>&lt;evidence&gt;&quot;&amp;</span>",
+        "class='gnode'>&lt;unknown&gt;&quot;&amp;</div>",
+    ] {
+        assert!(graph.contains(node), "missing graph node: {node}");
+    }
 }
 
 /// Baseline: verdicts and spend remain visible, including rejected graph nodes.
@@ -159,12 +174,15 @@ fn baseline_evidence_handles_an_empty_ledger() {
         model: "m".into(),
         entries: Vec::new(),
     };
-    assert!(
-        !render_evidence(&doc)
-            .expect("empty page")
-            .html
-            .contains("<tbody>")
-    );
+    let page = render_evidence(&doc).expect("empty page");
+    assert_eq!(page.run_id, "r");
+    assert_eq!(page.page, "evidence");
+    assert!(page.html.starts_with("<!doctype html>"));
+    assert!(page.html.ends_with("</html>"));
+    assert!(page.html.contains("run r &middot; target t"));
+    assert!(page.html.contains("0 llm calls &middot; 0 executions"));
+    assert!(page.html.contains("<p class='empty'>no entries</p>"));
+    assert!(!page.html.contains("<tbody>"));
 }
 
 /// An assessment with one node in every graph branch.

@@ -50,7 +50,7 @@ fn baseline_campaign_collects_each_target_failure_in_input_order() {
         "baseline_campaign_collects_each_target_failure_in_input_order",
         vec![
             (401, "runner unavailable".into()),
-            (401, "runner unavailable".into()),
+            (403, "runner forbidden".into()),
         ],
     ) {
         return;
@@ -63,14 +63,12 @@ fn baseline_campaign_collects_each_target_failure_in_input_order() {
     })
     .expect("campaign tally");
     assert_eq!(tally.targets, targets);
-    assert_eq!(tally.failed.len(), 2);
-    assert!(tally.failed[0].starts_with("first.example:"));
-    assert!(tally.failed[1].starts_with("second.example:"));
-    assert!(
-        tally
-            .failed
-            .iter()
-            .all(|failure| failure.contains("runner preflight"))
+    assert_eq!(
+        tally.failed,
+        [
+            "first.example: runner preflight failed: runner http 401 on /health",
+            "second.example: runner preflight failed: runner http 403 on /health",
+        ]
     );
     assert!(tally.assessments.is_empty());
     assert_eq!(tally.total_findings, 0);
@@ -118,4 +116,42 @@ fn baseline_failed_start_retains_the_committed_workspace_revision() {
     assert_eq!(workspace.revision, 2);
     assert_eq!(workspace.target, "example.test");
     assert_eq!(workspace.model.as_deref(), Some("fixture"));
+}
+
+/// A successful start returns the revision retained by the following status read.
+#[test]
+fn start_response_revision_matches_the_retained_workspace() {
+    use maestro_security::workspace::{Order, dispatch};
+
+    support::isolated(
+        "start_response_revision_matches_the_retained_workspace",
+        "fixture-model",
+        &[r#"{"services":[],"notes":"22/tcp open ssh"}"#],
+        |_| {
+            let params = Order {
+                action: "start".into(),
+                name: Some("review".into()),
+                target: Some("example.test".into()),
+                agent: Some("maestro.probe".into()),
+                model: Some("fixture-model".into()),
+                ..Default::default()
+            };
+            let started = dispatch(&params).expect("successful start");
+            let workspace = started.workspace.expect("completed workspace");
+            let retained = dispatch(&Order {
+                action: "status".into(),
+                ..params
+            })
+            .expect("status")
+            .workspace
+            .expect("retained workspace");
+            assert!(matches!(
+                workspace.status,
+                maestro_security::Status::Completed
+            ));
+            assert_eq!(workspace.run_id, started.report.expect("report").run_id);
+            assert_eq!(workspace.revision, retained.revision);
+            assert_eq!(retained.revision, 2);
+        },
+    );
 }

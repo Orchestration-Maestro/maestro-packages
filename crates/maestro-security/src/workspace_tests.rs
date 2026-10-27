@@ -143,38 +143,49 @@ fn baseline_credentials_are_scoped_to_the_workspace() {
 /// Baseline: required names, targets, payload shapes and fields are checked.
 #[test]
 fn baseline_dispatch_rejects_incomplete_actions() {
-    for action in ["start", "resume", "status", "logs", "stop"] {
-        assert!(
-            dispatch(&Order {
-                action: action.into(),
-                ..Order::default()
-            })
-            .is_err()
-        );
-    }
-    for action in ["start", "resume"] {
-        assert!(
-            dispatch(&order(action, None))
-                .unwrap_err()
-                .contains("target")
-        );
-    }
-    for payload in [
-        None,
-        Some(json!([])),
-        Some(json!({})),
-        Some(json!({"title":" "})),
-        Some(json!({"title":"x","kind":"unknown"})),
-    ] {
-        assert!(dispatch(&order("cards:add", payload)).is_err());
-    }
-    for payload in [
-        json!({}),
-        json!({"kind":"ssh"}),
-        json!({"kind":"ssh","target":"x"}),
-    ] {
-        assert!(dispatch(&order("creds:add", Some(payload))).is_err());
-    }
+    isolated(|| {
+        for action in ["start", "resume", "status", "logs", "stop"] {
+            assert_eq!(
+                dispatch(&Order {
+                    action: action.into(),
+                    target: Some("example.test".into()),
+                    ..Order::default()
+                })
+                .unwrap_err(),
+                "name is required for this action"
+            );
+        }
+        for action in ["start", "resume"] {
+            assert_eq!(
+                dispatch(&order(action, None)).unwrap_err(),
+                "target is required for start/resume"
+            );
+        }
+        for (payload, error) in [
+            (None, "payload is required for this action"),
+            (Some(json!([])), "payload must be a JSON object"),
+            (Some(json!({})), "payload.title is required"),
+            (Some(json!({"title":" "})), "payload.title is required"),
+        ] {
+            assert_eq!(dispatch(&order("cards:add", payload)).unwrap_err(), error);
+        }
+        let error = dispatch(&order(
+            "cards:add",
+            Some(json!({"title":"x","kind":"unknown"})),
+        ))
+        .unwrap_err();
+        assert!(error.starts_with("card kind: unknown variant `unknown`"));
+        for field in ["kind", "target", "secret_ref"] {
+            let mut payload = json!({
+                "kind":"ssh", "target":"example.test", "secret_ref":"vault://example/ssh"
+            });
+            payload.as_object_mut().unwrap().shift_remove(field);
+            assert_eq!(
+                dispatch(&order("creds:add", Some(payload))).unwrap_err(),
+                format!("payload.{field} is required")
+            );
+        }
+    });
 }
 
 /// A retained running workspace with a known creation time and revision.
