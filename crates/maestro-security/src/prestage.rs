@@ -52,7 +52,10 @@ pub fn prestage() -> Result<Manifest, String> {
     let config = Config::from_env();
     let sandbox = Sandbox::local().with_base_url(config.runner);
     let listed = sandbox
-        .exec("docker images --format '{{.Repository}}:{{.Tag}}' 2>/dev/null", 30)
+        .exec(
+            "docker images --format '{{.Repository}}:{{.Tag}}' 2>/dev/null",
+            30,
+        )
         .map(|r| r.output)
         .unwrap_or_default();
     let mut images = Vec::new();

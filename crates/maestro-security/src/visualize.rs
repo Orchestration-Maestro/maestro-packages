@@ -124,7 +124,10 @@ fn discover_calls(
             continue;
         };
         for line in result.output.lines() {
-            let file = line.split_once(':').map(|(f, _)| f.to_string()).unwrap_or_default();
+            let file = line
+                .split_once(':')
+                .map(|(f, _)| f.to_string())
+                .unwrap_or_default();
             if file.is_empty() {
                 continue;
             }
@@ -165,21 +168,19 @@ fn parse_definitions(output: &str) -> Vec<(String, String, u32)> {
 
 /// Extract the function name from a definition line.
 fn extract_name(code: &str) -> String {
-    code.split_whitespace().find_map(|token| {
-        let name = token
-            .trim_end_matches(|c: char| !c.is_ascii_alphanumeric() && c != '_')
-            .split(|c: char| !c.is_ascii_alphanumeric() && c != '_')
-            .next()
-            .unwrap_or_default();
-        let is_name = !name.is_empty()
-            && name
-                .chars()
+    code.split_whitespace()
+        .find_map(|token| {
+            let name = token
+                .trim_end_matches(|c: char| !c.is_ascii_alphanumeric() && c != '_')
+                .split(|c: char| !c.is_ascii_alphanumeric() && c != '_')
                 .next()
-                .is_some_and(|c| c.is_ascii_alphabetic())
-            && !matches!(name, "pub" | "fn" | "func" | "def" | "async");
-        is_name.then(|| name.to_string())
-    })
-    .unwrap_or_default()
+                .unwrap_or_default();
+            let is_name = !name.is_empty()
+                && name.chars().next().is_some_and(|c| c.is_ascii_alphabetic())
+                && !matches!(name, "pub" | "fn" | "func" | "def" | "async");
+            is_name.then(|| name.to_string())
+        })
+        .unwrap_or_default()
 }
 
 /// A coarse caller label from a file path (its file stem).

@@ -109,24 +109,12 @@ impl CoverageDoc {
 
     /// The canonical id for one tuple: the four parts joined with `::`.
     #[must_use]
-    pub fn unit_id(
-        surface: &str,
-        boundary: &str,
-        subsystem: &str,
-        attack_class: &str,
-    ) -> String {
-        [surface, boundary, subsystem, attack_class]
-            .join("::")
+    pub fn unit_id(surface: &str, boundary: &str, subsystem: &str, attack_class: &str) -> String {
+        [surface, boundary, subsystem, attack_class].join("::")
     }
 
     /// Add a unit in the `planned` state; a duplicate id is kept once.
-    pub fn plan(
-        &mut self,
-        surface: &str,
-        boundary: &str,
-        subsystem: &str,
-        attack_class: &str,
-    ) {
+    pub fn plan(&mut self, surface: &str, boundary: &str, subsystem: &str, attack_class: &str) {
         let coverage_id = Self::unit_id(surface, boundary, subsystem, attack_class);
         if self.units.iter().any(|u| u.coverage_id == coverage_id) {
             return;
@@ -149,12 +137,7 @@ impl CoverageDoc {
     }
 
     /// Move one unit to a new state, recording the reason.
-    pub fn set_status(
-        &mut self,
-        coverage_id: &str,
-        status: CoverageStatus,
-        reason: &str,
-    ) -> bool {
+    pub fn set_status(&mut self, coverage_id: &str, status: CoverageStatus, reason: &str) -> bool {
         let Some(unit) = self.units.iter_mut().find(|u| u.coverage_id == coverage_id) else {
             return false;
         };
@@ -227,55 +210,51 @@ impl CoverageUnit {
     /// The invariants of the unit's current status.
     fn status_violations(&self) -> Vec<String> {
         let mut out = Vec::new();
+        let id = &self.coverage_id;
         match self.status {
-            CoverageStatus::Planned | CoverageStatus::NotApplicable | CoverageStatus::OutOfScope => {
-                if !self.reviewed_paths.is_empty() || !self.local_checks.is_empty()
+            CoverageStatus::Planned
+            | CoverageStatus::NotApplicable
+            | CoverageStatus::OutOfScope => {
+                if !self.reviewed_paths.is_empty()
+                    || !self.local_checks.is_empty()
                     || !self.result_fingerprints.is_empty()
                 {
                     out.push(format!(
-                        "{}: {status:?} unit carries work",
-                        self.coverage_id,
+                        "{id}: {status:?} unit carries work",
                         status = self.status
                     ));
                 }
-                if matches!(self.status, CoverageStatus::NotApplicable | CoverageStatus::OutOfScope)
-                    && self.reason.is_empty()
+                if matches!(
+                    self.status,
+                    CoverageStatus::NotApplicable | CoverageStatus::OutOfScope
+                ) && self.reason.is_empty()
                 {
-                    out.push(format!(
-                        "{}: {:?} needs a reason",
-                        self.coverage_id, self.status
-                    ));
+                    out.push(format!("{id}: {:?} needs a reason", self.status));
                 }
             }
             CoverageStatus::InProgress => {
                 if self.agent_id.is_none() {
-                    out.push(format!("{}: in_progress needs an owner", self.coverage_id));
+                    out.push(format!("{id}: in_progress needs an owner"));
                 }
             }
             CoverageStatus::Covered => {
                 if self.result_fingerprints.is_empty() && self.local_checks.is_empty() {
-                    out.push(format!(
-                        "{}: covered needs checks or fingerprints",
-                        self.coverage_id
-                    ));
+                    out.push(format!("{id}: covered needs checks or fingerprints"));
                 }
             }
             CoverageStatus::Candidate => {
                 if self.result_fingerprints.is_empty() {
-                    out.push(format!(
-                        "{}: candidate needs a fingerprint",
-                        self.coverage_id
-                    ));
+                    out.push(format!("{id}: candidate needs a fingerprint"));
                 }
             }
             CoverageStatus::Blocked => {
                 if self.unresolved.is_empty() {
-                    out.push(format!("{}: blocked needs unresolved items", self.coverage_id));
+                    out.push(format!("{id}: blocked needs unresolved items"));
                 }
             }
             CoverageStatus::Deferred => {
                 if self.reason.is_empty() {
-                    out.push(format!("{}: deferred needs a reason", self.coverage_id));
+                    out.push(format!("{id}: deferred needs a reason"));
                 }
             }
         }

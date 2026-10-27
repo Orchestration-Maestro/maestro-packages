@@ -15,13 +15,25 @@ use crate::runner::shell_quote;
 pub const SCHEMA: &str = "maestro-security/sourcehunt/1";
 /// Default patterns when none are supplied: `(name, grep -E pattern)`.
 const DEFAULT_PATTERNS: [(&str, &str); 7] = [
-    ("hardcoded-secret", r#"(password|passwd|secret|api[_-]?key|token)\s*[:=]\s*['\"][^'\"]{4,}"#),
+    (
+        "hardcoded-secret",
+        r#"(password|passwd|secret|api[_-]?key|token)\s*[:=]\s*['\"][^'\"]{4,}"#,
+    ),
     ("sql-injection", r"(query|exec|execute)\w*\s*\([^)]*\+"),
-    ("command-injection", r"(system|exec|popen|shell_exec|passthru)\s*\("),
-    ("path-traversal", r"(open|fopen|readFile\w*)\s*\([^)]*(user|input|req|param)"),
+    (
+        "command-injection",
+        r"(system|exec|popen|shell_exec|passthru)\s*\(",
+    ),
+    (
+        "path-traversal",
+        r"(open|fopen|readFile\w*)\s*\([^)]*(user|input|req|param)",
+    ),
     ("eval", r"\beval\s*\("),
     ("weak-crypto", r"\b(md5|sha1)\s*\("),
-    ("debug-leftover", r"(debug\s*=\s*true|DEBUG_MODE|printenv|var_dump)"),
+    (
+        "debug-leftover",
+        r"(debug\s*=\s*true|DEBUG_MODE|printenv|var_dump)",
+    ),
 ];
 /// Maximum raw hits per pattern.
 const MAX_HITS_PER_PATTERN: usize = 40;
@@ -142,11 +154,7 @@ fn parse_hit(line: &str, pattern: &str) -> Option<Hit> {
 }
 
 /// Have the model triage the raw hits in one call.
-fn triage(
-    ctx: &CapabilityCtx,
-    params: &Query,
-    raw: &[Hit],
-) -> Result<Vec<Hit>, String> {
+fn triage(ctx: &CapabilityCtx, params: &Query, raw: &[Hit]) -> Result<Vec<Hit>, String> {
     if raw.is_empty() {
         return Ok(Vec::new());
     }
@@ -190,7 +198,10 @@ fn apply_judgements(raw: &[Hit], raw_json: &str) -> Vec<Hit> {
             let j = judgements
                 .iter()
                 .find(|j| j.get("index").and_then(serde_json::Value::as_u64) == Some(i as u64))?;
-            let keep = j.get("keep").and_then(serde_json::Value::as_bool).unwrap_or(true);
+            let keep = j
+                .get("keep")
+                .and_then(serde_json::Value::as_bool)
+                .unwrap_or(true);
             if !keep {
                 return None;
             }
@@ -220,8 +231,11 @@ mod tests {
     /// A well-formed grep line parses into a hit.
     #[test]
     fn parses_grep_line() {
-        let hit = parse_hit("src/app.rs:12:let password = \"hunter2\";", "hardcoded-secret")
-            .expect("hit");
+        let hit = parse_hit(
+            "src/app.rs:12:let password = \"hunter2\";",
+            "hardcoded-secret",
+        )
+        .expect("hit");
         assert_eq!(hit.file, "src/app.rs");
         assert_eq!(hit.line, 12);
         assert_eq!(hit.pattern, "hardcoded-secret");

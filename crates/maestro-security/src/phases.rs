@@ -18,11 +18,7 @@ const MAX_TOKENS: u32 = 32768;
 
 impl crate::pipeline::Engine {
     /// Phase 1: deterministic recon through the runner, raw and ledgered.
-    pub(crate) fn phase_recon(
-        &self,
-        target: &str,
-        ledger: &mut Ledger,
-    ) -> Result<String, String> {
+    pub(crate) fn phase_recon(&self, target: &str, ledger: &mut Ledger) -> Result<String, String> {
         let mut recon = String::new();
         for (command, timeout) in methodology::recon_commands(target) {
             let result = self.runner.exec(&command, timeout)?;
@@ -46,7 +42,9 @@ impl crate::pipeline::Engine {
         ledger: &mut Ledger,
     ) -> Result<String, String> {
         let prompt = methodology::target_model_prompt(target, truncate(recon, 20000));
-        let reply = self.llm.chat(&ctx.model, &ctx.system, &prompt, MAX_TOKENS)?;
+        let reply = self
+            .llm
+            .chat(&ctx.model, &ctx.system, &prompt, MAX_TOKENS)?;
         let doc = reply.content;
         let id = ledger.record_llm(
             "target-model",
@@ -127,7 +125,9 @@ impl crate::pipeline::Engine {
                 });
             } else {
                 let f_id = state.next_f_id();
-                state.findings.push(shallow_finding(&state.target, verification, f_id));
+                state
+                    .findings
+                    .push(shallow_finding(&state.target, verification, f_id));
             }
         }
         state.verifications = verifications;
@@ -150,7 +150,8 @@ impl crate::pipeline::Engine {
                 &methodology::verify_prompt(&hyp_json, truncate(target_model, 8000)),
                 MAX_TOKENS,
             )
-            .ok()?.content;
+            .ok()?
+            .content;
         let plan: Plan = serde_json::from_str(&extract_json(&plan_raw)).ok()?;
         let result = self.runner.exec(&plan.command, 300).ok()?;
         let id = ledger.record_exec("verify", &plan.command, &result.output, result.exit_code);
@@ -166,7 +167,8 @@ impl crate::pipeline::Engine {
                 ),
                 MAX_TOKENS,
             )
-            .ok()?.content;
+            .ok()?
+            .content;
         let judge: Judge = serde_json::from_str(&extract_json(&judge_raw)).ok()?;
         let executed = self.counterevidence(ctx, &plan, &judge, ledger);
         let counterevidence = if executed.is_empty() {
@@ -261,7 +263,12 @@ impl crate::pipeline::Engine {
         .to_string();
         let reply = self
             .llm
-            .chat(&ctx.model, &ctx.system, &methodology::deepen_prompt(&payload), MAX_TOKENS)
+            .chat(
+                &ctx.model,
+                &ctx.system,
+                &methodology::deepen_prompt(&payload),
+                MAX_TOKENS,
+            )
             .ok()?;
         let raw = reply.content;
         let deep: Deepen = serde_json::from_str(&extract_json(&raw)).ok()?;
@@ -294,7 +301,8 @@ impl crate::pipeline::Engine {
             }
         };
         let raw = reply.content;
-        let value: serde_json::Value = serde_json::from_str(&extract_json(&raw)).unwrap_or_default();
+        let value: serde_json::Value =
+            serde_json::from_str(&extract_json(&raw)).unwrap_or_default();
         let arr = value
             .get("threats")
             .and_then(|t| t.as_array())
@@ -339,7 +347,8 @@ impl crate::pipeline::Engine {
                 tokens_out: reply.tokens_out,
             },
         );
-        let value: serde_json::Value = serde_json::from_str(&extract_json(&raw)).unwrap_or_default();
+        let value: serde_json::Value =
+            serde_json::from_str(&extract_json(&raw)).unwrap_or_default();
         let summary = value
             .get("summary")
             .and_then(serde_json::Value::as_str)

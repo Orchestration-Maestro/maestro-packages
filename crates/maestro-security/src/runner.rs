@@ -94,7 +94,10 @@ fn parse_ndjson(raw: &[u8]) -> Result<ExecResult, String> {
                 }
             }
             Some("exit") => {
-                let code = value.get("code").and_then(serde_json::Value::as_i64).unwrap_or(0);
+                let code = value
+                    .get("code")
+                    .and_then(serde_json::Value::as_i64)
+                    .unwrap_or(0);
                 exit_code = i32::try_from(code).unwrap_or(0);
             }
             // Tool banners and heartbeat lines carry no payload we need.

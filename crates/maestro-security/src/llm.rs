@@ -11,8 +11,7 @@ use serde_json::json;
 /// which serves every registered model directly, no capability key needed.
 pub const DEFAULT_BASE_URL: &str = "http://127.0.0.1:8080/v1";
 /// Default capability key (machine-local; also in /work/tools/pi-bridge.env).
-pub const DEFAULT_KEY: &str =
-    "3648e45e792d925d2bf138156fb820e491a5f89f3c5d33f2d6963920b170592f";
+pub const DEFAULT_KEY: &str = "3648e45e792d925d2bf138156fb820e491a5f89f3c5d33f2d6963920b170592f";
 
 /// A configured bridge client. The model is never stored here: it is resolved
 /// per run from [`Client::available_models`] or supplied by the caller.
@@ -114,7 +113,11 @@ impl Client {
         )?;
         if resp.status != 200 {
             let text = String::from_utf8_lossy(&resp.body);
-            return Err(format!("bridge http {}: {}", resp.status, truncate(&text, 500)));
+            return Err(format!(
+                "bridge http {}: {}",
+                resp.status,
+                truncate(&text, 500)
+            ));
         }
         let value: serde_json::Value =
             serde_json::from_slice(&resp.body).map_err(|e| format!("bridge json: {e}"))?;
@@ -151,9 +154,5 @@ pub struct ChatReply {
 
 /// Cap a string for error messages.
 fn truncate(s: &str, max: usize) -> &str {
-    if s.len() <= max {
-        s
-    } else {
-        &s[..max]
-    }
+    if s.len() <= max { s } else { &s[..max] }
 }

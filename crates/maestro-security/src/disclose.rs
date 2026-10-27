@@ -210,6 +210,9 @@ mod tests {
             doc["runs"][0]["results"][0]["fingerprints"]["maestro"],
             "example-com::injection::title"
         );
-        assert_eq!(doc["runs"][0]["results"][0]["locations"][0]["physicalLocation"]["artifactLocation"]["uri"], "example.com");
+        assert_eq!(
+            doc["runs"][0]["results"][0]["locations"][0]["physicalLocation"]["artifactLocation"]["uri"],
+            "example.com"
+        );
     }
 }

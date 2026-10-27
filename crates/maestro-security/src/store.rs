@@ -204,10 +204,7 @@ impl Store {
     /// # Errors
     /// Fails if the workspace table cannot be read or is malformed.
     pub fn get_workspace(&self, name: &str) -> Result<Option<Workspace>, String> {
-        Ok(self
-            .list_workspaces()?
-            .into_iter()
-            .find(|w| w.name == name))
+        Ok(self.list_workspaces()?.into_iter().find(|w| w.name == name))
     }
 
     /// Insert or update one workspace with optimistic concurrency: the
@@ -280,9 +277,7 @@ impl Store {
             if line.is_empty() {
                 continue;
             }
-            out.push(
-                serde_json::from_str(line).map_err(|e| format!("runs.jsonl: {e}"))?,
-            );
+            out.push(serde_json::from_str(line).map_err(|e| format!("runs.jsonl: {e}"))?);
         }
         Ok(out)
     }
@@ -496,7 +491,7 @@ fn apply_workspace_update(
 mod tests {
     //! Unit tests for the file-backed store.
 
-    use super::{apply_workspace_update, Store, Status, Workspace};
+    use super::{Status, Store, Workspace, apply_workspace_update};
 
     /// A missing run index is an empty list, not an error.
     #[test]

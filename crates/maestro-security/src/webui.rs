@@ -168,7 +168,9 @@ fn attack_graph(a: &Assessment) -> String {
     let dead_ends = graph_column("dead ends", a.refuted.iter().map(node_dead_end));
     let open = graph_column(
         "open",
-        a.unknown.iter().map(|u| format!("<div class='gnode'>{}</div>", esc(u))),
+        a.unknown
+            .iter()
+            .map(|u| format!("<div class='gnode'>{}</div>", esc(u))),
     );
     format!(
         "<div class='graph'><div class='groot'>{target}</div>{findings}{threats}{dead_ends}{open}</div>",
@@ -273,7 +275,8 @@ fn entries_rows(doc: &LedgerDoc) -> String {
             .clone()
             .or_else(|| entry.prompt.clone())
             .unwrap_or_else(|| entry.output.chars().take(120).collect());
-        let _ = write!(rows, 
+        let _ = write!(
+            rows,
             "<tr><td class='code'>{}</td><td>{}</td><td>{}</td><td>{}</td><td class='code'>{}</td></tr>",
             esc(&entry.id),
             esc(&entry.phase),
@@ -305,7 +308,8 @@ fn findings_rows(a: &Assessment) -> String {
             crate::report::Verdict::Rejected => "rejected",
         };
         let confidence = format!("{:.2}", f.confidence);
-        let _ = write!(rows, 
+        let _ = write!(
+            rows,
             "<tr><td class='sev {}'>{}</td><td><span class='badge {}'>{}</span> <span class='conf'>{}</span></td><td>{}</td><td>{}</td><td class='code'>{}</td></tr>",
             esc(&f.severity),
             esc(&f.severity),
@@ -329,7 +333,8 @@ fn refuted_rows(a: &Assessment) -> String {
     }
     let mut rows = String::new();
     for r in &a.refuted {
-        let _ = write!(rows, 
+        let _ = write!(
+            rows,
             "<tr><td>{}</td><td class='code'>{}</td></tr>",
             esc(&r.hypothesis),
             esc(&r.evidence_id)
@@ -347,7 +352,8 @@ fn threat_rows(a: &Assessment) -> String {
     }
     let mut rows = String::new();
     for t in &a.threats {
-        let _ = write!(rows, 
+        let _ = write!(
+            rows,
             "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
             esc(&t.asset),
             esc(&t.path),
@@ -456,7 +462,10 @@ mod tests {
     #[test]
     fn attack_graph_renders_all_branches() {
         let graph = super::attack_graph(&sample_assessment());
-        assert!(graph.contains("example.com"), "missing target root: {graph}");
+        assert!(
+            graph.contains("example.com"),
+            "missing target root: {graph}"
+        );
         assert!(graph.contains("SQLi in login"), "missing finding: {graph}");
         assert!(graph.contains("tls config"), "missing open: {graph}");
         assert!(
