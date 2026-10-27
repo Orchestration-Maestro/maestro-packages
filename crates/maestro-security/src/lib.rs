@@ -51,7 +51,7 @@ pub mod visualize;
 mod webui;
 pub mod workspace;
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(target_arch = "wasm32", test))]
 mod extension;
 // The MCP stdio surface is host-side; the WASM surface is the extension.
 #[cfg(not(target_family = "wasm"))]
@@ -85,5 +85,5 @@ pub use visualize::{CallGraph, Trace};
 pub use webui::{render, render_evidence, WebReport, WebuiParams};
 pub use workspace::{LogLine, Order, Board};
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(target_arch = "wasm32", test))]
 maestro_extensions_wasm::export_extension!(extension::factory);
