@@ -33,15 +33,15 @@ pub fn bridge_url(
     let handle = thread::spawn(move || {
         let start = Instant::now();
         let mut socket = loop {
+            if start.elapsed() > Duration::from_secs(10) {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::TimedOut,
+                    "no request",
+                ));
+            }
             match listener.accept() {
                 Ok((socket, _)) => break socket,
                 Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
-                    if start.elapsed() > Duration::from_secs(10) {
-                        return Err(std::io::Error::new(
-                            std::io::ErrorKind::TimedOut,
-                            "no request",
-                        ));
-                    }
                     thread::sleep(Duration::from_millis(5));
                 }
                 Err(error) => return Err(error),

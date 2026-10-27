@@ -43,7 +43,7 @@ fn baseline_custom_routes_rank_hits_and_keep_first_tie() {
     assert!(empty.route("alpha").is_none());
 }
 
-/// Each embedded domain exposes its capability and topics to a routed caller.
+/// Each embedded domain exposes its capability and topics to a selected caller.
 #[test]
 fn baseline_embedded_domains_dispatch_to_capabilities() {
     let router = Router::default_();
@@ -71,10 +71,13 @@ fn baseline_embedded_domains_dispatch_to_capabilities() {
         ("ldap kerberos saml", "identity", "exploit", "token-abuse"),
         ("ctf flag crypto", "ctf", "exploit", "forensics"),
     ] {
-        let routed = router.route(task);
-        assert_eq!(routed.map(|domain| domain.id.as_str()), Some(id));
-        assert_eq!(routed.map(|domain| domain.primary.as_str()), Some(primary));
-        assert!(routed.is_some_and(|domain| domain.topics.iter().any(|value| value == topic)));
+        let selected = router.route(task);
+        assert_eq!(selected.map(|domain| domain.id.as_str()), Some(id));
+        assert_eq!(
+            selected.map(|domain| domain.primary.as_str()),
+            Some(primary)
+        );
+        assert!(selected.is_some_and(|domain| domain.topics.iter().any(|value| value == topic)));
     }
 }
 
