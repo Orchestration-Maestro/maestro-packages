@@ -46,18 +46,32 @@ pub fn isolated(name: &str, replies: &[&str], check: impl FnOnce(&str)) {
 fn serve(listener: &TcpListener, stop: &AtomicBool, replies: &[String]) {
     let deadline = Instant::now() + Duration::from_secs(60);
     let mut chats = 0;
+    let mut observed = "no page or probe has been requested";
     while !stop.load(Ordering::Relaxed) && Instant::now() < deadline {
         match listener.accept() {
             Ok((mut stream, _)) => {
                 let request = read_request(&mut stream);
                 let body = if request.starts_with("GET /page ") {
+                    observed = "Login";
                     "<title>Login</title><a href='/login'>Sign in</a><form action='/auth' method='post'><input name='user'></form>".to_string()
                 } else if request.starts_with("POST /chat/completions ") {
+                    assert!(
+                        request.contains(observed),
+                        "captured data must reach the model"
+                    );
+                    assert!(
+                        request.contains("fixture-model"),
+                        "resolved model must reach the bridge"
+                    );
                     let reply = &replies[chats];
                     chats += 1;
                     serde_json::json!({"choices":[{"message":{"content":reply}}]}).to_string()
                 } else if request.starts_with("POST /exec ") {
-                    assert!(request.contains("nmap -Pn -T4 --top-ports 100 example.test"));
+                    assert!(
+                        request.contains("example.test"),
+                        "requested target must reach the sandbox"
+                    );
+                    observed = "22/tcp open ssh";
                     "{\"type\":\"out\",\"data\":\"22/tcp open ssh\"}\n{\"type\":\"exit\",\"code\":0}\n".to_string()
                 } else {
                     assert!(request.starts_with("GET /models "), "{request}");
@@ -71,7 +85,7 @@ fn serve(listener: &TcpListener, stop: &AtomicBool, replies: &[String]) {
                 .unwrap();
             }
             Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
-                std::thread::sleep(Duration::from_millis(5))
+                std::thread::sleep(Duration::from_millis(5));
             }
             Err(error) => panic!("fixture accept: {error}"),
         }

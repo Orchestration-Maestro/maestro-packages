@@ -1,5 +1,6 @@
 //! Behavioural coverage through the browser and network capability surfaces.
 
+#[cfg(test)]
 mod support;
 
 use maestro_security::{browser, surface};
