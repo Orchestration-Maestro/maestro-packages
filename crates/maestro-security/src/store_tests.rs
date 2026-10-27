@@ -55,19 +55,7 @@ fn baseline_empty_indexes_and_unknown_ids() {
 #[test]
 fn baseline_workspace_revisions_and_ordering() {
     crate::test_support::isolated(|_| {
-        let mut workspace = super::Workspace {
-            name: "first".into(),
-            run_id: "run-one".into(),
-            target: "target".into(),
-            agent: "security".into(),
-            model: Some("model".into()),
-            status: super::Status::Running,
-            created_at: 1,
-            updated_at: 10,
-            phases_done: 0,
-            findings: 0,
-            revision: 0,
-        };
+        let mut workspace = workspace();
         assert!(Store.upsert_workspace(1, &workspace).is_err());
         assert!(Store.list_workspaces().unwrap().is_empty());
         Store.upsert_workspace(0, &workspace).unwrap();
@@ -235,4 +223,53 @@ fn baseline_run_outcomes() {
     record.settle(Err("runner disconnected"));
     assert_eq!(record.status, super::Status::Failed);
     assert_eq!(record.summary, "runner disconnected");
+}
+
+/// A new workspace for accepted and rejected persistence updates.
+fn workspace() -> super::Workspace {
+    super::Workspace {
+        name: "first".into(),
+        run_id: "run-one".into(),
+        target: "target".into(),
+        agent: "security".into(),
+        model: Some("model".into()),
+        status: super::Status::Running,
+        created_at: 1,
+        updated_at: 10,
+        phases_done: 0,
+        findings: 0,
+        revision: 0,
+    }
+}
+
+/// A run index that exists but cannot be read must not look empty.
+#[test]
+fn unreadable_run_index_is_an_error() {
+    crate::test_support::isolated(|home| {
+        std::fs::create_dir(home.join("runs.jsonl")).unwrap();
+        assert!(Store.list_runs(0).is_err());
+        assert!(Store.get_run("absent").is_err());
+    });
+}
+
+/// An unreadable workspace table must not disappear from the run board.
+#[test]
+fn unreadable_workspace_listing_is_an_error() {
+    crate::test_support::isolated(|home| {
+        std::fs::create_dir(home.join("workspaces.json")).unwrap();
+        assert!(Store.list_workspaces().is_err());
+        assert!(Store.get_workspace("absent").is_err());
+    });
+}
+
+/// Updating must not overwrite a retained table that cannot be decoded as text.
+#[test]
+fn unreadable_workspace_update_preserves_retained_bytes() {
+    crate::test_support::isolated(|home| {
+        let path = home.join("workspaces.json");
+        let retained = [0xff, 0xfe];
+        std::fs::write(&path, retained).unwrap();
+        assert!(Store.upsert_workspace(0, &workspace()).is_err());
+        assert_eq!(std::fs::read(path).unwrap(), retained);
+    });
 }

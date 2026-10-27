@@ -71,3 +71,12 @@ fn baseline_empty_search_and_limits() {
         assert!(memory.search("ssh", 0).is_empty());
     });
 }
+
+/// An existing but unreadable index must not be replaced by empty memory.
+#[test]
+fn unreadable_memory_index_is_an_error() {
+    crate::test_support::isolated(|home| {
+        std::fs::create_dir(home.join("memory.json")).unwrap();
+        assert!(Memory::load().is_err());
+    });
+}
