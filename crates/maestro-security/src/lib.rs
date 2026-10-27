@@ -87,3 +87,6 @@ pub use workspace::{LogLine, Order, Board};
 
 #[cfg(target_arch = "wasm32")]
 maestro_extensions_wasm::export_extension!(extension::factory);
+
+#[cfg(test)]
+mod pipeline_tests;
