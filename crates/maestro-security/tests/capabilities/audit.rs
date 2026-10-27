@@ -1,6 +1,6 @@
 //! Baseline audit behaviours with a runner that never executes host commands.
 
-use crate::support;
+use crate::handler_support as support;
 use maestro_security::audit::{Scope, audit};
 use serde_json::Value;
 

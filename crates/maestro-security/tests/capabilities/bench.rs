@@ -1,6 +1,6 @@
 //! Baseline benchmark behaviours exercised through the public entry point.
 
-use crate::support;
+use crate::handler_support as support;
 
 use maestro_security::bench::{Suite, bench};
 use serde_json::Value;

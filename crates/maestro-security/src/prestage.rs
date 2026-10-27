@@ -55,9 +55,8 @@ pub fn prestage() -> Result<Manifest, String> {
         .exec(
             "docker images --format '{{.Repository}}:{{.Tag}}' 2>/dev/null",
             30,
-        )
-        .map(|r| r.output)
-        .unwrap_or_default();
+        )?
+        .output;
     let mut images = Vec::new();
     for reference in EXPECTED_IMAGES {
         let present = listed.lines().any(|l| l.trim() == *reference);

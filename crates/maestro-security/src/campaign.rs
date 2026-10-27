@@ -250,3 +250,35 @@ mod tests {
         assert_eq!(b.remaining(), 0);
     }
 }
+
+#[cfg(test)]
+mod behavior_tests {
+    //! Baseline checks at budget and decision boundaries.
+    use super::{AgentBudget, Decision};
+
+    /// Baseline: overspend and counter overflow cannot wrap into available budget.
+    #[test]
+    fn baseline_budget_saturates_instead_of_wrapping() {
+        let mut budget = AgentBudget {
+            spent_tokens: u64::MAX - 1,
+            ..AgentBudget::default_()
+        };
+        budget.spend(10);
+        assert_eq!(budget.spent_tokens, u64::MAX);
+        assert_eq!(budget.remaining(), 0);
+        assert!(budget.should_warn());
+        assert!(budget.exhausted());
+    }
+
+    /// Baseline: continuing work needs no finish evidence, but finishing does.
+    #[test]
+    fn baseline_continuation_does_not_require_finish_evidence() {
+        let mut decision: Decision = serde_json::from_value(serde_json::json!({
+            "base_revision": 1, "next_task_id": 2, "finish": false
+        }))
+        .expect("decision");
+        assert!(decision.finish_is_valid());
+        decision.finish = true;
+        assert!(!decision.finish_is_valid());
+    }
+}

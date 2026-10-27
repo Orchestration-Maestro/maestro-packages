@@ -1,6 +1,6 @@
 //! Baseline health reports through the public doctor entry point.
 
-use crate::support;
+use crate::handler_support as support;
 use maestro_security::doctor::{Classification, doctor};
 use serde_json::Value;
 

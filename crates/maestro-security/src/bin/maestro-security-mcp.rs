@@ -6,6 +6,7 @@
 fn main() -> Result<(), String> {
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_io()
+        .enable_time()
         .build()
         .map_err(|error| format!("runtime: {error}"))?;
     runtime.block_on(maestro_security::mcp::serve())
