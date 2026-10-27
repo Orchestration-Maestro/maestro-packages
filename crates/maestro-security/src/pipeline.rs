@@ -5,6 +5,8 @@
 //! id. The model is resolved at run time, never stored. Phase
 //! implementations live in [`crate::phases`].
 
+use std::sync::atomic::{AtomicU64, Ordering};
+
 use serde::{Deserialize, Serialize};
 
 use crate::agents::{Agent, Pattern};
@@ -33,6 +35,29 @@ pub enum PhaseKind {
     Threat,
     /// Phase 6: final report.
     Report,
+}
+
+impl PhaseKind {
+    /// The phase's name in the report and the evidence ledger.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Recon => "recon",
+            Self::Model => "target-model",
+            Self::Hypotheses => "hypotheses",
+            Self::Verify => "verify",
+            Self::Deepen => "deepen",
+            Self::Threat => "threat",
+            Self::Report => "report",
+        }
+    }
+}
+
+/// The phases one agent runs, in canonical order.
+pub(crate) fn planned_phases(agent: &Agent) -> impl Iterator<Item = PhaseKind> + '_ {
+    CANONICAL
+        .into_iter()
+        .filter(move |phase| agent.phases.contains(phase))
 }
 
 /// Every phase, in canonical order.
@@ -311,10 +336,8 @@ impl Engine {
         }
     }
 
-    /// Run one agent's phases, calling the option's checkpoint after each
-    /// phase with the current ledger, target and agent. The checkpoint lets a
-    /// caller persist progress so a separate call can observe a run while it
-    /// is in flight.
+    /// Run one agent's phases under a fresh run id, calling the option's
+    /// checkpoint after each phase with the current ledger, target and agent.
     ///
     /// # Errors
     /// Fails if the runner preflight fails, the bridge serves no model, or
@@ -326,6 +349,45 @@ impl Engine {
         opts: &mut RunOptions<'_>,
     ) -> Result<Assessment, String> {
         let run_id = new_run_id(target);
+        self.run_identified(agent, target, &run_id, opts)
+    }
+
+    /// Run one agent's phases under a caller-chosen run id, calling the
+    /// option's checkpoint after each phase. The autonomy trigger records the
+    /// id in the run index before its tail starts, so the report and the index
+    /// name the same run.
+    ///
+    /// # Errors
+    /// Fails if the runner preflight fails, the bridge serves no model, or
+    /// any phase fails.
+    pub fn run_identified(
+        &self,
+        agent: &Agent,
+        target: &str,
+        run_id: &str,
+        opts: &mut RunOptions<'_>,
+    ) -> Result<Assessment, String> {
+        let (ctx, mut state) = self.prepare(agent, target, opts)?;
+        for phase in planned_phases(agent) {
+            self.step(phase, &ctx, &mut state)?;
+            if let Some(cp) = opts.checkpoint.as_mut() {
+                cp(&state.ledger, target, agent.name);
+            }
+        }
+        self.finish(run_id, agent, &ctx, &mut state)
+    }
+
+    /// Resolve the model and build the starting state of one run; the caller
+    /// steps the phases so it can observe and steer between them.
+    ///
+    /// # Errors
+    /// Fails if the runner preflight fails or the bridge serves no model.
+    pub(crate) fn prepare(
+        &self,
+        agent: &Agent,
+        target: &str,
+        opts: &RunOptions<'_>,
+    ) -> Result<(ModelCtx, RunState), String> {
         self.runner
             .health()
             .map_err(|error| format!("runner preflight failed: {error}"))?;
@@ -333,17 +395,34 @@ impl Engine {
             system: system_prompt(agent, opts.pattern),
             model: self.resolve_model(opts.model.as_deref())?,
         };
-        let mut state = RunState::new(target);
-        for phase in CANONICAL {
-            if !agent.phases.contains(&phase) {
-                continue;
-            }
-            self.execute(phase, &ctx, &mut state)?;
-            if let Some(cp) = opts.checkpoint.as_mut() {
-                cp(&state.ledger, target, agent.name);
-            }
-        }
-        self.assemble(&run_id, agent, &ctx, &mut state)
+        Ok((ctx, RunState::new(target)))
+    }
+
+    /// Execute one phase of a prepared run.
+    ///
+    /// # Errors
+    /// Fails with the phase's own error.
+    pub(crate) fn step(
+        &self,
+        phase: PhaseKind,
+        ctx: &ModelCtx,
+        state: &mut RunState,
+    ) -> Result<(), String> {
+        self.execute(phase, ctx, state)
+    }
+
+    /// Assemble and retain the report of a prepared run.
+    ///
+    /// # Errors
+    /// Fails if the ledger or the report cannot be written.
+    pub(crate) fn finish(
+        &self,
+        run_id: &str,
+        agent: &Agent,
+        ctx: &ModelCtx,
+        state: &mut RunState,
+    ) -> Result<Assessment, String> {
+        self.assemble(run_id, agent, ctx, state)
     }
 
     /// Dispatch one phase.
@@ -450,20 +529,43 @@ impl Engine {
 /// # Errors
 /// Fails if the target is empty or the pipeline run fails.
 pub fn assess(params: &AssessParams) -> Result<Assessment, String> {
+    let run_id = new_run_id(&params.target);
+    assess_identified(params, &run_id)
+}
+
+/// Run one assessment under a caller-chosen run id; the autonomy trigger
+/// records that id in the run index before its tail starts.
+///
+/// # Errors
+/// Fails if the target is empty or the pipeline run fails.
+pub fn assess_identified(params: &AssessParams, run_id: &str) -> Result<Assessment, String> {
+    let (engine, agent, mut opts) = assessment_setup(params)?;
+    engine.run_identified(agent, &params.target, run_id, &mut opts)
+}
+
+/// Resolve the shared target validation, environment and per-run options.
+///
+/// # Errors
+/// Returns an error when the assessment target is blank.
+pub(crate) fn assessment_setup(
+    params: &AssessParams,
+) -> Result<(Engine, &'static Agent, RunOptions<'static>), String> {
     if params.target.trim().is_empty() {
         return Err("target is required".into());
     }
     let mut config = Config::from_env();
-    if let Some(n) = params.max_hypotheses && n > 0 {
+    if let Some(n) = params.max_hypotheses
+        && n > 0
+    {
         config.max_hypotheses = n;
     }
     let agent = crate::agents::resolve_agent(params.agent.as_deref());
-    let mut opts = RunOptions {
+    let opts = RunOptions {
         model: params.model.clone(),
         pattern: Pattern::parse(params.pattern.as_deref().unwrap_or_default()),
         checkpoint: None,
     };
-    Engine::new(config).run_checkpointed(agent, &params.target, &mut opts)
+    Ok((Engine::new(config), agent, opts))
 }
 
 /// Retrieve the retained evidence ledger for a finished run.
@@ -505,11 +607,17 @@ fn system_prompt(agent: &Agent, pattern: Pattern) -> String {
     )
 }
 
-/// A filename-safe run id: `run-<unix-seconds>-<target-slug>`.
-fn new_run_id(target: &str) -> String {
-    let secs = std::time::SystemTime::now()
+/// A filename-safe, collision-free run id: `run-<millis>-<seq>-<slug>`.
+///
+/// The sequence is a per-process counter, so two runs started inside one
+/// millisecond, or for two targets sharing the first 24 slug characters,
+/// still get distinct ids.
+pub(crate) fn new_run_id(target: &str) -> String {
+    static SEQUENCE: AtomicU64 = AtomicU64::new(0);
+    let millis = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |d| d.as_secs());
+        .map_or(0, |d| d.as_millis());
+    let seq = SEQUENCE.fetch_add(1, Ordering::SeqCst);
     let slug: String = target
         .chars()
         .take(24)
@@ -521,7 +629,7 @@ fn new_run_id(target: &str) -> String {
             }
         })
         .collect();
-    format!("run-{secs}-{slug}")
+    format!("run-{millis}-{seq}-{slug}")
 }
 
 /// Deduplicated unknowns across all verifications.
@@ -678,6 +786,22 @@ mod tests {
         let id = new_run_id("https://example.com:8080/x?y=1");
         assert!(id.starts_with("run-"));
         assert!(!id.contains(':') && !id.contains('/') && !id.contains('?'));
+    }
+
+    /// Two runs started in the same second get different ids.
+    #[test]
+    fn run_ids_differ_within_one_second() {
+        let first = new_run_id("example.com");
+        let second = new_run_id("example.com");
+        assert_ne!(first, second, "two runs in the same second must differ");
+    }
+
+    /// Two targets sharing the first 24 slug characters get different ids.
+    #[test]
+    fn run_ids_differ_for_targets_sharing_a_slug() {
+        let first = new_run_id("https://example.com/aaaaaaaaaaaaaaaaaaaaaaa1");
+        let second = new_run_id("https://example.com/aaaaaaaaaaaaaaaaaaaaaaa2");
+        assert_ne!(first, second, "a shared slug prefix must not share an id");
     }
 
     /// Unknown agent names fall back to the default reviewer.
