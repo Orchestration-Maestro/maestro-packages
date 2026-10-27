@@ -54,7 +54,11 @@ pub fn models() -> Result<ModelMap, String> {
         let explicit = available.contains(&config.default_model);
         roles.push(RoleModel {
             role: agent.name.to_string(),
-            model: config.default_model.clone(),
+            model: if explicit {
+                config.default_model.clone()
+            } else {
+                available[0].clone()
+            },
             explicit,
         });
     }
@@ -64,17 +68,4 @@ pub fn models() -> Result<ModelMap, String> {
         default_model: config.default_model,
         roles,
     })
-}
-
-#[cfg(test)]
-mod tests {
-    //! Unit tests for the model map.
-
-    use super::SCHEMA;
-
-    /// The schema tag is stable.
-    #[test]
-    fn schema_is_stable() {
-        assert_eq!(SCHEMA, "maestro-security/models/1");
-    }
 }

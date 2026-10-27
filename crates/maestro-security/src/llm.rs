@@ -7,6 +7,8 @@
 
 use serde_json::json;
 
+use crate::pipeline::truncate;
+
 /// Default bridge base URL (loopback, WASM-visible): the local model router,
 /// which serves every registered model directly, no capability key needed.
 pub const DEFAULT_BASE_URL: &str = "http://127.0.0.1:8080/v1";
@@ -150,9 +152,4 @@ pub struct ChatReply {
     pub content: String,
     /// Output tokens reported by the bridge; 0 when it reports none.
     pub tokens_out: u64,
-}
-
-/// Cap a string for error messages.
-fn truncate(s: &str, max: usize) -> &str {
-    if s.len() <= max { s } else { &s[..max] }
 }
