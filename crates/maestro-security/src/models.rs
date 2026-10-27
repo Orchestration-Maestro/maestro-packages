@@ -65,4 +65,3 @@ pub fn models() -> Result<ModelMap, String> {
         roles,
     })
 }
-
