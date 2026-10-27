@@ -2,7 +2,10 @@
 
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
-use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
+};
 use std::time::{Duration, Instant};
 
 /// Run the named test in a child with isolated state and loopback services.
@@ -26,11 +29,17 @@ pub fn isolated(name: &str, replies: &[&str], check: impl FnOnce(&str)) {
         .env("MAESTRO_SECURITY_BRIDGE", &base)
         .env("MAESTRO_SECURITY_RUNNER", &base)
         .env("MAESTRO_SECURITY_HOME", &home)
-        .output().unwrap();
+        .output()
+        .unwrap();
     stop.store(true, Ordering::Relaxed);
     worker.join().unwrap();
     std::fs::remove_dir_all(home).unwrap();
-    assert!(output.status.success(), "{}\n{}", String::from_utf8_lossy(&output.stdout), String::from_utf8_lossy(&output.stderr));
+    assert!(
+        output.status.success(),
+        "{}\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
 }
 
 /// Serve only the deterministic page, bridge and sandbox responses.
@@ -54,9 +63,16 @@ fn serve(listener: &TcpListener, stop: &AtomicBool, replies: &[String]) {
                     assert!(request.starts_with("GET /models "), "{request}");
                     "{\"data\":[{\"id\":\"fixture-model\"}]}".to_string()
                 };
-                write!(stream, "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len()).unwrap();
+                write!(
+                    stream,
+                    "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                    body.len()
+                )
+                .unwrap();
             }
-            Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => std::thread::sleep(Duration::from_millis(5)),
+            Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                std::thread::sleep(Duration::from_millis(5))
+            }
             Err(error) => panic!("fixture accept: {error}"),
         }
     }
@@ -64,7 +80,9 @@ fn serve(listener: &TcpListener, stop: &AtomicBool, replies: &[String]) {
 
 /// Read headers and the complete declared body before answering.
 fn read_request(stream: &mut TcpStream) -> String {
-    stream.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+    stream
+        .set_read_timeout(Some(Duration::from_secs(5)))
+        .unwrap();
     let mut bytes = Vec::new();
     let mut buffer = [0; 4096];
     loop {
@@ -73,10 +91,14 @@ fn read_request(stream: &mut TcpStream) -> String {
         bytes.extend_from_slice(&buffer[..size]);
         if let Some(end) = bytes.windows(4).position(|part| part == b"\r\n\r\n") {
             let headers = String::from_utf8_lossy(&bytes[..end]);
-            let length = headers.lines().find_map(|line| {
-                let (key, value) = line.split_once(':')?;
-                key.eq_ignore_ascii_case("content-length").then(|| value.trim().parse::<usize>().unwrap())
-            }).unwrap_or(0);
+            let length = headers
+                .lines()
+                .find_map(|line| {
+                    let (key, value) = line.split_once(':')?;
+                    key.eq_ignore_ascii_case("content-length")
+                        .then(|| value.trim().parse::<usize>().unwrap())
+                })
+                .unwrap_or(0);
             if bytes.len() >= end + 4 + length {
                 return String::from_utf8(bytes).unwrap();
             }
