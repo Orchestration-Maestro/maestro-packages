@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::ctx::CapabilityCtx;
 use crate::pipeline::Config;
+use crate::runner::shell_quote;
 
 /// Schema tag for the call graph.
 pub const SCHEMA: &str = "maestro-security/visualize/1";
@@ -203,11 +204,6 @@ fn render_mermaid(nodes: &[CallNode], edges: &[CallEdge]) -> String {
         let _ = writeln!(out, "  {} --> {}", edge.from, edge.to);
     }
     out
-}
-
-/// Single-quote a string for safe shell interpolation.
-fn shell_quote(s: &str) -> String {
-    format!("'{}'", s.replace('\'', r"'\''"))
 }
 
 #[cfg(test)]

@@ -6,4 +6,5 @@ mod llm;
 mod models;
 #[path = "coverage/router.rs"]
 mod router;
-mod support;
+#[cfg(test)]
+pub mod support;

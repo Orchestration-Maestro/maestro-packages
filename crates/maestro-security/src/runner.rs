@@ -3,6 +3,11 @@
 
 use serde_json::json;
 
+/// Single-quote a string for safe shell interpolation.
+pub(crate) fn shell_quote(s: &str) -> String {
+    format!("'{}'", s.replace('\'', r"'\''"))
+}
+
 /// Default runner base URL (host-side, loopback).
 pub const DEFAULT_RUNNER_URL: &str = "http://127.0.0.1:8100";
 
