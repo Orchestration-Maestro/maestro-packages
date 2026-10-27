@@ -14,7 +14,7 @@ use crate::evidence::Ledger;
 use crate::pipeline::{Config, Engine, RunOptions};
 use crate::report::Assessment;
 use crate::store::{
-    now_secs, Card, CardKind, CardStatus, Credential, RunRecord, Status, Store, Workspace,
+    Card, CardKind, CardStatus, Credential, RunRecord, Status, Store, Workspace, now_secs,
 };
 
 /// Schema tag for the workspace result document.
@@ -115,9 +115,12 @@ fn cards_add(params: &Order) -> Result<Board, String> {
         .get("kind")
         .and_then(serde_json::Value::as_str)
         .unwrap_or("observation");
-    let kind: CardKind = serde_json::from_value(json!(kind))
-        .map_err(|e| format!("card kind: {e}"))?;
-    let body = payload.get("body").and_then(serde_json::Value::as_str).unwrap_or_default();
+    let kind: CardKind =
+        serde_json::from_value(json!(kind)).map_err(|e| format!("card kind: {e}"))?;
+    let body = payload
+        .get("body")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or_default();
     let store = Store;
     let mut cards = store.load_cards(&name)?;
     let id = format!("c-{:03}", cards.len() + 1);
@@ -131,7 +134,12 @@ fn cards_add(params: &Order) -> Result<Board, String> {
         created_at: now_secs(),
     });
     store.save_cards(&name, &cards)?;
-    Ok(result(params, format!("card {id} added to {name}"), cards, Vec::new()))
+    Ok(result(
+        params,
+        format!("card {id} added to {name}"),
+        cards,
+        Vec::new(),
+    ))
 }
 
 /// List the card deck of one workspace.
@@ -166,7 +174,12 @@ fn cards_update(params: &Order) -> Result<Board, String> {
         other => return Err(format!("unknown card action: {other}")),
     }
     store.save_cards(&name, &cards)?;
-    Ok(result(params, format!("card {id} updated"), cards, Vec::new()))
+    Ok(result(
+        params,
+        format!("card {id} updated"),
+        cards,
+        Vec::new(),
+    ))
 }
 
 /// Add one credential to the workspace store.
@@ -192,7 +205,12 @@ fn creds_add(params: &Order) -> Result<Board, String> {
         created_at: now_secs(),
     });
     store.save_creds(&name, &creds)?;
-    Ok(result(params, format!("credential {id} added to {name}"), Vec::new(), creds))
+    Ok(result(
+        params,
+        format!("credential {id} added to {name}"),
+        Vec::new(),
+        creds,
+    ))
 }
 
 /// List the credentials of one workspace.
@@ -283,7 +301,10 @@ fn new_running_workspace(
             name: name.to_string(),
             run_id: String::new(),
             target: target.to_string(),
-            agent: params.agent.clone().unwrap_or_else(|| "maestro.security".into()),
+            agent: params
+                .agent
+                .clone()
+                .unwrap_or_else(|| "maestro.security".into()),
             model: params.model.clone(),
             status: Status::Running,
             created_at: existing.as_ref().map_or(now, |w| w.created_at),
@@ -304,7 +325,9 @@ fn run_with_checkpoint(
     run_id_holder: String,
 ) -> Result<Assessment, String> {
     let mut config = Config::from_env();
-    if let Some(n) = params.max_hypotheses && n > 0 {
+    if let Some(n) = params.max_hypotheses
+        && n > 0
+    {
         config.max_hypotheses = n;
     }
     let agent = crate::agents::resolve_agent(params.agent.as_deref());
@@ -495,7 +518,7 @@ fn require_name(params: &Order) -> Result<String, String> {
 mod tests {
     //! Unit tests for workspace dispatch.
 
-    use super::{dispatch, Order};
+    use super::{Order, dispatch};
 
     /// An unknown action is rejected with a clear message.
     #[test]

@@ -30,12 +30,14 @@ Extension packages for Maestro. This repository follows the same strict governan
 
 ## CI contract
 
-[Shared Rust CI](https://github.com/Orchestration-Maestro/rust-workflows/blob/4a05e4c4c6cb82451af0b585255881bb7d860c81/README.md)
-defines the caller in `.github/workflows/ci.yml` and its SARIF and coverage
-upload jobs. CI checks the root workspace with `rust-toolchain.toml`, a 90%
-coverage floor and the automatic license policy. Keep the caller's Rust version
-in sync with the toolchain file. An administrator must register the shared
-`Required Rust CI` job as a required check after this workflow lands.
+[Shared Rust CI v0.16.1](https://github.com/Orchestration-Maestro/maestro-rust-workflows/blob/a1971288fc869085aebb6c7c151b72c4fc0aa934/README.md)
+and its [caller checks](https://github.com/Orchestration-Maestro/maestro-rust-workflows/blob/a1971288fc869085aebb6c7c151b72c4fc0aa934/docs/caller-checks.md)
+define the required checks. The organization ruleset attaches CI to repositories
+with `stack=rust`; do not add a caller workflow here. `.github/ci.toml` declares
+this workspace's targets and test tools. `mise.toml` pins just and prek;
+`rust-toolchain.toml` pins Rust. Run `just setup` to install the hooks.
+The pre-commit hook runs `just pre-commit`: capture staged paths, format,
+re-stage only captured files, then check their crates and reverse dependents.
 
 ## Agent skills
 

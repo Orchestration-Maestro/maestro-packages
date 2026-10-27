@@ -12,3 +12,4 @@ check_targets = [
 ]
 advisory_exceptions = []
 license_exceptions = []
+git_sources = ["https://github.com/Orchestration-Maestro/maestro"]

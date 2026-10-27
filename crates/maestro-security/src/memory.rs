@@ -193,7 +193,10 @@ fn normalize(v: &mut [f32]) {
 /// they are all-alnum; longer tokens are kept as-is. Non-alnum runs separate.
 fn tokenize(text: &str) -> Vec<String> {
     let mut out = Vec::new();
-    for word in text.to_lowercase().split(|c: char| !c.is_ascii_alphanumeric()) {
+    for word in text
+        .to_lowercase()
+        .split(|c: char| !c.is_ascii_alphanumeric())
+    {
         if word.len() >= 2 {
             out.push(word.to_string());
         }
@@ -216,7 +219,7 @@ fn fnv1a(bytes: &[u8]) -> u64 {
 mod tests {
     //! Unit tests for the embedder and the memory index.
 
-    use super::{cosine, embed, tokenize, Memory};
+    use super::{Memory, cosine, embed, tokenize};
 
     /// The same text always embeds to the same vector.
     #[test]
@@ -237,7 +240,8 @@ mod tests {
     #[test]
     fn search_orders_by_similarity() {
         let mut mem = Memory::new();
-        mem.entries.push(entry("mem-0001", "ssh root login exposed"));
+        mem.entries
+            .push(entry("mem-0001", "ssh root login exposed"));
         mem.entries.push(entry("mem-0002", "http cache stale 304"));
         let hits = mem.search("ssh root login", 1);
         assert_eq!(hits.len(), 1);
