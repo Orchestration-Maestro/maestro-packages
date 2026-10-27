@@ -85,5 +85,5 @@ pub use visualize::{CallGraph, Trace};
 pub use webui::{render, render_evidence, WebReport, WebuiParams};
 pub use workspace::{LogLine, Order, Board};
 
-#[cfg(any(target_arch = "wasm32", test))]
+#[cfg(target_arch = "wasm32")]
 maestro_extensions_wasm::export_extension!(extension::factory);

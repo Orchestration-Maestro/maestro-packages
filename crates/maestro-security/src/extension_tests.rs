@@ -15,14 +15,16 @@ struct Host {
     /// Payloads delivered through the registered listener boundary.
     payloads: RefCell<Vec<Value>>,
 }
-impl ExtensionHost for Rc<Host> {
+/// API adapter sharing the recording bus owner.
+struct ApiHost(Rc<Host>);
+impl ExtensionHost for ApiHost {
     fn on(&self, _event: &str, _handler: ExtensionHandler) -> ExtensionResult<()> { Err("unused capability".into()) }
-    fn register_command(&self, name: &str, options: CommandOptions) -> ExtensionResult<()> { self.commands.borrow_mut().insert(name.into(), options); Ok(()) }
+    fn register_command(&self, name: &str, options: CommandOptions) -> ExtensionResult<()> { self.0.commands.borrow_mut().insert(name.into(), options); Ok(()) }
     fn register_shortcut(&self, _shortcut: &str, _options: ShortcutOptions) -> ExtensionResult<()> { Err("unused capability".into()) }
     fn register_flag(&self, _name: &str, _options: FlagOptions) -> ExtensionResult<()> { Err("unused capability".into()) }
     fn get_flag(&self, _name: &str) -> ExtensionResult<Option<FlagValue>> { Err("unused capability".into()) }
     fn register_tool(&self, _tool: ToolDefinition) -> ExtensionResult<()> { Err("unused capability".into()) }
-    fn register_message_renderer(&self, _custom_type: &str, _renderer: crate::MessageRenderer) -> ExtensionResult<()> { Err("unused capability".into()) }
+    fn register_message_renderer(&self, _custom_type: &str, _renderer: MessageRenderer) -> ExtensionResult<()> { Err("unused capability".into()) }
     fn append_entry(&self, _custom_type: &str, _data: Option<Value>) -> ExtensionResult<()> { Err("unused capability".into()) }
     fn send_message(&self, _message: CustomMessageInput, _options: Option<SendMessageOptions>) -> ExtensionResult<()> { Err("unused capability".into()) }
     fn send_user_message(&self, _content: UserContent, _options: Option<SendUserMessageOptions>) -> ExtensionResult<()> { Err("unused capability".into()) }
@@ -35,7 +37,7 @@ impl ExtensionHost for Rc<Host> {
     fn get_commands(&self) -> ExtensionResult<Vec<SlashCommandInfo>> { Err("unused capability".into()) }
     fn get_thinking_level(&self) -> ExtensionResult<ThinkingLevel> { Err("unused capability".into()) }
     fn set_thinking_level(&self, _level: ThinkingLevel) -> ExtensionResult<()> { Err("unused capability".into()) }
-    fn events(&self) -> EventBus { EventBus::new(self.clone()) }
+    fn events(&self) -> EventBus { EventBus::new(self.0.clone()) }
     fn set_model(&self, _model: Model) -> ExtensionFuture<'_, bool> { Box::pin(async { Err("unused capability".into()) }) }
 }
 impl EventBusPort for Host {
@@ -82,9 +84,9 @@ impl ContextPort for CommandContext {
     fn session_manager(&self) -> ExtensionResult<ReadonlySessionManager> { Err("unused capability".into()) }
 }
 impl CommandContextPort for CommandContext {
-    fn fork<'a>(&'a self, _entry_id: &'a str, _options: Option<crate::ForkOptions>,) -> ExtensionFuture<'a, SessionChangeResult> { Box::pin(async { Err("unused command capability".into()) }) }
-    fn navigate_tree<'a>(&'a self, _target_id: &'a str, _options: Option<crate::NavigateTreeOptions>,) -> ExtensionFuture<'a, SessionChangeResult> { Box::pin(async { Err("unused command capability".into()) }) }
-    fn switch_session<'a>(&'a self, _path: &'a str, _options: Option<crate::SwitchSessionOptions>,) -> ExtensionFuture<'a, SessionChangeResult> { Box::pin(async { Err("unused command capability".into()) }) }
+    fn fork<'a>(&'a self, _entry_id: &'a str, _options: Option<ForkOptions>,) -> ExtensionFuture<'a, SessionChangeResult> { Box::pin(async { Err("unused command capability".into()) }) }
+    fn navigate_tree<'a>(&'a self, _target_id: &'a str, _options: Option<NavigateTreeOptions>,) -> ExtensionFuture<'a, SessionChangeResult> { Box::pin(async { Err("unused command capability".into()) }) }
+    fn switch_session<'a>(&'a self, _path: &'a str, _options: Option<SwitchSessionOptions>,) -> ExtensionFuture<'a, SessionChangeResult> { Box::pin(async { Err("unused command capability".into()) }) }
     fn reload(&self) -> ExtensionFuture<'_, ()> { Box::pin(async { Err("unused command capability".into()) }) }
     fn wait_for_idle(&self) -> ExtensionFuture<'_, ()> { Box::pin(async { Err("unused command capability".into()) }) }
     fn new_session(&self, _options: Option<NewSessionCommandOptions>,) -> ExtensionFuture<'_, SessionChangeResult> { Box::pin(async { Err("unused command capability".into()) }) }
@@ -101,7 +103,7 @@ fn ready<T>(future: impl Future<Output = T>) -> T {
 #[test]
 fn registered_assess_dispatches_to_the_trigger_listener() {
     let host = Rc::new(Host::default());
-    register_autonomy(&ExtensionAPI::new(Rc::new(host.clone()))).expect("register");
+    register_autonomy(&ExtensionAPI::new(Rc::new(ApiHost(host.clone())))).expect("register");
     let names: Vec<_> = host.commands.borrow().keys().cloned().collect();
     assert_eq!(names, ["assess"]);
     let home = std::env::temp_dir().join(format!("security-boundary-{}", std::process::id()));
