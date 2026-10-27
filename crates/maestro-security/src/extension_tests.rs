@@ -25,6 +25,12 @@ use std::{
 struct Host {
     /// Registered handlers, invoked by the tests.
     commands: RefCell<BTreeMap<String, CommandOptions>>,
+    /// Registered tools invoked through their exported callbacks.
+    tools: RefCell<BTreeMap<String, ToolDefinition>>,
+    /// Host refusal used to check registration error propagation.
+    reject_tools: RefCell<bool>,
+    /// Simulated trigger delivery refusal.
+    reject_emits: RefCell<bool>,
     /// Registered trigger listener.
     listener: RefCell<Option<EventListener>>,
     /// Payloads delivered through the registered listener boundary.
@@ -49,7 +55,14 @@ impl ExtensionHost for ApiHost {
     fn get_flag(&self, _name: &str) -> ExtensionResult<Option<FlagValue>> {
         Err("unused capability".into())
     }
-    fn register_tool(&self, _tool: ToolDefinition) -> ExtensionResult<()> {
+    fn register_tool(&self, tool: ToolDefinition) -> ExtensionResult<()> {
+        if *self.0.reject_tools.borrow() {
+            return Err("registration refused".into());
+        }
+        self.0
+            .tools
+            .borrow_mut()
+            .insert(tool.metadata.name.clone(), tool);
         Ok(())
     }
     fn register_message_renderer(
@@ -119,6 +132,9 @@ impl EventBusPort for Host {
     fn emit<'a>(&'a self, channel: &'a str, data: Value) -> ExtensionFuture<'a, ()> {
         Box::pin(async move {
             assert_eq!(channel, autonomy::TRIGGER_CHANNEL);
+            if *self.reject_emits.borrow() {
+                return Err("delivery refused".into());
+            }
             self.payloads.borrow_mut().push(data.clone());
             let listener = self.listener.borrow().clone().expect("registered listener");
             let tail = listener(data, CallbackEmitter::new(self))?;
@@ -274,4 +290,185 @@ fn registered_assess_dispatches_to_the_trigger_listener() {
         );
     });
     let _ = std::fs::remove_dir_all(home);
+}
+
+/// Baseline: every registered tool validates its own required input.
+#[test]
+fn baseline_registered_tools_reject_missing_arguments() {
+    let host = Rc::new(Host::default());
+    ready(factory(ExtensionAPI::new(Rc::new(ApiHost(host.clone()))))).expect("register");
+    for (name, field) in [
+        ("security_assess", "target"),
+        ("security_evidence", "run_id"),
+        ("security_workspace", "action"),
+        ("security_route", "task"),
+        ("security_report_page", "run_id"),
+        ("security_evidence_page", "run_id"),
+        ("security_validate", "run_id"),
+        ("security_disclose", "action"),
+    ] {
+        let execute = host.tools.borrow()[name].execute.clone();
+        let result = ready(execute(
+            "call-1".into(),
+            json!({}),
+            None,
+            None,
+            maestro_extensions_wasm::ExtensionContext::new(Rc::new(CommandContext)),
+        ));
+        assert!(
+            result.expect_err("missing argument").contains(field),
+            "{name}"
+        );
+    }
+}
+
+/// Baseline: retained evidence is returned intact in details, not just a summary.
+#[test]
+fn baseline_registered_evidence_returns_the_retained_ledger() {
+    let host = Rc::new(Host::default());
+    ready(factory(ExtensionAPI::new(Rc::new(ApiHost(host.clone()))))).expect("register");
+    let home =
+        std::env::temp_dir().join(format!("security-extension-ledger-{}", std::process::id()));
+    crate::evidence::with_home(&home, || {
+        let mut ledger = crate::evidence::Ledger::new();
+        ledger.record_exec("recon", "inspect", &"é".repeat(200), 0);
+        ledger
+            .save(
+                "run-evidence",
+                "example.test",
+                "maestro.security",
+                "fixture",
+            )
+            .expect("save");
+        let execute = host.tools.borrow()["security_evidence"].execute.clone();
+        let result = ready(execute(
+            "call-1".into(),
+            json!({"run_id":"run-evidence"}),
+            None,
+            None,
+            maestro_extensions_wasm::ExtensionContext::new(Rc::new(CommandContext)),
+        ))
+        .expect("evidence");
+        let maestro_extensions_wasm::Presence::Present(details) = result.details else {
+            panic!("evidence must include full details");
+        };
+        let doc: Value = serde_json::from_str(&details).expect("ledger JSON");
+        assert_eq!(doc["run_id"], "run-evidence");
+        assert_eq!(doc["entries"][0]["output"], "é".repeat(200));
+        assert_eq!(result.content.len(), 1);
+    });
+    std::fs::remove_dir_all(home).expect("remove ledger");
+}
+
+/// Baseline: a blank assess command cannot create a run or emit a trigger.
+#[test]
+fn baseline_blank_assess_does_not_start_a_run() {
+    let host = Rc::new(Host::default());
+    ready(factory(ExtensionAPI::new(Rc::new(ApiHost(host.clone()))))).expect("register");
+    let home =
+        std::env::temp_dir().join(format!("security-extension-blank-{}", std::process::id()));
+    crate::evidence::with_home(&home, || {
+        let handler = host.commands.borrow()["assess"].handler.clone();
+        ready(handler(
+            " \t\n ".into(),
+            ExtensionCommandContext::new(Rc::new(CommandContext)),
+        ))
+        .expect("command");
+        assert!(host.payloads.borrow().is_empty());
+        assert!(crate::store::Store.list_runs(0).expect("index").is_empty());
+    });
+}
+
+/// Baseline: registration errors reach the host without offering partial commands.
+#[test]
+fn baseline_factory_propagates_tool_registration_failure() {
+    let host = Rc::new(Host::default());
+    host.reject_tools.replace(true);
+    let error = ready(factory(ExtensionAPI::new(Rc::new(ApiHost(host.clone())))))
+        .expect_err("host rejection");
+    assert_eq!(error, "registration refused");
+    assert!(host.commands.borrow().is_empty());
+    assert!(host.listener.borrow().is_none());
+}
+
+/// Baseline: failed trigger delivery settles the recorded run rather than leaving it live.
+#[test]
+fn baseline_failed_trigger_delivery_settles_the_run() {
+    let host = Rc::new(Host::default());
+    host.reject_emits.replace(true);
+    ready(factory(ExtensionAPI::new(Rc::new(ApiHost(host.clone()))))).expect("register");
+    let home =
+        std::env::temp_dir().join(format!("security-extension-refused-{}", std::process::id()));
+    crate::evidence::with_home(&home, || {
+        let handler = host.commands.borrow()["assess"].handler.clone();
+        ready(handler(
+            "example.test".into(),
+            ExtensionCommandContext::new(Rc::new(CommandContext)),
+        ))
+        .expect("command");
+        let runs = crate::store::Store.list_runs(0).expect("index");
+        assert_eq!(runs.len(), 1);
+        assert!(matches!(runs[0].status, crate::store::Status::Failed));
+        assert_eq!(runs[0].summary, "delivery refused");
+        assert!(runs[0].finished_at.is_some());
+    });
+    std::fs::remove_dir_all(home).expect("remove index");
+}
+
+/// Baseline: registered read tools return usable data for retained runs.
+#[test]
+fn baseline_registered_read_tools_return_report_ledger_and_validation() {
+    let host = Rc::new(Host::default());
+    ready(factory(ExtensionAPI::new(Rc::new(ApiHost(host.clone()))))).expect("register");
+    let home = std::env::temp_dir().join(format!("security-extension-read-{}", std::process::id()));
+    crate::evidence::with_home(&home, || {
+        let report: crate::Assessment = serde_json::from_value(json!({
+            "schema":crate::SCHEMA, "run_id":"run-read", "target":"<target>",
+            "agent":"maestro.security", "model":"fixture", "phases":[],
+            "findings":[], "refuted":[], "threats":[], "unknown":[],
+            "runtime_mechanics":[], "summary":"<summary>"
+        }))
+        .expect("report");
+        crate::save_report("run-read", &report).expect("retain report");
+        let mut ledger = crate::Ledger::new();
+        ledger.record_note("recon", "<note>");
+        ledger
+            .save("run-read", "<target>", "maestro.security", "fixture")
+            .expect("retain ledger");
+        let invoke = |name: &str, arguments| {
+            let execute = host.tools.borrow()[name].execute.clone();
+            let result = ready(execute(
+                "call-1".into(),
+                arguments,
+                None,
+                None,
+                maestro_extensions_wasm::ExtensionContext::new(Rc::new(CommandContext)),
+            ))
+            .expect("read tool");
+            let maestro_extensions_wasm::UserBlock::Text(text) = &result.content[0] else {
+                panic!("text result");
+            };
+            text.text.clone()
+        };
+        let arguments = json!({"run_id":"run-read"});
+        let page = invoke("security_report_page", arguments.clone());
+        assert!(page.contains("&lt;target&gt;"));
+        assert!(!page.contains("<target>"));
+        assert!(invoke("security_evidence_page", arguments.clone()).contains("&lt;note&gt;"));
+        let validation: Value =
+            serde_json::from_str(&invoke("security_validate", arguments)).expect("validation");
+        assert_eq!(validation["violations"], json!([]));
+        let sarif: Value = serde_json::from_str(&invoke(
+            "security_disclose",
+            json!({"action":"sarif","run_id":"run-read"}),
+        ))
+        .expect("SARIF");
+        assert_eq!(sarif["version"], "2.1.0");
+        let workspace: Value =
+            serde_json::from_str(&invoke("security_workspace", json!({"action":"list"})))
+                .expect("board");
+        assert_eq!(workspace["action"], "list");
+        assert!(invoke("security_route", json!({"task":"xyzzy"})).contains("no domain matched"));
+    });
+    std::fs::remove_dir_all(home).expect("remove retained state");
 }
