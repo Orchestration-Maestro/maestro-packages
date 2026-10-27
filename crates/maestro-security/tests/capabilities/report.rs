@@ -75,5 +75,10 @@ fn invalid_verdict_and_missing_evidence_are_rejected() {
     document["findings"][0]["verdict"] = json!("rejected");
     assert!(serde_json::from_value::<Assessment>(document.clone()).is_ok());
     document["findings"][0]["evidence"] = Value::Null;
+    assert!(serde_json::from_value::<Assessment>(document.clone()).is_err());
+    document["findings"][0]
+        .as_object_mut()
+        .unwrap()
+        .shift_remove("evidence");
     assert!(serde_json::from_value::<Assessment>(document).is_err());
 }

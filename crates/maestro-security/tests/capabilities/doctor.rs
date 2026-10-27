@@ -132,7 +132,9 @@ fn runner_probe_errors_are_drift() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
     let report = doctor()?;
-    for check in &report.checks[4..] {
+    assert_eq!(report.checks.len(), 6);
+    for (check, name) in report.checks[4..].iter().zip(["tooling", "hardware"]) {
+        assert_eq!(check.name, name);
         assert_eq!(check.classification, Classification::ConfigDrift);
         assert!(check.detail.contains("403"));
         assert!(!check.remediation.is_empty());

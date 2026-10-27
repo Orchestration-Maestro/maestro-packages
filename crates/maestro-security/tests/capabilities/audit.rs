@@ -51,6 +51,7 @@ fn mixed_outcomes_retain_evidence_and_counts() -> Result<(), Box<dyn std::error:
     assert_eq!(report.checks[1].evidence, "é".repeat(250));
     assert!(report.checks[2].evidence.len() <= 500);
     assert!(report.checks[2].evidence.contains("403"));
+    assert!(report.checks[2].evidence.contains(&"界".repeat(100)));
     assert_eq!(report.checks[4].evidence, "2\n");
     assert_eq!(
         report.summary,
@@ -86,12 +87,15 @@ fn summary_failure_is_returned() -> Result<(), Box<dyn std::error::Error>> {
 
 /// Baseline: empty scope is rejected before reaching external services.
 #[test]
-fn whitespace_target_is_rejected() {
-    assert!(
-        audit(&Scope {
-            target: " \n\t".into(),
-            model: None
-        })
-        .is_err()
-    );
+fn whitespace_target_is_rejected() -> Result<(), Box<dyn std::error::Error>> {
+    if !support::isolated("audit::whitespace_target_is_rejected", summary_denied)? {
+        return Ok(());
+    }
+    let error = audit(&Scope {
+        target: " \n\t".into(),
+        model: None,
+    })
+    .unwrap_err();
+    assert_eq!(error, "target is required");
+    Ok(())
 }

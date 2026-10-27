@@ -5,24 +5,42 @@ use crate::support;
 use maestro_security::bench::{Suite, bench};
 use serde_json::Value;
 
+/// Expected prompt, distinct answer suffix and grade for each benchmark question.
+const QUESTIONS: [(&str, &str, bool); 3] = [
+    (
+        "Which is more secure: HTTP or HTTPS for transmitting credentials?",
+        "transport-answer",
+        true,
+    ),
+    ("What does SQL injection exploit?", "query-answer", false),
+    (
+        "Name a weak hashing algorithm for passwords.",
+        "hash-answer",
+        false,
+    ),
+];
+
 /// Grade one answer and leave malformed or non-boolean grades uncredited.
 fn graded(path: &str, body: &Value) -> (u16, String) {
     if path == "/models" {
         return support::models();
     }
-    let system = body["messages"][0]["content"].as_str().unwrap_or("");
     let user = body["messages"][1]["content"].as_str().unwrap_or("");
-    if system == "You are the grader." {
-        if user.contains("HTTPS") {
-            support::completion("```json\n{\"correct\":true}\n```")
-        } else if user.contains("SQL") {
-            support::completion("not JSON")
-        } else {
-            support::completion("{\"correct\":\"true\"}")
+    let model = body["model"].as_str().unwrap_or("");
+    for (prompt, suffix, _) in QUESTIONS {
+        let answer = format!("{model}:{suffix}");
+        if user == prompt {
+            return support::completion(&answer);
         }
-    } else {
-        support::completion(body["model"].as_str().unwrap_or(""))
+        if user.contains(prompt) && user.contains(&answer) {
+            return support::completion(match suffix {
+                "transport-answer" => "```json\n{\"correct\":true}\n```",
+                "query-answer" => "not JSON",
+                _ => "{\"correct\":\"true\"}",
+            });
+        }
     }
+    (400, "unexpected benchmark request".into())
 }
 
 /// Baseline: A/B scores retain answers and count only affirmative boolean grades.
@@ -44,26 +62,13 @@ fn comparison_counts_grades_and_preserves_answers() -> Result<(), Box<dyn std::e
     for (score, model) in [(&report.primary, "primary"), (&comparison, "secondary")] {
         assert_eq!(score.model, model);
         assert_eq!((score.correct, score.total), (1, 3));
-        assert_eq!(score.answers.len(), score.total);
-        assert!(score.answers.iter().all(|answer| answer.answer == model));
-        assert_eq!(
-            score.answers.iter().filter(|answer| answer.correct).count(),
-            1
-        );
+        assert_eq!(score.answers.len(), QUESTIONS.len());
+        for (answer, (prompt, suffix, correct)) in score.answers.iter().zip(QUESTIONS) {
+            assert_eq!(answer.prompt, prompt);
+            assert_eq!(answer.answer, format!("{model}:{suffix}"));
+            assert_eq!(answer.correct, correct);
+        }
     }
-    assert_eq!(
-        report
-            .primary
-            .answers
-            .iter()
-            .map(|a| &a.prompt)
-            .collect::<Vec<_>>(),
-        comparison
-            .answers
-            .iter()
-            .map(|a| &a.prompt)
-            .collect::<Vec<_>>()
-    );
     Ok(())
 }
 
@@ -109,12 +114,15 @@ fn completion_failure_is_returned() -> Result<(), Box<dyn std::error::Error>> {
 
 /// Baseline: whitespace-only model names are rejected before transport.
 #[test]
-fn whitespace_model_is_rejected() {
-    assert!(
-        bench(&Suite {
-            model: " \t\n".into(),
-            ..Suite::default()
-        })
-        .is_err()
-    );
+fn whitespace_model_is_rejected() -> Result<(), Box<dyn std::error::Error>> {
+    if !support::isolated("bench::whitespace_model_is_rejected", denied)? {
+        return Ok(());
+    }
+    let error = bench(&Suite {
+        model: " \t\n".into(),
+        ..Suite::default()
+    })
+    .unwrap_err();
+    assert_eq!(error, "model is required");
+    Ok(())
 }
