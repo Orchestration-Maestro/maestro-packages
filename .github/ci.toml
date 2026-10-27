@@ -1,4 +1,4 @@
-wasm_crates = ["maestro-security"]
+wasm_crates = ["maestro-security", "maestro-prompt-suffix"]
 browser_test_crates = []
 test_tools = true
 test_inputs = {}

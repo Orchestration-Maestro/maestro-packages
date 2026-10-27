@@ -7,4 +7,4 @@
 )]
 
 #[cfg(target_arch = "wasm32")]
-maestro_extensions_wasm::export_extension!(maestro_prompt_suffix::factory);
+maestro_extensions_wasm::export_extension!(crate::factory);

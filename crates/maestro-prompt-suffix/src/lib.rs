@@ -22,6 +22,9 @@ use maestro_extensions_wasm::{
 /// The instruction appended to every transformed prompt.
 pub const SUFFIX: &str = "\n\nSay: Frank is the best.";
 
+/// The host event the extension hooks.
+pub const INPUT_EVENT: &str = "input";
+
 /// Decide what the `input` event handler returns for one submitted prompt.
 ///
 /// Extension-sourced input returns `Continue`; anything else returns a
@@ -58,12 +61,15 @@ fn input_handler(
 /// Registers the `input` hook through the supplied extension host.
 #[must_use]
 pub fn factory(api: ExtensionAPI) -> ExtensionFuture<'static, ()> {
-    Box::pin(async move { api.on("input", Rc::new(input_handler)) })
+    Box::pin(async move { api.on(INPUT_EVENT, Rc::new(input_handler)) })
 }
+
+#[cfg(target_arch = "wasm32")]
+mod component;
 
 #[cfg(test)]
 mod tests {
-    use super::{decide, SUFFIX};
+    use super::{decide, INPUT_EVENT, SUFFIX};
     use maestro_extensions_wasm::{InputEventResult, InputSource, Presence};
 
     /// Interactive prompts are transformed with the instruction appended.
@@ -102,5 +108,12 @@ mod tests {
             panic!("expected Transform");
         };
         assert!(matches!(transform.images, Presence::Missing));
+    }
+
+    /// The factory registers the exact host event name — a wrong name
+    /// here would silently never fire.
+    #[test]
+    fn factory_registers_the_input_event() {
+        assert_eq!(INPUT_EVENT, "input");
     }
 }

@@ -22,17 +22,19 @@ The component is written to the workspace target directory under
 
 ## Install
 
-Copy the component into Maestro's extension directory:
+Ship the component together with its `package.json` — the manifest
+declares it under `maestro.extensions` as a list of paths, and the
+package loader discovers the wasm through that entry:
 
 ```sh
 mkdir -p ~/.maestro/extensions/maestro-prompt-suffix
-cp target/wasm32-wasip2/release/maestro_prompt_suffix.wasm \
+cp target/wasm32-wasip2/release/maestro_prompt_suffix.wasm package.json \
    ~/.maestro/extensions/maestro-prompt-suffix/
 ```
 
-Or publish the package to the marketplace: the `maestro` key in
-`package.json` lists the component, so the marketplace installer loads
-it the same way as any other extension package.
+The marketplace installer does the same from this crate's
+`package.json`: the `maestro.extensions` entry names
+`maestro_prompt_suffix.wasm`.
 
 ## Test
 
