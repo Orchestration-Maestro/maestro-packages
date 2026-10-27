@@ -190,12 +190,7 @@ impl Store {
     /// # Errors
     /// Fails if the workspace table cannot be read or is malformed.
     pub fn list_workspaces(&self) -> Result<Vec<Workspace>, String> {
-        let path = Self::workspaces_path()?;
-        let Ok(text) = std::fs::read_to_string(path) else {
-            return Ok(Vec::new());
-        };
-        let mut workspaces: Vec<Workspace> =
-            serde_json::from_str(&text).map_err(|e| format!("workspaces.json: {e}"))?;
+        let mut workspaces: Vec<Workspace> = read_doc(&Self::workspaces_path()?)?;
         workspaces.sort_by_key(|w| std::cmp::Reverse(w.updated_at));
         Ok(workspaces)
     }
@@ -218,7 +213,7 @@ impl Store {
     /// created or the file cannot be written.
     pub fn upsert_workspace(&self, base: u64, workspace: &Workspace) -> Result<(), String> {
         let path = Self::workspaces_path()?;
-        let mut workspaces = Self::read_workspaces(&path)?;
+        let mut workspaces = read_doc(&path)?;
         apply_workspace_update(&mut workspaces, base, workspace)?;
         Self::write_workspaces(&path, &workspaces)
     }
@@ -236,7 +231,7 @@ impl Store {
     /// The cards of one workspace; a missing file is an empty deck.
     ///
     /// # Errors
-    /// Fails if the file exists but is malformed.
+    /// Fails if the file exists but is malformed or cannot be read.
     pub fn load_cards(&self, name: &str) -> Result<Vec<Card>, String> {
         read_doc(&Self::cards_path(name)?)
     }
@@ -253,7 +248,7 @@ impl Store {
     /// The credentials of one workspace; a missing file is an empty set.
     ///
     /// # Errors
-    /// Fails if the file exists but is malformed.
+    /// Fails if the file exists but is malformed or cannot be read.
     pub fn load_creds(&self, name: &str) -> Result<Vec<Credential>, String> {
         read_doc(&Self::creds_path(name)?)
     }
@@ -269,8 +264,10 @@ impl Store {
 
     /// Read the run index; a missing file is an empty index.
     fn read_runs(path: &Path) -> Result<Vec<RunRecord>, String> {
-        let Ok(text) = std::fs::read_to_string(path) else {
-            return Ok(Vec::new());
+        let text = match std::fs::read_to_string(path) {
+            Ok(text) => text,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+            Err(error) => return Err(format!("runs.jsonl: {error}")),
         };
         let mut out = Vec::new();
         for line in text.lines() {
@@ -281,14 +278,6 @@ impl Store {
             out.push(serde_json::from_str(line).map_err(|e| format!("runs.jsonl: {e}"))?);
         }
         Ok(out)
-    }
-
-    /// Read the workspace table; a missing file is an empty table.
-    fn read_workspaces(path: &Path) -> Result<Vec<Workspace>, String> {
-        let Ok(text) = std::fs::read_to_string(path) else {
-            return Ok(Vec::new());
-        };
-        serde_json::from_str(&text).map_err(|e| format!("workspaces.json: {e}"))
     }
 
     /// Write the run index as one JSON record per line.

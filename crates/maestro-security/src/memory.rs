@@ -56,11 +56,15 @@ impl Memory {
     /// Load the persisted index; a missing file is an empty index.
     ///
     /// # Errors
-    /// Fails if the file exists but is malformed.
+    /// Fails if the file exists but is malformed or cannot be read.
     pub fn load() -> Result<Self, String> {
         let path = evidence::base_dir()?.join("memory.json");
-        let Ok(text) = std::fs::read_to_string(path) else {
-            return Ok(Self::default());
+        let text = match std::fs::read_to_string(path) {
+            Ok(text) => text,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                return Ok(Self::default());
+            }
+            Err(error) => return Err(format!("memory.json: {error}")),
         };
         let doc: MemoryDoc =
             serde_json::from_str(&text).map_err(|e| format!("memory.json: {e}"))?;
