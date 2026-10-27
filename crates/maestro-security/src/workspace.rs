@@ -358,7 +358,9 @@ fn finish_start(
             workspace.run_id.clone_from(&assessment.run_id);
             workspace.updated_at = now_secs();
             let findings = workspace.findings;
-            store.upsert_workspace(workspace.revision, &workspace)?;
+            let base = workspace.revision;
+            store.upsert_workspace(base, &workspace)?;
+            workspace.revision = base + 1;
             record_run(store, &assessment, Some(name))?;
             Ok(Board {
                 schema: SCHEMA,
@@ -468,7 +470,9 @@ fn stop(params: &Order) -> Result<Board, String> {
         .ok_or_else(|| format!("no workspace named {name}"))?;
     workspace.status = Status::Stopped;
     workspace.updated_at = now_secs();
-    store.upsert_workspace(workspace.revision, &workspace)?;
+    let base = workspace.revision;
+    store.upsert_workspace(base, &workspace)?;
+    workspace.revision = base + 1;
     Ok(Board {
         schema: SCHEMA,
         action: params.action.clone(),

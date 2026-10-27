@@ -13,6 +13,7 @@ pub fn runner(test: &str, replies: Vec<(u16, String)>) -> bool {
     let listener = TcpListener::bind("127.0.0.1:0").expect("loopback runner");
     listener.set_nonblocking(true).expect("nonblocking");
     let url = format!("http://{}", listener.local_addr().expect("address"));
+    let home = std::env::temp_dir().join(format!("security-runner-{}-{test}", std::process::id()));
     let server = std::thread::spawn(move || {
         for (status, body) in replies {
             let mut stream = accept(&listener);
@@ -24,10 +25,12 @@ pub fn runner(test: &str, replies: Vec<(u16, String)>) -> bool {
         .args(["--exact", test, "--nocapture"])
         .env("SECURITY_TEST_CHILD", test)
         .env("MAESTRO_SECURITY_RUNNER", url)
+        .env("MAESTRO_SECURITY_HOME", &home)
         .env("MAESTRO_SECURITY_BRIDGE", "http://127.0.0.1:1")
         .output()
         .expect("child test");
     server.join().expect("runner fixture");
+    let _ = std::fs::remove_dir_all(home);
     assert!(
         output.status.success(),
         "{}\n{}",
