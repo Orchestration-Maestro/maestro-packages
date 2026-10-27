@@ -3,6 +3,20 @@
 #[cfg(test)]
 pub mod support;
 
+#[path = "support/handler.rs"]
+mod handler_support;
+
+#[path = "capabilities/audit.rs"]
+mod audit;
+#[path = "capabilities/bench.rs"]
+mod bench;
+#[path = "capabilities/coverage.rs"]
+mod coverage;
+#[path = "capabilities/doctor.rs"]
+mod doctor;
+#[path = "capabilities/report.rs"]
+mod report;
+
 use maestro_security::{browser, surface};
 
 /// Fetching a page retains its structure and the model's structured analysis.
