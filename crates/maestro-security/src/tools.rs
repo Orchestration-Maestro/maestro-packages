@@ -391,3 +391,7 @@ mod tests {
         assert!(err.contains("no retained runs"), "unexpected: {err}");
     }
 }
+
+#[cfg(test)]
+#[path = "tools_tests.rs"]
+mod behavior_tests;
