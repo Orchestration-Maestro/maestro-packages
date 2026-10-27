@@ -1102,7 +1102,8 @@ label shape, so double-backtick labels count too.
 | `skills/slice2-box-skills.md` | 4 | 1 / 3 / 1 / 0 | `8b941c132dae6bbb80e34a6c1c64aa048c8645f3f0ef89a72bdc03864fed279f` |
 
 Totals (supersede §13): 798 joined, 1913 explicit exclusions,
-0 false-source flags remaining, 0 data-only waivers.
+1 false-source flag remaining (skills/slice2-box-skills.md, kept with
+its recorded reason; re-check filed as issue #21), 0 data-only waivers.
 
 
 ## 14. Completeness: design to campaign
