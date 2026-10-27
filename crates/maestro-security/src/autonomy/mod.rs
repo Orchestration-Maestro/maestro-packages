@@ -180,11 +180,11 @@ mod tests {
     use crate::store::{Status, Store};
     use std::sync::atomic::{AtomicU32, Ordering};
 
-    /// Exactly the three commands are offered, in order, each described.
+    /// Only functional commands are offered, each described.
     #[test]
-    fn the_command_table_is_exactly_three() {
+    fn the_command_table_contains_only_functional_commands() {
         let names: Vec<&str> = COMMANDS.iter().map(|command| command.name).collect();
-        assert_eq!(names, ["assess", "security-stop", "security-steer"]);
+        assert_eq!(names, ["assess"]);
         assert!(
             COMMANDS
                 .iter()

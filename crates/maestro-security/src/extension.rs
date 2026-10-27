@@ -480,3 +480,7 @@ pub fn factory(api: ExtensionAPI) -> ExtensionFuture<'static, ()> {
         Ok(())
     })
 }
+
+#[cfg(test)]
+#[path = "extension_tests.rs"]
+mod tests;
