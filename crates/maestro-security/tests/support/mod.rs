@@ -14,6 +14,18 @@ pub type Capture = JoinHandle<std::io::Result<String>>;
 
 /// Serve one response on an ephemeral port without contacting a real model.
 pub fn bridge(status: u16, body: &str) -> Result<(Client, Capture), Box<dyn std::error::Error>> {
+    let (url, handle) = bridge_url(status, body)?;
+    Ok((
+        Client::local().with_base_url(url).with_key("fixture-key"),
+        handle,
+    ))
+}
+
+/// Serve an endpoint usable through environment-based model configuration.
+pub fn bridge_url(
+    status: u16,
+    body: &str,
+) -> Result<(String, Capture), Box<dyn std::error::Error>> {
     let listener = TcpListener::bind("127.0.0.1:0")?;
     listener.set_nonblocking(true)?;
     let url = format!("http://{}/v1", listener.local_addr()?);
@@ -25,7 +37,10 @@ pub fn bridge(status: u16, body: &str) -> Result<(Client, Capture), Box<dyn std:
                 Ok((socket, _)) => break socket,
                 Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
                     if start.elapsed() > Duration::from_secs(10) {
-                        return Err(std::io::Error::new(std::io::ErrorKind::TimedOut, "no request"));
+                        return Err(std::io::Error::new(
+                            std::io::ErrorKind::TimedOut,
+                            "no request",
+                        ));
                     }
                     thread::sleep(Duration::from_millis(5));
                 }
@@ -35,10 +50,14 @@ pub fn bridge(status: u16, body: &str) -> Result<(Client, Capture), Box<dyn std:
         socket.set_read_timeout(Some(Duration::from_secs(10)))?;
         socket.set_write_timeout(Some(Duration::from_secs(10)))?;
         let request = read_request(&mut socket)?;
-        write!(socket, "HTTP/1.1 {status} Reply\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{body}", body.len())?;
+        write!(
+            socket,
+            "HTTP/1.1 {status} Reply\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{body}",
+            body.len()
+        )?;
         Ok(request)
     });
-    Ok((Client::local().with_base_url(url).with_key("fixture-key"), handle))
+    Ok((url, handle))
 }
 
 /// Read the framed request before replying, including a POST body.
@@ -49,16 +68,20 @@ fn read_request(socket: &mut TcpStream) -> std::io::Result<String> {
     loop {
         let mut line = String::new();
         if reader.read_line(&mut line)? == 0 {
-            return Err(std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "request head"));
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::UnexpectedEof,
+                "request head",
+            ));
         }
         head.push_str(&line);
         if line == "\r\n" {
             break;
         }
         if let Some(value) = line.strip_prefix("content-length: ") {
-            length = value.trim().parse().map_err(|error| {
-                std::io::Error::new(std::io::ErrorKind::InvalidData, error)
-            })?;
+            length = value
+                .trim()
+                .parse()
+                .map_err(|error| std::io::Error::new(std::io::ErrorKind::InvalidData, error))?;
         }
     }
     let mut body = vec![0; length];
@@ -69,5 +92,7 @@ fn read_request(socket: &mut TcpStream) -> std::io::Result<String> {
 
 /// Join the fixture and surface server-side failures to the test runner.
 pub fn captured(handle: Capture) -> Result<String, Box<dyn std::error::Error>> {
-    Ok(handle.join().map_err(|_| "bridge fixture thread failed")??)
+    Ok(handle
+        .join()
+        .map_err(|_| "bridge fixture thread failed")??)
 }
