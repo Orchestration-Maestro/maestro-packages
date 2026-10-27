@@ -219,11 +219,11 @@ impl crate::pipeline::Engine {
         }
     }
 
-    /// Phase 5: deepen each verified finding in place.
+    /// Phase 5: deepen each confirmed finding in place.
     pub(crate) fn phase_deepen(&self, ctx: &ModelCtx, state: &mut RunState) {
         let verifications = std::mem::take(&mut state.verifications);
         for verification in &verifications {
-            if verification.level == "REFUTED" || verification.level == "POSSIBLE" {
+            if verification.level != "CONFIRMED" {
                 continue;
             }
             let Some(finding) = state

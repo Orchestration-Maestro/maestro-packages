@@ -92,13 +92,14 @@ STYLE: terse. Facts over adjectives. One line per fact. No filler.";
 
 /// Deterministic recon commands for a target: (command, timeout seconds).
 pub fn recon_commands(target: &str) -> Vec<(String, u32)> {
+    let quoted = format!("'{}'", target.replace('\'', "'\\''"));
     let mut cmds = vec![
-        (format!("nmap -Pn -sV --top-ports 100 {target}"), 600),
-        (format!("curl -sS -m 15 -D - -o /dev/null {target}"), 120),
+        (format!("nmap -Pn -sV --top-ports 100 -- {quoted}"), 600),
+        (format!("curl -sS -m 15 -D - -o /dev/null -- {quoted}"), 120),
     ];
     if target.starts_with("http://") || target.starts_with("https://") {
         cmds.push((
-            format!("httpx -u {target} -tech-detect -status-code -title"),
+            format!("httpx -u {quoted} -tech-detect -status-code -title"),
             120,
         ));
     }
