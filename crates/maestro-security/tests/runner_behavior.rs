@@ -1,5 +1,6 @@
 //! Baseline checks of image inventory and campaign failure handling.
-mod support;
+#[cfg(test)]
+pub mod support;
 
 use maestro_security::prestage::prestage;
 

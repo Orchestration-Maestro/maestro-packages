@@ -1,5 +1,6 @@
 //! Regression tests through the call-graph capability.
-mod support;
+#[cfg(test)]
+pub mod support;
 
 use maestro_security::visualize::{Trace, visualize};
 
