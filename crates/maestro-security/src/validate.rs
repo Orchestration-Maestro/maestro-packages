@@ -66,9 +66,8 @@ pub fn validate_assessment(assessment: &Assessment) -> ValidationReport {
     fingerprints.sort_unstable();
     fingerprints.dedup();
     if fingerprints.len() != assessment.findings.len() {
-        out.violations.push(Violation::report(
-            "fingerprints must be unique",
-        ));
+        out.violations
+            .push(Violation::report("fingerprints must be unique"));
     }
     let sorted = assessment
         .findings
@@ -76,9 +75,8 @@ pub fn validate_assessment(assessment: &Assessment) -> ValidationReport {
         .map(|f| f.fingerprint.as_str())
         .collect::<Vec<_>>();
     if sorted != fingerprints {
-        out.violations.push(Violation::report(
-            "findings must be sorted by fingerprint",
-        ));
+        out.violations
+            .push(Violation::report("findings must be sorted by fingerprint"));
     }
     for finding in &assessment.findings {
         out.extend(validate_finding(finding));
@@ -96,9 +94,7 @@ fn validate_finding(finding: &crate::report::Finding) -> ValidationReport {
             rule: "fingerprint required".into(),
         });
     }
-    if finding.severity != "info"
-        && !SEVERITIES.contains(&finding.severity.as_str())
-    {
+    if finding.severity != "info" && !SEVERITIES.contains(&finding.severity.as_str()) {
         out.violations.push(Violation {
             where_: id.clone(),
             rule: format!("unknown severity {}", finding.severity),
@@ -125,10 +121,7 @@ pub fn validate_coverage(doc: &CoverageDoc) -> ValidationReport {
 }
 
 /// The verdict-specific invariants of one finding.
-fn verdict_violations(
-    finding: &crate::report::Finding,
-    id: &str,
-) -> Vec<Violation> {
+fn verdict_violations(finding: &crate::report::Finding, id: &str) -> Vec<Violation> {
     match finding.verdict {
         crate::report::Verdict::Confirmed => confirmed_violations(finding, id),
         crate::report::Verdict::NeedsValidation => needs_validation_violations(finding, id),
@@ -140,10 +133,16 @@ fn verdict_violations(
 fn confirmed_violations(finding: &crate::report::Finding, id: &str) -> Vec<Violation> {
     let mut out = Vec::new();
     if finding.evidence.command.is_empty() {
-        out.push(Violation { where_: id.into(), rule: "confirmed needs evidence".into() });
+        out.push(Violation {
+            where_: id.into(),
+            rule: "confirmed needs evidence".into(),
+        });
     }
     if finding.trace.is_empty() {
-        out.push(Violation { where_: id.into(), rule: "confirmed needs a trace".into() });
+        out.push(Violation {
+            where_: id.into(),
+            rule: "confirmed needs a trace".into(),
+        });
     }
     if finding.execution.is_none() {
         out.push(Violation {
@@ -157,7 +156,10 @@ fn confirmed_violations(finding: &crate::report::Finding, id: &str) -> Vec<Viola
             rule: "confirmed confidence must be at least 0.5".into(),
         });
     }
-    if let Some(poc) = &finding.poc && poc.verified && poc.observed.is_empty() {
+    if let Some(poc) = &finding.poc
+        && poc.verified
+        && poc.observed.is_empty()
+    {
         out.push(Violation {
             where_: id.into(),
             rule: "verified poc needs an observed result".into(),
@@ -199,8 +201,8 @@ fn rejected_violations(finding: &crate::report::Finding, id: &str) -> Vec<Violat
 mod tests {
     //! Unit tests for report validation.
 
+    use super::{SEVERITIES, validate_assessment};
     use crate::report::{Assessment, Evidence, Execution, Finding, Phase, Verdict};
-    use super::{validate_assessment, SEVERITIES};
 
     fn finding(id: &str, fingerprint: &str) -> Finding {
         Finding {
@@ -278,9 +280,11 @@ mod tests {
         };
         let report = validate_assessment(&assessment);
         assert!(!report.publishable());
-        assert!(report
-            .violations
-            .iter()
-            .any(|v| v.rule == "confirmed needs a trace"));
+        assert!(
+            report
+                .violations
+                .iter()
+                .any(|v| v.rule == "confirmed needs a trace")
+        );
     }
 }

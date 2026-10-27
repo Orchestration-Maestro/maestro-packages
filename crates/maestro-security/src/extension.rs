@@ -11,7 +11,7 @@ use maestro_extensions_wasm::{
 use serde::Deserialize;
 use serde_json::json;
 
-use crate::pipeline::{assess, evidence_for, AssessParams};
+use crate::pipeline::{AssessParams, assess, evidence_for};
 use crate::report::Assessment;
 use crate::tools;
 
@@ -42,12 +42,9 @@ fn assess_tool() -> ToolDefinition {
                     serde_json::from_value(params).map_err(|error| error.to_string())?;
                 let report: Assessment =
                     assess(&params).map_err(|error| format!("assessment failed: {error}"))?;
-                let details =
-                    serde_json::to_string(&report).map_err(|error| error.to_string())?;
+                let details = serde_json::to_string(&report).map_err(|error| error.to_string())?;
                 Ok(AgentToolResult {
-                    content: vec![UserBlock::Text(TextContent::new(
-                        human_summary(&report),
-                    ))],
+                    content: vec![UserBlock::Text(TextContent::new(human_summary(&report)))],
                     details: Presence::Present(details),
                     terminate: Presence::Missing,
                 })
@@ -113,9 +110,17 @@ fn human_summary(report: &Assessment) -> String {
         let _ = writeln!(out, "Threats: {}", report.threats.len());
     }
     if !report.unknown.is_empty() {
-        let _ = writeln!(out, "Unknown (looked for, not proven): {}", report.unknown.len());
+        let _ = writeln!(
+            out,
+            "Unknown (looked for, not proven): {}",
+            report.unknown.len()
+        );
     }
-    let _ = writeln!(out, "Refuted hypotheses (coverage): {}", report.refuted.len());
+    let _ = writeln!(
+        out,
+        "Refuted hypotheses (coverage): {}",
+        report.refuted.len()
+    );
     let _ = writeln!(out, "Summary: {}", report.summary);
     out.push_str("Full report with evidence ids in details.\n");
     out
@@ -277,8 +282,8 @@ fn validate_tool() -> ToolDefinition {
         prepare_arguments: None,
         execute: Rc::new(|_, params, _, _, _| {
             Box::pin(async move {
-                let text =
-                    tools::run_validate(&params).map_err(|error| format!("validate failed: {error}"))?;
+                let text = tools::run_validate(&params)
+                    .map_err(|error| format!("validate failed: {error}"))?;
                 Ok(AgentToolResult {
                     content: vec![UserBlock::Text(TextContent::new(text))],
                     details: Presence::Missing,
@@ -305,8 +310,8 @@ fn disclose_tool() -> ToolDefinition {
         prepare_arguments: None,
         execute: Rc::new(|_, params, _, _, _| {
             Box::pin(async move {
-                let text =
-                    tools::run_disclose(&params).map_err(|error| format!("disclose failed: {error}"))?;
+                let text = tools::run_disclose(&params)
+                    .map_err(|error| format!("disclose failed: {error}"))?;
                 Ok(AgentToolResult {
                     content: vec![UserBlock::Text(TextContent::new(text))],
                     details: Presence::Missing,

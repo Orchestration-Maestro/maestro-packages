@@ -3,7 +3,7 @@
 //! model or rebuilds its clients.
 
 use crate::llm::Client;
-use crate::pipeline::{resolve_model, Config};
+use crate::pipeline::{Config, resolve_model};
 use crate::runner::Sandbox;
 
 /// The shared context a capability needs to run.
@@ -40,13 +40,12 @@ impl CapabilityCtx {
     ///
     /// # Errors
     /// Fails on any non-200 bridge response or an empty answer.
-    pub fn chat(
-        &self,
-        role: &str,
-        user: &str,
-        max_tokens: u32,
-    ) -> Result<String, String> {
-        let system = format!("{}\n\nCAPABILITY ROLE:\n{}", crate::methodology::SYSTEM_PROMPT, role);
+    pub fn chat(&self, role: &str, user: &str, max_tokens: u32) -> Result<String, String> {
+        let system = format!(
+            "{}\n\nCAPABILITY ROLE:\n{}",
+            crate::methodology::SYSTEM_PROMPT,
+            role
+        );
         self.client
             .chat(&self.model, &system, user, max_tokens)
             .map(|reply| reply.content)

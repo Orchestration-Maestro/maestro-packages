@@ -231,7 +231,13 @@ fn baseline_path(target: &str) -> std::path::PathBuf {
     let slug: String = target
         .chars()
         .take(40)
-        .map(|c| if c.is_ascii_alphanumeric() { c.to_ascii_lowercase() } else { '-' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() {
+                c.to_ascii_lowercase()
+            } else {
+                '-'
+            }
+        })
         .collect();
     crate::evidence::base_dir()
         .unwrap_or_default()
@@ -279,7 +285,7 @@ fn truncate(s: &str, max: usize) -> &str {
 mod tests {
     //! Unit tests for surface diffing.
 
-    use super::{diff_surface, Inventory, Element};
+    use super::{Element, Inventory, diff_surface};
 
     fn doc(elements: Vec<Element>) -> Inventory {
         Inventory {

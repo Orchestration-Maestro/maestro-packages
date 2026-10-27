@@ -271,8 +271,7 @@ pub fn save_report(run_id: &str, report: &crate::report::Assessment) -> Result<P
     let dir = reports()?;
     std::fs::create_dir_all(&dir).map_err(|error| format!("reports dir: {error}"))?;
     let path = dir.join(format!("{run_id}.json"));
-    let json =
-        serde_json::to_string_pretty(report).map_err(|error| format!("report: {error}"))?;
+    let json = serde_json::to_string_pretty(report).map_err(|error| format!("report: {error}"))?;
     std::fs::write(&path, json).map_err(|error| format!("report write: {error}"))?;
     Ok(path)
 }
