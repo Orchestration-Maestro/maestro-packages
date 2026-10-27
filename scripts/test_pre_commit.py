@@ -15,7 +15,9 @@ class PreCommitTests(unittest.TestCase):
     """Keep unrelated work outside the commit and check reverse dependents."""
 
     def setUp(self):
-        """Describe a chain and an unrelated workspace member."""
+        """Isolate fixture repositories and describe workspace dependencies."""
+        environment = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
+        self.enterContext(patch.dict(os.environ, environment, clear=True))
         self.metadata = {
             "workspace_root": "/repo",
             "workspace_members": ["a", "b", "c", "other"],
