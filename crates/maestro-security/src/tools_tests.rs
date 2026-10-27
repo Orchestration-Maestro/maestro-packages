@@ -95,7 +95,13 @@ fn baseline_evidence_resolves_agent_and_prefers_explicit_id() {
             ("other", "other", 3),
         ] {
             let mut ledger = crate::evidence::Ledger::new();
-            ledger.record_exec("recon", "probe", id, 0);
+            for step in 0..3 {
+                let output = format!(
+                    "{id} step {step}\n{}END {id}/{step}",
+                    "retained output\n".repeat(1024)
+                );
+                ledger.record_exec("recon", "probe", &output, 0);
+            }
             ledger
                 .save(id, "example.test", agent, "fixture-model")
                 .unwrap();
@@ -112,11 +118,29 @@ fn baseline_evidence_resolves_agent_and_prefers_explicit_id() {
         let newest = run_evidence(&json!({"agent":"analyst"})).unwrap();
         let newest: crate::evidence::LedgerDoc = serde_json::from_str(&newest).unwrap();
         assert_eq!(newest.run_id, "new");
-        assert_eq!(newest.entries[0].output, "new");
+        assert_eq!(newest.entries.len(), 3);
+        for (step, entry) in newest.entries.iter().enumerate() {
+            assert_eq!(
+                entry.output,
+                format!(
+                    "new step {step}\n{}END new/{step}",
+                    "retained output\n".repeat(1024)
+                )
+            );
+        }
         let explicit = run_evidence(&json!({"run_id":"old","agent":"analyst"})).unwrap();
         let explicit: crate::evidence::LedgerDoc = serde_json::from_str(&explicit).unwrap();
         assert_eq!(explicit.run_id, "old");
-        assert_eq!(explicit.entries[0].output, "old");
+        assert_eq!(explicit.entries.len(), 3);
+        for (step, entry) in explicit.entries.iter().enumerate() {
+            assert_eq!(
+                entry.output,
+                format!(
+                    "old step {step}\n{}END old/{step}",
+                    "retained output\n".repeat(1024)
+                )
+            );
+        }
     });
     std::fs::remove_dir_all(home).unwrap();
 }

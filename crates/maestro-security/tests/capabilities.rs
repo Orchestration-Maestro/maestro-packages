@@ -40,7 +40,7 @@ fn baseline_browser_preserves_unstructured_summary() {
         |base| {
             let visit = browser::Visit {
                 url: format!("{base}/page"),
-                model: Some("fixture-model".into()),
+                model: Some("fixture-override".into()),
             };
             let plain = browser::browse(&visit).unwrap();
             assert_eq!(plain.summary, "Login page");
@@ -121,7 +121,7 @@ fn baseline_surface_without_baseline_or_structured_output() {
             let probe = surface::Probe {
                 target: "example.test".into(),
                 action: "monitor".into(),
-                model: Some("fixture-model".into()),
+                model: Some("fixture-override".into()),
             };
             let initial = surface::dispatch(&probe).unwrap().diff.unwrap();
             assert_eq!(initial.added.len(), 1);
