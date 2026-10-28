@@ -22,6 +22,8 @@ pub enum Status {
     Completed,
     /// Stopped before completion.
     Stopped,
+    /// Killed through a live run control.
+    Killed,
     /// Failed.
     Failed,
 }
@@ -163,7 +165,7 @@ impl Store {
         Self::write_jsonl(&path, &runs)
     }
 
-    /// Recorded runs, most recent first, capped at `limit` (0 = all).
+    /// Recorded runs, most recent first, limited to `limit` (0 = all).
     ///
     /// # Errors
     /// Fails if the run index cannot be read or a line is malformed.

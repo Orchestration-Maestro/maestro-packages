@@ -17,6 +17,12 @@ pub const FINDING: &str = "maestro.security.run.finding";
 pub const REFUTED: &str = "maestro.security.run.refuted";
 /// Channel of a phase-checkpoint event.
 pub const CHECKPOINT: &str = "maestro.security.run.checkpoint";
+/// Channel of a steering delivery event.
+pub const STEERED: &str = "maestro.security.run.steered";
+/// Channel of a killed run.
+pub const KILLED: &str = "maestro.security.run.killed";
+/// Status of a killed run.
+pub const STATUS_KILLED: &str = "killed";
 /// Status of a run that has been opened.
 pub const STATUS_STARTED: &str = "started";
 /// Status of a phase that is executing.
@@ -25,6 +31,18 @@ pub const RUNNING: &str = "running";
 pub const COMPLETED: &str = "completed";
 /// Status of a phase that failed.
 pub const FAILED: &str = "failed";
+
+/// The guidance delivered to a run's next phase.
+#[must_use]
+pub fn steered(run_id: &str, source: &str, message: &str) -> Value {
+    json!({ "run_id": run_id, "source": source, "message": message })
+}
+
+/// A killed run and its last active phase.
+#[must_use]
+pub fn killed(run_id: &str, kind: PhaseKind) -> Value {
+    json!({ "run_id": run_id, "phase": kind.name() })
+}
 
 /// The payload of a run-started event.
 #[must_use]

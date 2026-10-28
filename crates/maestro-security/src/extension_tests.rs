@@ -239,15 +239,17 @@ impl CommandContextPort for CommandContext {
         Box::pin(async { Err("unused command capability".into()) })
     }
 }
-/// Poll a future whose test ports never suspend.
+/// Poll a future whose ports are ready but whose lifecycle may yield.
 fn ready<T>(future: impl Future<Output = T>) -> T {
     let mut future = Box::pin(future);
-    match future
-        .as_mut()
-        .poll(&mut Context::from_waker(Waker::noop()))
-    {
-        Poll::Ready(value) => value,
-        Poll::Pending => panic!("test port suspended"),
+    loop {
+        match future
+            .as_mut()
+            .poll(&mut Context::from_waker(Waker::noop()))
+        {
+            Poll::Ready(value) => return value,
+            Poll::Pending => std::thread::yield_now(),
+        }
     }
 }
 /// Assessment registration dispatches one trigger and rejects malformed listener input.
@@ -256,7 +258,7 @@ fn registered_assess_dispatches_to_the_trigger_listener() {
     let host = Rc::new(Host::default());
     ready(factory(ExtensionAPI::new(Rc::new(ApiHost(host.clone()))))).expect("register");
     let names: Vec<_> = host.commands.borrow().keys().cloned().collect();
-    assert_eq!(names, ["assess"]);
+    assert_eq!(names, ["assess", "security-steer", "security-stop"]);
     let home = std::env::temp_dir().join(format!("security-boundary-{}", std::process::id()));
     crate::evidence::with_home(&home, || {
         let handler = host.commands.borrow()["assess"].handler.clone();
@@ -486,3 +488,6 @@ fn doctor_registers_an_object_parameter_schema() {
             .is_object()
     );
 }
+
+#[path = "extension_control_tests.rs"]
+mod controls;

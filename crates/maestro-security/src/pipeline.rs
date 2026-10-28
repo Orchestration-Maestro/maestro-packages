@@ -422,7 +422,9 @@ impl Engine {
         ctx: &ModelCtx,
         state: &mut RunState,
     ) -> Result<Assessment, String> {
-        self.assemble(run_id, agent, ctx, state)
+        let report = self.assemble(run_id, agent, ctx, state)?;
+        crate::evidence::save_report(run_id, &report)?;
+        Ok(report)
     }
 
     /// Dispatch one phase.
@@ -454,8 +456,11 @@ impl Engine {
         Ok(())
     }
 
-    /// Assemble the report, run the report phase, retain the ledger.
-    fn assemble(
+    /// Assemble the report, run the report phase and retain only the ledger.
+    ///
+    /// # Errors
+    /// Fails if the ledger cannot be written.
+    pub(crate) fn assemble(
         &self,
         run_id: &str,
         agent: &Agent,
@@ -500,7 +505,6 @@ impl Engine {
         state
             .ledger
             .save(run_id, &state.target, agent.name, &ctx.model)?;
-        crate::evidence::save_report(run_id, &report)?;
         Ok(report)
     }
 

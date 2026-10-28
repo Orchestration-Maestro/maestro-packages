@@ -112,6 +112,15 @@ Non-default pattern or many targets → `security_workspace` `start` instead of
 a bare `security_assess`, then `status`/`logs` to follow and `evidence` to
 pull the ledger.
 
+## Live run controls
+
+`/assess <target>` returns a run id. Use `/security-steer <run_id> <message>`
+to send guidance, or `/security-stop <run_id>` to kill that run. Both take
+effect at a phase boundary; stop does not interrupt an in-flight HTTP call.
+Steering is quoted as untrusted guidance, not evidence. A killed run keeps
+its evidence and emits no result event. These controls address runs in the
+current extension process; pause and restart recovery are not available yet.
+
 ## Where knowledge comes from
 
 - **Methodology / instructions**: embedded in the pipeline (the system prompt

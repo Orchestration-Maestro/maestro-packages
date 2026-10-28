@@ -373,7 +373,7 @@ fn register_autonomy(api: &ExtensionAPI) -> Result<(), String> {
                 handler: Rc::new(move |args, ctx| {
                     let bus = bus.clone();
                     Box::pin(async move {
-                        assess_command(&bus, &ctx, &args).await;
+                        dispatch_command(command.name, &bus, &ctx, &args).await;
                         Ok(())
                     })
                 }),
@@ -383,6 +383,38 @@ fn register_autonomy(api: &ExtensionAPI) -> Result<(), String> {
         .map_err(|error| format!("register /{}: {error}", command.name))?;
     }
     Ok(())
+}
+
+/// Dispatch a registered assessment or control command.
+async fn dispatch_command(name: &str, bus: &EventBus, ctx: &ExtensionCommandContext, args: &str) {
+    if name == autonomy::ASSESS_COMMAND {
+        assess_command(bus, ctx, args).await;
+    } else {
+        control_command(name, ctx, args);
+    }
+}
+
+/// Route stop and steering to the addressed live run only.
+fn control_command(name: &str, ctx: &ExtensionCommandContext, args: &str) {
+    let outcome = if name == autonomy::STOP_COMMAND {
+        autonomy::parse_run_id(args).and_then(|id| {
+            autonomy::steer::for_run(&id)?.stop();
+            Ok(())
+        })
+    } else {
+        autonomy::parse_steer(args).and_then(|(id, message)| {
+            autonomy::steer::for_run(&id)?.steer("user", &message);
+            Ok(())
+        })
+    };
+    match outcome {
+        Ok(()) => notify(
+            ctx,
+            "Run control queued for the next phase boundary.",
+            false,
+        ),
+        Err(error) => notify(ctx, &error, true),
+    }
 }
 
 /// `/assess <target>`: record the run, emit the trigger, answer with the id.
