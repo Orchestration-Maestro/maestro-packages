@@ -9,6 +9,7 @@ use serde_json::{Value, json};
 
 pub mod events;
 pub mod run;
+pub mod steer;
 
 use crate::pipeline;
 use crate::report::Assessment;
@@ -36,10 +37,20 @@ pub struct Command {
 }
 
 /// The trigger commands, in registration order.
-pub const COMMANDS: [Command; 1] = [Command {
-    name: ASSESS_COMMAND,
-    description: "Assess a target in the background; answers with the run id",
-}];
+pub const COMMANDS: [Command; 3] = [
+    Command {
+        name: ASSESS_COMMAND,
+        description: "Assess a target in the background; answers with the run id",
+    },
+    Command {
+        name: STOP_COMMAND,
+        description: "Stop a running assessment at the next phase boundary",
+    },
+    Command {
+        name: STEER_COMMAND,
+        description: "Send guidance to a running assessment",
+    },
+];
 
 /// The target of `/assess`, trimmed.
 ///
@@ -110,6 +121,7 @@ pub fn new_run_record(target: &str, model: &str) -> RunRecord {
 pub fn start_run(target: &str) -> Result<String, String> {
     let record = new_run_record(target.trim(), &pipeline::Config::from_env().default_model);
     Store.upsert_run(&record)?;
+    steer::register(&record.run_id);
     Ok(record.run_id)
 }
 
@@ -122,7 +134,9 @@ pub fn finish_run(run_id: &str, outcome: Result<&Assessment, &str>) -> Result<()
         .get_run(run_id)?
         .ok_or_else(|| format!("no run {run_id} in the index"))?;
     record.settle(outcome);
-    Store.upsert_run(&record)
+    Store.upsert_run(&record)?;
+    steer::remove(run_id);
+    Ok(())
 }
 
 /// Run the lifecycle for one trigger payload and settle its record.
@@ -147,8 +161,24 @@ pub async fn run_trigger<S: run::EventSink, E: run::SessionEntry>(
         max_hypotheses: None,
         pattern: None,
     };
-    let outcome = run::execute(sink, entry, &params, &run_id).await;
-    finish_run(&run_id, outcome.as_ref().map_err(String::as_str))
+    let control = steer::for_run(&run_id)?;
+    match run::execute_controlled(sink, entry, &params, &run_id, &control).await {
+        Ok(Some(report)) => finish_run(&run_id, Ok(&report)),
+        Ok(None) => kill_run(&run_id),
+        Err(error) => finish_run(&run_id, Err(&error)),
+    }
+}
+
+/// Settle a killed run without a report or a result event.
+fn kill_run(run_id: &str) -> Result<(), String> {
+    let mut record = Store
+        .get_run(run_id)?
+        .ok_or_else(|| format!("no run {run_id} in the index"))?;
+    record.settle(Err("killed"));
+    record.status = crate::store::Status::Killed;
+    Store.upsert_run(&record)?;
+    steer::remove(run_id);
+    Ok(())
 }
 
 /// The run id and target of one trigger payload.
@@ -173,7 +203,7 @@ mod tests {
     #[test]
     fn the_command_table_contains_only_functional_commands() {
         let names: Vec<&str> = COMMANDS.iter().map(|command| command.name).collect();
-        assert_eq!(names, ["assess"]);
+        assert_eq!(names, ["assess", "security-stop", "security-steer"]);
         assert!(
             COMMANDS
                 .iter()

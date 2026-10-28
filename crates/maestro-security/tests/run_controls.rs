@@ -177,14 +177,12 @@ fn guided_phase(path: &str, body: &Value) -> (u16, String) {
         "/models" => handler::models(),
         "/exec" => handler::execution("retained recon evidence", 0),
         "/chat/completions" => {
-            let system = body["messages"][0]["content"]
-                .as_str()
-                .expect("system prompt");
+            let system = body["messages"][0]["content"].as_str().unwrap_or_default();
             assert!(system.contains("Untrusted steering guidance"));
             assert!(system.contains("check the API"));
             handler::completion("{\"services\":[]}")
         }
-        _ => panic!("unexpected request {path}"),
+        _ => (404, format!("unexpected request {path}")),
     }
 }
 

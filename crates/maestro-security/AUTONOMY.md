@@ -191,7 +191,12 @@ The four transports are thin adapters; no logic outside the core.
   standalone commands; run registry unchanged in shape.
 - T2 Rework the run: isolated background process + log.jsonl + curated
   timeline (the landed session-event wiring becomes the timeline writer).
-- T3 Steering + pause/stop/kill.
+- T3 Stop and steering on the current run lifecycle. Acceptance:
+  steering reaches the running phase; the steered event fires; stop emits
+  killed with no result event; stop is serviced between phases. Stop does
+  not interrupt an in-flight HTTP call. The shared control handle belongs
+  to the current extension process; restart recovery stays in T4.
+- T3b Pause at a phase boundary and resume (separate slice).
 - T4 Checkpoint + resume.
 - T5 Board + notifications (TUI + browser).
 - T6 Completion + result event + summary close.
@@ -202,7 +207,8 @@ The four transports are thin adapters; no logic outside the core.
 
 ## 14. Size plan
 
-The planned run layer is about 900–1,200 production lines across the ten
-tasks. The four transports remain thin adapters over one core. The current
-extension provides assessment triggering and lifecycle events; controls,
-isolated process hosting and recovery remain open implementation tasks.
+The planned run layer is about 900–1,200 production lines across the task
+map. The four transports remain thin adapters over one core. The current
+extension provides assessment triggering, lifecycle events, stop and
+steering. Isolated process hosting and recovery remain open implementation
+tasks.
