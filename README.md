@@ -5,6 +5,8 @@ Build and share extensions, plugins and resource packages for
 [marketplace author guide](docs/marketplace-author-guide.md) to build and install
 your first extension. The [marketplace design](docs/marketplace.md) covers
 publishing, third-party review, catalog metadata and package management.
+See the [TypeScript and Python guest status](examples/README.md) for the pinned
+WIT world and current verification blockers.
 
 | Crate | Description |
 |---|---|
