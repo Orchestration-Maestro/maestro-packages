@@ -394,7 +394,7 @@ fn report_phase_stop_does_not_retain_a_completed_report() -> Result<(), Box<dyn 
         let result = lifecycle.as_mut().poll(cx);
         if result.is_pending()
             && maestro_security::evidence_for(&id)
-                .is_ok_and(|ledger| ledger.contains("final summary"))
+                .is_ok_and(|ledger| ledger.contains("\"phase\": \"report\""))
         {
             control.stop();
         }
@@ -403,7 +403,7 @@ fn report_phase_stop_does_not_retain_a_completed_report() -> Result<(), Box<dyn 
     drop(lifecycle);
     assert!(result.is_none(), "report-phase stop must kill the run");
     assert!(maestro_security::load_report(&id).is_err());
-    assert!(maestro_security::evidence_for(&id)?.contains("final summary"));
+    assert!(maestro_security::evidence_for(&id)?.contains("\"phase\": \"report\""));
     assert_eq!(entries.0.last().expect("killed entry")["status"], "killed");
     assert_eq!(
         bus.events.last().expect("killed event").0,

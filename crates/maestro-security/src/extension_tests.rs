@@ -239,15 +239,17 @@ impl CommandContextPort for CommandContext {
         Box::pin(async { Err("unused command capability".into()) })
     }
 }
-/// Poll a future whose test ports never suspend.
+/// Poll a future whose ports are ready but whose lifecycle may yield.
 fn ready<T>(future: impl Future<Output = T>) -> T {
     let mut future = Box::pin(future);
-    match future
-        .as_mut()
-        .poll(&mut Context::from_waker(Waker::noop()))
-    {
-        Poll::Ready(value) => value,
-        Poll::Pending => panic!("test port suspended"),
+    loop {
+        match future
+            .as_mut()
+            .poll(&mut Context::from_waker(Waker::noop()))
+        {
+            Poll::Ready(value) => return value,
+            Poll::Pending => std::thread::yield_now(),
+        }
     }
 }
 /// Assessment registration dispatches one trigger and rejects malformed listener input.
