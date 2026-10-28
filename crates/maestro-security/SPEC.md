@@ -9,10 +9,9 @@ of this document; this is the complete picture.
 Maestro's autonomous AI pentester, the "massive secret weapon": a Kali box
 carrying raw tools, skills and models, driven by ONE unified Rust pipeline
 fused from 13 decomposed AI-pentest frameworks. The ten box frameworks are
-retired — maestro-security is the sole assessment path. The image ships in
-two versions: abliterated (default, no guardrails) and standard
-(git-pristine). One methodology, no profiles; the model is a runtime value
-resolved from the bridge, never a binding.
+retired — maestro-security is the sole assessment path. One methodology,
+no profiles; the model is a runtime value resolved from the bridge, never a
+binding.
 
 ## 2. What exists today (landed, PR #6)
 
@@ -73,9 +72,8 @@ lines. Next: to-tickets → implement (red-first) → two-axis review → PR.
 
 ### R2 — Box bake (task #15, box lane)
 
-REA framework + all security skills baked into the box image; two-version
-mode verified end to end (abliterated default, standard git-pristine);
-runner and bridge health wired into the doctor probe.
+REA framework + all security skills baked into the box image; runner and
+bridge health wired into the doctor probe.
 
 ### R3 — Live visuals and TUI polish
 
