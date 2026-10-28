@@ -256,3 +256,58 @@ fn triggered_run_keeps_evidence_and_has_no_result_after_stop()
     assert!(maestro_security::autonomy::steer::for_run(&id).is_err());
     Ok(())
 }
+
+/// Only the five most recent queued notes reach a phase, in order.
+#[test]
+fn steering_retains_the_five_most_recent_notes() {
+    let control = Control::default();
+    for index in 0..7 {
+        control.steer("user", &format!("note-{index}"));
+    }
+    let mut observed = Vec::new();
+    let mut step = |_, notes: &[String]| {
+        observed.push(notes.to_vec());
+        Ok(StepReport::default())
+    };
+    let mut bus = Bus::default();
+    ready(drive_controlled(
+        &plan(),
+        &mut bus,
+        &mut Entries::default(),
+        &control,
+        &mut step,
+    ))
+    .expect("drive");
+    assert_eq!(
+        observed,
+        vec![vec!["note-2", "note-3", "note-4", "note-5", "note-6"]; 2]
+    );
+    assert_eq!(
+        bus.events
+            .iter()
+            .filter(|(channel, _)| channel == "maestro.security.run.steered")
+            .count(),
+        5
+    );
+}
+
+/// A stop in the final phase must not be mistaken for successful completion.
+#[test]
+fn stop_in_final_phase_is_killed() {
+    let control = Control::default();
+    let mut step = |phase, _: &[String]| {
+        if phase == PhaseKind::Model {
+            control.stop();
+        }
+        Ok(StepReport::default())
+    };
+    let outcome = ready(drive_controlled(
+        &plan(),
+        &mut Bus::default(),
+        &mut Entries::default(),
+        &control,
+        &mut step,
+    ))
+    .expect("drive");
+    assert_eq!(outcome, maestro_security::autonomy::run::Outcome::Killed);
+}
