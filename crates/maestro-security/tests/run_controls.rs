@@ -4,10 +4,10 @@ use std::future::Future;
 use std::task::{Context, Poll, Waker};
 
 use maestro_extensions_wasm::ExtensionFuture;
+use maestro_security::autonomy::run::PhaseKind;
 use maestro_security::autonomy::run::{
     Control, EventSink, Plan, SessionEntry, StepReport, drive_controlled,
 };
-use maestro_security::pipeline::PhaseKind;
 use serde_json::Value;
 
 /// Poll a lifecycle whose ports complete without waiting.
@@ -164,4 +164,95 @@ fn stop_is_serviced_between_phases() {
         bus.events.last().expect("killed event").0,
         "maestro.security.run.killed"
     );
+}
+
+/// Process-isolated fixture shared with capability tests.
+#[path = "support/handler.rs"]
+mod handler;
+
+/// Return runner evidence and assert that guidance actually reaches the model.
+fn guided_phase(path: &str, body: &Value) -> (u16, String) {
+    match path {
+        "/health" => (200, "{}".into()),
+        "/models" => handler::models(),
+        "/exec" => handler::execution("retained recon evidence", 0),
+        "/chat/completions" => {
+            let system = body["messages"][0]["content"]
+                .as_str()
+                .expect("system prompt");
+            assert!(system.contains("Untrusted steering guidance"));
+            assert!(system.contains("check the API"));
+            handler::completion("{\"services\":[]}")
+        }
+        _ => panic!("unexpected request {path}"),
+    }
+}
+
+/// Send guidance after recon and stop after the model phase commits.
+struct GuidedBus {
+    /// Shared run control.
+    control: Control,
+    /// Delivered events.
+    events: Vec<(String, Value)>,
+    /// Number of committed phases.
+    checkpoints: usize,
+}
+
+impl EventSink for GuidedBus {
+    fn emit<'a>(&'a mut self, channel: &'a str, payload: Value) -> ExtensionFuture<'a, ()> {
+        if channel == "maestro.security.run.checkpoint" {
+            self.checkpoints += 1;
+            if self.checkpoints == 1 {
+                self.control.steer("agent", "check the API");
+            } else {
+                self.control.stop();
+            }
+        }
+        self.events.push((channel.into(), payload));
+        Box::pin(async { Ok(()) })
+    }
+}
+
+/// The real run surface consumes guidance, keeps evidence and settles as killed.
+#[test]
+fn triggered_run_keeps_evidence_and_has_no_result_after_stop()
+-> Result<(), Box<dyn std::error::Error>> {
+    if !handler::isolated(
+        "triggered_run_keeps_evidence_and_has_no_result_after_stop",
+        guided_phase,
+    )? {
+        return Ok(());
+    }
+    let id = maestro_security::autonomy::start_run("example.test")?;
+    let mut bus = GuidedBus {
+        control: maestro_security::autonomy::steer::for_run(&id)?,
+        events: Vec::new(),
+        checkpoints: 0,
+    };
+    ready(maestro_security::autonomy::run_trigger(
+        &mut bus,
+        &mut Entries::default(),
+        &maestro_security::autonomy::trigger_payload(&id, "example.test"),
+    ))?;
+    assert_eq!(bus.checkpoints, 2);
+    assert!(bus.events.iter().any(
+        |(channel, payload)| channel == "maestro.security.run.steered"
+            && payload["source"] == "agent"
+    ));
+    assert_eq!(
+        bus.events.last().expect("killed").0,
+        "maestro.security.run.killed"
+    );
+    assert!(
+        !bus.events
+            .iter()
+            .any(|(channel, _)| channel == "maestro.security.assessment")
+    );
+    assert!(maestro_security::load_report(&id).is_err());
+    assert!(maestro_security::evidence_for(&id)?.contains("retained recon evidence"));
+    let record = maestro_security::Store.get_run(&id)?.expect("run record");
+    assert_eq!(record.status, maestro_security::Status::Killed);
+    assert!(record.finished_at.is_some());
+    assert!(maestro_security::autonomy::steer::for_run(&id).is_err());
+    Ok(())
 }

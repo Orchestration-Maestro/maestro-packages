@@ -25,9 +25,12 @@ pub fn isolated(name: &str, handler: Handler) -> Result<bool, Box<dyn std::error
     let stop = Arc::new(AtomicBool::new(false));
     let signal = Arc::clone(&stop);
     let server = thread::spawn(move || serve(&listener, &signal, handler));
+    let home = std::env::temp_dir().join(format!("security-{name}-{}", std::process::id()));
+    std::fs::create_dir(&home)?;
     let status = Command::new(std::env::current_exe()?)
         .args(["--exact", name, "--nocapture"])
         .env("SECURITY_TEST_CHILD", name)
+        .env("MAESTRO_SECURITY_HOME", &home)
         .env("MAESTRO_SECURITY_BRIDGE", &url)
         .env("MAESTRO_SECURITY_RUNNER", &url)
         .env("MAESTRO_SECURITY_BRIDGE_KEY", "test-only")
@@ -35,6 +38,7 @@ pub fn isolated(name: &str, handler: Handler) -> Result<bool, Box<dyn std::error
         .status();
     stop.store(true, Ordering::Relaxed);
     assert!(server.join().is_ok(), "fixture server failed");
+    std::fs::remove_dir_all(home)?;
     assert!(status?.success(), "isolated test failed: {name}");
     Ok(false)
 }
