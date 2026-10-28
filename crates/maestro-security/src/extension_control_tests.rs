@@ -75,3 +75,53 @@ fn registered_controls_reach_only_the_addressed_run() {
         crate::autonomy::finish_run(&other, Err("test ended")).expect("settle other");
     });
 }
+
+/// A ready bus must not prevent a same-executor command between phases.
+#[test]
+fn registered_stop_runs_between_immediately_ready_phases() {
+    crate::test_support::isolated(|_| {
+        let host = Rc::new(Host::default());
+        ready(factory(ExtensionAPI::new(Rc::new(ApiHost(host.clone()))))).expect("register");
+        let id = crate::autonomy::start_run("cooperative.test").expect("start");
+        let control = crate::autonomy::steer::for_run(&id).expect("control");
+        let handler = host.commands.borrow()["security-stop"].handler.clone();
+        let phases = Rc::new(RefCell::new(Vec::new()));
+        let observed = Rc::clone(&phases);
+        let mut step = move |phase, _: &[String]| {
+            observed.borrow_mut().push(phase);
+            Ok(StepReport::default())
+        };
+        let plan = Plan {
+            run_id: &id,
+            target: "cooperative.test",
+            phases: &[PhaseKind::Recon, PhaseKind::Model],
+        };
+        let mut bus = Ports;
+        let mut entries = Ports;
+        let mut lifecycle = Box::pin(drive_controlled(
+            &plan,
+            &mut bus,
+            &mut entries,
+            &control,
+            &mut step,
+        ));
+        let mut command = handler(
+            id.clone(),
+            ExtensionCommandContext::new(Rc::new(CommandContext)),
+        );
+        let mut sent = false;
+        let outcome = ready(std::future::poll_fn(|cx| {
+            let result = lifecycle.as_mut().poll(cx);
+            if !sent && !phases.borrow().is_empty() {
+                assert!(matches!(command.as_mut().poll(cx), Poll::Ready(Ok(()))));
+                sent = true;
+            }
+            result
+        }))
+        .expect("drive");
+        assert!(sent, "registered stop was scheduled");
+        assert_eq!(outcome, Outcome::Killed);
+        assert_eq!(*phases.borrow(), [PhaseKind::Recon]);
+        crate::autonomy::finish_run(&id, Err("test ended")).expect("settle");
+    });
+}

@@ -309,3 +309,106 @@ fn stop_in_final_phase_is_killed() {
     .expect("drive");
     assert_eq!(outcome, maestro_security::autonomy::run::Outcome::Killed);
 }
+
+/// An entry sink that refuses only the terminal killed notification.
+struct RejectKilledEntry;
+
+impl SessionEntry for RejectKilledEntry {
+    fn append(&mut self, body: &Value) -> Result<(), String> {
+        if body["status"] == "killed" {
+            Err("killed entry refused".into())
+        } else {
+            Ok(())
+        }
+    }
+}
+
+/// Rejected terminal entries must not discard already collected evidence.
+#[test]
+fn killed_entry_failure_keeps_evidence() -> Result<(), Box<dyn std::error::Error>> {
+    if !handler::isolated("killed_entry_failure_keeps_evidence", guided_phase)? {
+        return Ok(());
+    }
+    let id = maestro_security::autonomy::start_run("entry-failure.test")?;
+    let mut bus = GuidedBus {
+        control: maestro_security::autonomy::steer::for_run(&id)?,
+        events: Vec::new(),
+        checkpoints: 0,
+    };
+    let error = ready(maestro_security::autonomy::run::execute_controlled(
+        &mut bus,
+        &mut RejectKilledEntry,
+        &maestro_security::AssessParams {
+            target: "entry-failure.test".into(),
+            ..Default::default()
+        },
+        &id,
+        &maestro_security::autonomy::steer::for_run(&id)?,
+    ))
+    .unwrap_err();
+    assert_eq!(error, "killed entry refused");
+    assert!(maestro_security::evidence_for(&id)?.contains("retained recon evidence"));
+    assert!(maestro_security::load_report(&id).is_err());
+    maestro_security::autonomy::finish_run(&id, Err(&error))?;
+    Ok(())
+}
+
+/// A bridge response whose report output can be distinguished in the ledger.
+fn report_phase(path: &str, _: &Value) -> (u16, String) {
+    match path {
+        "/health" => (200, "{}".into()),
+        "/models" => handler::models(),
+        "/exec" => handler::execution("retained recon evidence", 0),
+        "/chat/completions" => handler::completion("{\"summary\":\"report-phase evidence\"}"),
+        _ => (404, format!("unexpected request {path}")),
+    }
+}
+
+/// Stop after the real report call, before its completed report is published.
+#[test]
+fn report_phase_stop_does_not_retain_a_completed_report() -> Result<(), Box<dyn std::error::Error>>
+{
+    if !handler::isolated(
+        "report_phase_stop_does_not_retain_a_completed_report",
+        report_phase,
+    )? {
+        return Ok(());
+    }
+    let id = maestro_security::autonomy::start_run("report-stop.test")?;
+    let control = maestro_security::autonomy::steer::for_run(&id)?;
+    let params = maestro_security::AssessParams {
+        target: "report-stop.test".into(),
+        agent: Some("maestro.rebuild".into()),
+        ..Default::default()
+    };
+    let mut bus = Bus::default();
+    let mut entries = Entries::default();
+    let mut lifecycle = Box::pin(maestro_security::autonomy::run::execute_controlled(
+        &mut bus,
+        &mut entries,
+        &params,
+        &id,
+        &control,
+    ));
+    let result = ready(std::future::poll_fn(|cx| {
+        let result = lifecycle.as_mut().poll(cx);
+        if result.is_pending()
+            && maestro_security::evidence_for(&id)
+                .is_ok_and(|ledger| ledger.contains("final summary"))
+        {
+            control.stop();
+        }
+        result
+    }))?;
+    drop(lifecycle);
+    assert!(result.is_none(), "report-phase stop must kill the run");
+    assert!(maestro_security::load_report(&id).is_err());
+    assert!(maestro_security::evidence_for(&id)?.contains("final summary"));
+    assert_eq!(entries.0.last().expect("killed entry")["status"], "killed");
+    assert_eq!(
+        bus.events.last().expect("killed event").0,
+        "maestro.security.run.killed"
+    );
+    maestro_security::autonomy::finish_run(&id, Err("test ended"))?;
+    Ok(())
+}

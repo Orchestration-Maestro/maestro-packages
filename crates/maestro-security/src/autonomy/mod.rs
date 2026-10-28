@@ -313,4 +313,22 @@ mod tests {
             "a payload needs both the run id and the target"
         );
     }
+
+    /// Failed settlement must release controls while returning the index error.
+    #[test]
+    fn failed_settlement_removes_live_controls() {
+        crate::test_support::isolated(|home| {
+            let failed = start_run("failed-settlement.test").expect("start");
+            let killed = start_run("killed-settlement.test").expect("start");
+            std::fs::write(home.join("runs.jsonl"), "invalid index").expect("break index");
+            let expected = Store.get_run(&failed).unwrap_err();
+            assert_eq!(
+                finish_run(&failed, Err("phase failed")).unwrap_err(),
+                expected
+            );
+            assert_eq!(super::kill_run(&killed).unwrap_err(), expected);
+            assert!(super::steer::for_run(&failed).is_err());
+            assert!(super::steer::for_run(&killed).is_err());
+        });
+    }
 }
