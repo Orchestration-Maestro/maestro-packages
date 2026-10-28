@@ -1,0 +1,4 @@
+{
+  "include": ["examples/python"],
+  "extraPaths": ["target/guest-python"]
+}

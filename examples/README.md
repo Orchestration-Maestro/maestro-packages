@@ -1,18 +1,16 @@
-# Non-Rust guest examples: verification blocked
+# Non-Rust guest toolchain diagnostics
 
 Tracking: [#41](https://github.com/Orchestration-Maestro/maestro-packages/issues/41).
 
-Neither language has a verified example yet. The approved remote build route
-rejects both toolchain probes before starting them. This is an infrastructure
-blocker, **not** evidence that either toolchain rejects the extension world.
-No component, guessed bindings or copied Rust guest SDK is shipped here.
+Neither pinned toolchain can run the unchanged extension contract:
 
-- [TypeScript probe](typescript/README.md): jco 1.39.0, experimental guest types.
-- [Python probe](python/README.md): componentize-py 0.25.1.
+- [TypeScript](typescript/README.md): jco 1.39.0 generates declarations, but
+  component compilation fails with both backends.
+- [Python](python/README.md): componentize-py 0.25.1 builds a valid component,
+  but its async borrowed callback traps in the matching host.
 
-These versions come from the npm and PyPI registry metadata, respectively.
-They are pinned probe targets, not versions observed running on the build host.
-Runtime and package-manager versions remain unmeasured there.
+The named diagnostic sources reproduce these failures. They are not working
+extension examples. No Rust guest SDK or altered WIT is shipped.
 
 ## World inspected
 
@@ -23,8 +21,7 @@ Revision: `d3f7aa6a9906d23350f4b28a88a41e0fde8195a0`
 World file: `crates/maestro-extensions-wasm/wit/world.wit`
 
 World: `maestro:extension/extension@0.1.0`, importing `host` and exporting `guest`.
-Use the complete `wit/` directory, including `standard/`, unchanged; the world
-file alone does not define its interfaces.
+Use the complete `wit/` directory, including `standard/`, unchanged.
 
 SHA-256 of `world.wit`:
 
@@ -32,40 +29,47 @@ SHA-256 of `world.wit`:
 1a9704e411ee0bcc01cf19e9003c3560bb82c50f12927d5d41c8aefd1f6b7893
 ```
 
-The inspected `guest.wit` exports async `start`, `invoke-event` and
-`invoke-tool`. `host.wit` imports synchronous `on` and async `register-tool`.
-A synchronous replacement world would not satisfy this contract. TypeScript
-Promises or Python coroutines alone do not prove component ABI compatibility.
+All 12 files in the WIT directory matched between the inspected checkout and
+build host. The guest guide at `docs/extensions/guest.md` in that revision
+requires callback registration, async event/tool invocation and callback release.
+Generating declarations alone does not qualify an extension against this world.
 
-The guest guide at `docs/extensions/guest.md` in that revision describes these
-same registration, event and tool surfaces. A working example must register an
-event callback and tool from `start`, keep their callback resources alive, serve
-`invoke-event` and `invoke-tool`, and honor `release`. Binding generation alone
-will not establish that the component works in the host.
+## Matching host
 
-## Observed result
+Python's runtime failure was reproduced with Maestro built from the exact
+revision above, not an older executable with missing imports. The accepted
+remote build receipt records:
 
-Both pinned probes were refused on 2026-10-28 at 12:28 UTC with exit code 1:
-
-```text
-maestro-remote-build: not remote eligible
+```json
+{
+  "id": "08997e498993-1793194765783818372",
+  "digest": "7858313715aac49ecb4a81c2b5c5ae2ad66f196934426fd71c27e9ecdc0574de",
+  "argv": ["mise", "exec", "--", "cargo", "build", "--release", "--locked", "-p", "maestro"],
+  "exit": 0,
+  "started_at": "2026-10-28T13:39:26Z",
+  "rustc": "rustc 1.98.0 (88d9e12ae 2026-08-18)",
+  "cargo": "cargo 1.98.0 (797e8a9bc 2026-08-05)"
+}
 ```
 
-The wrapper currently admits Cargo checks and selected recipes, not npm or
-Python toolchain commands. No language parser or compiler ran. No local build
-or direct remote-shell workaround was attempted.
+The request, receipt, local input snapshot and remote snapshot digests matched
+before artifact retrieval. The executable reports `0.1.0`; its SHA-256 is:
 
-Build command and output: unavailable until the probes run and bindings can be
-implemented and tested. Install command: unavailable because no component was
-built. Run output: unavailable because nothing was installed. The linked
-language reports give the exact first commands to retry through the approved
-remote route; they are probes, not successful build recipes.
+```text
+59fe05ea4fdbefb99c6b8e749286887c23aace22142b9d0ea6941696c0f3e77f
+```
 
-## Remaining acceptance work
+An earlier interrupted build had no valid receipt and was not accepted.
 
-1. Enable the approved remote route for both pinned toolchains and record their
-   actual runtime versions and probe output.
-2. If a probe fails on the WIT, record the exact toolchain error and version.
-   Otherwise implement the generated world as-is and test event and tool calls.
-3. Publish only verified components with exact build, install and controlled-run
-   commands and observed output. Keep experimental labels where required.
+## Verification environment
+
+All component compilation ran on the remote build host through the approved
+build wrapper on 2026-10-28. Observed versions: jco 1.39.0, componentize-py
+0.25.1 and wasm-tools 1.262.0 (`e22db44da`, 2026-10-13). The provisioned Node.js
+version is 24.20.0. The wasi-sdk compiler reports `clang version
+23.1.0-wasi-sdk`, installed under the wasi-sdk 34.0 distribution; neither
+language diagnostic invokes it directly.
+
+Build-machine commands in the language reports use the tool CLIs directly.
+Workspace verification used the approved remote wrapper and its artifact
+output directory. All source WIT files remained read-only.

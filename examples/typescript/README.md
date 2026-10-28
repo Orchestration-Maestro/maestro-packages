@@ -1,41 +1,70 @@
-# TypeScript guest: remote probe blocked
+# TypeScript: component compiler blocked
 
-**Experimental, not a working example.** Target toolchain:
-`@bytecodealliance/jco` **1.39.0**. Its
-[pinned CLI source](https://github.com/bytecodealliance/jco/tree/c63b86fc64448a0bc5a43038ebabf4488c7e3a57)
-labels `guest-types` experimental. No Node.js, npm or jco version was measured
-on the build host. Do not interpret this report as a language incompatibility.
+**Diagnostic only, not a working extension.** Experimental toolchain:
+`@bytecodealliance/jco` **1.39.0**, with provisioned Node.js **24.20.0**.
+`jco guest-types --help` labels guest types experimental. Install the pinned
+tool on your build machine with `npm install -g @bytecodealliance/jco@1.39.0`.
 
-## Reproduce the blocked probe
+`compiler_diagnostic.ts` supplies an empty guest object to isolate WIT code
+generation. It is deliberately not an extension implementation. Both compiler
+backends fail on the unchanged world before it can become a working example.
 
-On the build client, set `WIT` to the complete, unchanged directory documented
-in the [world report](../README.md#world-inspected). Run from this repository with a sibling Maestro checkout at that revision:
+## Reproduce
+
+Use the complete [extension world](../README.md#world-inspected) at Maestro
+revision `d3f7aa6a9906d23350f4b28a88a41e0fde8195a0`.
+The [matching-host receipt](../README.md#matching-host) pins the executable used
+to qualify that revision's world for the Python runtime check. TypeScript's
+compiler fails before any host invocation.
+
+From this repository with that sibling Maestro checkout:
 
 ```sh
 WIT="$PWD/../maestro/crates/maestro-extensions-wasm/wit"
-maestro-remote-build run npm exec --yes \
-  --package=@bytecodealliance/jco@1.39.0 -- \
-  jco guest-types "$WIT" --world-name extension \
-  --out-dir generated/typescript
+jco --version
+jco guest-types "$WIT" --world-name extension --out-dir generated
+cd examples/typescript
+jco componentize compiler_diagnostic.ts \
+  --wit "$WIT" --world-name extension --out typescript.wasm
 ```
 
-Observed output, before npm or jco started; exit code 1:
+Workspace verification ran through the approved remote build wrapper on
+2026-10-28. Version output is `1.39.0`. Declaration generation exits 0 and
+writes `extension.d.ts` and the guest, host and session interface declarations.
+This does not establish component compiler support.
+
+The default StarlingMonkey backend exits 1 during binding generation:
 
 ```text
-maestro-remote-build: not remote eligible
+thread '<unnamed>' (1) panicked at crates/spidermonkey-embedding-splicer/src/bindgen.rs:721:48:
+not yet implemented
+RuntimeError: unreachable
 ```
 
-The remote route must admit this command and make the pinned WIT directory
-available before it can establish toolchain support. No local fallback is
-allowed. Generated guest types would be only the first check: the actual
-component must implement the unchanged async world and pass host event/tool
-invocations, not just TypeScript type checking.
+Still in the TypeScript directory, the QuickJS backend also exits 1:
+
+```sh
+jco componentize compiler_diagnostic.ts --backend quickjs \
+  --wit "$WIT" --world-name extension --out typescript-qjs.wasm
+```
+
+```text
+(jco componentize) [Error: component imports instance `maestro:extension/host@0.1.0`, but a matching implementation was not found in the linker: instance export `[method]file-mutation.wait` has the wrong type: type mismatch with async] {
+  code: 'GenericFailure'
+}
+```
+
+Both commands use the full world. Neither changes async functions to
+synchronous functions. The QuickJS error names the async resource method it
+cannot link. The default backend's panic alone does not identify which WIT
+declaration caused it.
 
 ## Build, install and run
 
-Build command: not yet verified. Install command: none; no component exists.
-Run output: none; no component was installed. Shipping source or an install
-recipe now would suggest compatibility that has not been tested.
+Build: blocked by the component compiler errors above, despite successful
+declaration generation. Install command: none, because neither backend produced
+a component. Run output: none, because there is no component to install.
 
-The [shared report](../README.md) records the WIT revision, required surfaces
-and remaining verification steps.
+Retry both backends after a toolchain update. A working example must register
+an event handler and a tool, retain their callbacks until release, and pass
+host invocations against the unchanged world before it gains an install recipe.
