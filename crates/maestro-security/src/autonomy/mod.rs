@@ -130,13 +130,12 @@ pub fn start_run(target: &str) -> Result<String, String> {
 /// # Errors
 /// Fails when the run is unknown or the index cannot be written.
 pub fn finish_run(run_id: &str, outcome: Result<&Assessment, &str>) -> Result<(), String> {
+    steer::remove(run_id);
     let mut record = Store
         .get_run(run_id)?
         .ok_or_else(|| format!("no run {run_id} in the index"))?;
     record.settle(outcome);
-    Store.upsert_run(&record)?;
-    steer::remove(run_id);
-    Ok(())
+    Store.upsert_run(&record)
 }
 
 /// Run the lifecycle for one trigger payload and settle its record.
@@ -171,14 +170,13 @@ pub async fn run_trigger<S: run::EventSink, E: run::SessionEntry>(
 
 /// Settle a killed run without a report or a result event.
 fn kill_run(run_id: &str) -> Result<(), String> {
+    steer::remove(run_id);
     let mut record = Store
         .get_run(run_id)?
         .ok_or_else(|| format!("no run {run_id} in the index"))?;
     record.settle(Err("killed"));
     record.status = crate::store::Status::Killed;
-    Store.upsert_run(&record)?;
-    steer::remove(run_id);
-    Ok(())
+    Store.upsert_run(&record)
 }
 
 /// The run id and target of one trigger payload.

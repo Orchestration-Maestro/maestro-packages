@@ -94,6 +94,7 @@ pub async fn drive_controlled<S: EventSink, E: SessionEntry>(
     sink.emit(events::STARTED, events::started(run_id, plan.target))
         .await?;
     entry.append(&events::started_entry(run_id, plan.target))?;
+    yield_control().await;
     let mut findings = 0usize;
     let mut notes = Vec::new();
     for &kind in plan.phases {
@@ -130,11 +131,27 @@ pub async fn drive_controlled<S: EventSink, E: SessionEntry>(
                 return Err(error);
             }
         }
+        yield_control().await;
         if control.stopped() {
             return killed(plan, kind, findings, sink, entry).await;
         }
     }
     Ok(Outcome::Completed)
+}
+
+/// Give same-executor commands a turn even when event deliveries are ready.
+async fn yield_control() {
+    let mut yielded = false;
+    std::future::poll_fn(|cx| {
+        if yielded {
+            std::task::Poll::Ready(())
+        } else {
+            yielded = true;
+            cx.waker().wake_by_ref();
+            std::task::Poll::Pending
+        }
+    })
+    .await;
 }
 
 /// Publish the committed phase and its findings, refutations and checkpoint.
@@ -235,17 +252,22 @@ pub async fn execute_controlled<S: EventSink, E: SessionEntry>(
         seen_refuted = state.refuted.len();
         Ok(StepReport { findings, refuted })
     };
-    if drive_controlled(&plan, sink, entry, control, &mut step).await? == Outcome::Killed {
+    let outcome = drive_controlled(&plan, sink, entry, control, &mut step).await;
+    if control.stopped() {
         state
             .ledger
             .save(run_id, &params.target, agent.name, &ctx.model)?;
+    }
+    if outcome? == Outcome::Killed {
         return Ok(None);
     }
-    let report = engine.finish(run_id, agent, &ctx, &mut state)?;
+    let report = engine.assemble(run_id, agent, &ctx, &mut state)?;
+    yield_control().await;
     if control.stopped() {
         killed(&plan, PhaseKind::Report, report.findings.len(), sink, entry).await?;
         return Ok(None);
     }
+    crate::evidence::save_report(run_id, &report)?;
     Ok(Some(report))
 }
 
