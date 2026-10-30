@@ -14,3 +14,24 @@ prek = "0.5.4"
 gitleaks = "8.30.1"
 # Runs ordinary tests in isolated processes.
 "aqua:nextest-rs/nextest/cargo-nextest" = "0.9.148"
+# Compiles and runs TypeScript extension components.
+node = "24.20.0"
+
+# Compiles TypeScript extensions to components. Its QuickJS backend builds the unchanged
+# extension world; the default backend cannot (see examples/typescript/README.md). The
+# platform bindings of oxc-parser 0.76.0, which jco's default backend loads, predate npm
+# provenance, which the install's trust check rejects. The QuickJS backend does not run them.
+[tools."npm:@bytecodealliance/jco"]
+version = "1.40.0"
+trust_policy_excludes = [
+  "@oxc-parser/binding-darwin-arm64@0.76.0",
+  "@oxc-parser/binding-darwin-x64@0.76.0",
+  "@oxc-parser/binding-linux-arm-gnueabihf@0.76.0",
+  "@oxc-parser/binding-linux-arm64-gnu@0.76.0",
+  "@oxc-parser/binding-linux-arm64-musl@0.76.0",
+  "@oxc-parser/binding-linux-x64-gnu@0.76.0",
+  "@oxc-parser/binding-linux-x64-musl@0.76.0",
+  "@oxc-parser/binding-wasm32-wasi@0.76.0",
+  "@oxc-parser/binding-win32-arm64-msvc@0.76.0",
+  "@oxc-parser/binding-win32-x64-msvc@0.76.0",
+]

@@ -12,5 +12,6 @@ WIT world and current verification blockers.
 |---|---|
 | `maestro-prompt-suffix` | Input hook that appends an instruction to user prompts. |
 | `maestro-security` | Unified security framework: one pipeline, five agents, extension and MCP surfaces. |
+| `maestro-typescript-example` | Tests that build the TypeScript example extension and run it in a Maestro executable. |
 
 Until `maestro-extensions-wasm` is published on crates.io, extension crates depend on it through the maestro repository's `main` branch.

@@ -1,0 +1,13 @@
+[package]
+name = "maestro-typescript-example"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Builds the TypeScript example extension with the pinned jco and runs it in a Maestro executable."
+
+[dev-dependencies]
+serde_json.workspace = true
+
+[lints]
+workspace = true

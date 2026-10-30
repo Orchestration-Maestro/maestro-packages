@@ -43,8 +43,11 @@ and changing them would only route around a missing toolchain feature.
   fails with jco 1.39.0.
 - A host test installs the component into a Maestro executable and checks that the hook
   rewrote the prompt, the model was offered the tool and the tool result reached the model.
-  It needs an executable at `target/maestro`, so it is ignored unless asked for.
-- The example type-checks against the declarations that `jco guest-types` generates.
+- Both tests read the world from `target/wit` and the executable from `target/maestro`, so
+  they are ignored unless asked for. Cargo's locked SDK revision carries an older world than
+  the host under test, and no released executable exists yet.
+- The example type-checks under `strict` against the declarations `jco guest-types`
+  generates. This was checked once with the compiler that jco bundles; no build step runs it.
 
 ## Scope
 

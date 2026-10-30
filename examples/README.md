@@ -1,16 +1,15 @@
-# Non-Rust guest toolchain diagnostics
+# Non-Rust guest toolchains
 
-Tracking: [#41](https://github.com/Orchestration-Maestro/maestro-packages/issues/41).
+Tracking: [#41](https://github.com/Orchestration-Maestro/maestro-packages/issues/41) and
+[#56](https://github.com/Orchestration-Maestro/maestro-packages/issues/56).
 
-Neither pinned toolchain can run the unchanged extension contract:
-
-- [TypeScript](typescript/README.md): jco 1.39.0 generates declarations, but
-  component compilation fails with both backends.
+- [TypeScript](typescript/README.md): jco 1.40.0 builds a component from the unchanged
+  extension contract, and Maestro's host installs and runs it. This is a working extension.
 - [Python](python/README.md): componentize-py 0.25.1 builds a valid component,
   but its async borrowed callback traps in the matching host.
 
-The named diagnostic sources reproduce these failures. They are not working
-extension examples. No Rust guest SDK or altered WIT is shipped.
+The Python sources reproduce its failure and are not a working extension. No Rust guest
+SDK or altered WIT is shipped.
 
 ## World inspected
 
@@ -33,6 +32,9 @@ All 12 files in the WIT directory matched between the inspected checkout and
 build host. The guest guide at `docs/extensions/guest.md` in that revision
 requires callback registration, async event/tool invocation and callback release.
 Generating declarations alone does not qualify an extension against this world.
+
+The TypeScript example ran against a host built from a later revision,
+`c9db49dc50b938c8804c9af29f21d7780691c49d`, whose WIT directory is byte-identical.
 
 ## Matching host
 
