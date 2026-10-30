@@ -1,8 +1,5 @@
 # Non-Rust guest toolchains
 
-Tracking: [#41](https://github.com/Orchestration-Maestro/maestro-packages/issues/41) and
-[#56](https://github.com/Orchestration-Maestro/maestro-packages/issues/56).
-
 - [TypeScript](typescript/README.md): jco 1.40.0 builds a component from the unchanged
   extension contract, and Maestro's host installs and runs it. This is a working extension.
 - [Python](python/README.md): componentize-py 0.25.1 builds a valid component,

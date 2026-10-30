@@ -63,7 +63,7 @@ pub enum Turn {
 const CLOSING: Turn = Turn::Say("done");
 
 /// The server-sent chunks that carry one turn.
-fn stream(turn: &Turn) -> String {
+fn chunks(turn: &Turn) -> String {
     let (delta, finish) = match turn {
         Turn::Say(text) => (json!({"role": "assistant", "content": text}), "stop"),
         Turn::Call { tool, arguments } => {
@@ -112,7 +112,7 @@ fn serve(mut stream: TcpStream, script: &[Turn], seen: &Mutex<Vec<Value>>) {
     let body = read_body(&stream);
     let mut seen = seen.lock().unwrap();
     seen.push(serde_json::from_slice(&body).unwrap());
-    let reply = self::stream(script.get(seen.len() - 1).unwrap_or(&CLOSING));
+    let reply = chunks(script.get(seen.len() - 1).unwrap_or(&CLOSING));
     write!(
         stream,
         "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\n\
