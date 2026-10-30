@@ -80,10 +80,10 @@ mise exec -- cargo nextest run -p maestro-typescript-example --run-ignored only
 Observed on 2026-10-29: 3 tests run, 3 passed:
 
 ```text
-        PASS [   3.034s] the_pinned_jco_builds_the_unchanged_world
-        PASS [   5.167s] the_host_runs_the_component
-        PASS [  10.684s] input_from_another_extension_reaches_the_model_unchanged
-     Summary [  10.684s] 3 tests run: 3 passed, 0 skipped
+        PASS [   2.972s] the_pinned_jco_builds_the_unchanged_world
+        PASS [   5.586s] the_host_runs_the_component
+        PASS [   8.880s] input_from_another_extension_reaches_the_model_unchanged
+     Summary [   8.881s] 3 tests run: 3 passed, 0 skipped
 ```
 
 The host test installs the component, sends `greet Ada` and checks that the model received
