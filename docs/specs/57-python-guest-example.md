@@ -10,9 +10,10 @@ which closed with a blocker report.
 It registers an `input` hook and a `hello` tool. The world, its dependencies and the
 host stay unchanged.
 
-A Maestro host built from source loads the component and a driver shows both
+A Maestro host built from source loads the component and a Rust test shows both
 registrations working: the model request carries the hook's output, and the model
-receives the tool's result. The driver is the test.
+receives the tool's result. The test is the `maestro-python-example` crate, which
+runs the host steps from the shared `tests/host` module.
 
 ## Toolchain
 
@@ -26,9 +27,9 @@ Do not change the world or the host to avoid the toolchain defect.
 
 ## Verification
 
-Red first: build the example with the unpatched compiler and run the driver. It
+Red first: build the example with the unpatched compiler and run the test. It
 fails with `borrow handles still remain at the end of the call`. Build it with the
-patched compiler and the same driver passes. The README records both runs. Check
+patched compiler and the same test passes. The README records both runs. Check
 all public text with the repository's public-text guard.
 
 ## Scope

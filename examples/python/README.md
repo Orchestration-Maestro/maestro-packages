@@ -14,7 +14,6 @@ builds the component, but the host stops it at its first callback (see
 | Rust | stable 1.99.0 with the `wasm32-wasip2` target |
 | WASI SDK | 34.0 (`clang version 23.1.0-wasi-sdk`) |
 | Maestro | `c9db49dc50b938c8804c9af29f21d7780691c49d` (world unchanged since `d3f7aa6`) |
-| Python | 3.12.3, runs `run_host.py` |
 
 ## The defect
 
@@ -27,7 +26,8 @@ export except `start` receives `borrow<callback>`, so the first call traps:
 borrow handles still remain at the end of the call
 ```
 
-The toolchain is wrong, not the world or the host:
+The toolchain is wrong, not the world or the host
+(upstream issue: [componentize-py#255](https://github.com/bytecodealliance/componentize-py/issues/255)):
 
 - The component model traps `task.return` while the task still holds a borrow
   (`Task.return_` in the reference `definitions.py`: `trap_if(self.num_borrows > 0)`).
@@ -95,65 +95,71 @@ builds produced the same bytes.
 
 ## Build and run the extension
 
+The `maestro-python-example` test builds the extension with the compiler on `PATH`,
+installs it in a Maestro executable and checks the result against a local model. It
+reads the extension world from `target/wit` and the executable from `target/maestro`,
+and the executable reads its themes from `theme/` beside it, so the test is ignored
+unless asked for. `$MAESTRO` is a Maestro checkout at the revision above:
+
 ```sh
 cd "$REPO"
-"$WORK/compiler-target/release/componentize-py" \
-  -d "$MAESTRO/crates/maestro-extensions-wasm/wit" -w extension \
-  componentize -p examples/python hello -o target/hello.wasm
+mkdir -p target
+cp -r "$MAESTRO/crates/maestro-extensions-wasm/wit" target/wit
+cp "$MAESTRO/target/release/maestro" target/maestro
+cp -r "$MAESTRO/crates/maestro-theme/assets/theme" target/theme
+PATH="$WORK/compiler-target/release:$PATH" \
+  cargo nextest run -p maestro-python-example --run-ignored only
 ```
 
-Build Maestro from the same checkout and copy the executable to `target/maestro`
-(`cargo build --release --locked -p maestro` in `$MAESTRO`). The executable used here
-has SHA-256 `fd529e5646f03c33b487763ed681fd26fa864dcc2be0f1d9b909c8f0ad3c0726`.
-Then run the driver:
+Build the executable with `cargo build --release --locked -p maestro` in `$MAESTRO`.
+The one used here has SHA-256
+`fd529e5646f03c33b487763ed681fd26fa864dcc2be0f1d9b909c8f0ad3c0726`.
+
+The test compiles the extension with this command:
 
 ```sh
-python3 examples/python/run_host.py \
-  "$PWD/target/maestro" "$PWD/target/hello.wasm" "$MAESTRO"
+componentize-py -d target/wit -w extension componentize -p examples/python hello \
+  -o hello.wasm
 ```
 
-The driver clears live credentials, creates a temporary project and registers the
+It then clears live credentials, creates a temporary project and registers the
 component there with this install command:
 
 ```sh
-maestro install "$COMPONENT" -l
+maestro install hello.wasm -l
 ```
 
-It then submits the prompt `greet Ada` through the real host. A provider on an
-ephemeral loopback port first answers with a call to `hello`, then with a final
-reply. No external model is contacted, and the registration is removed with the
-project. Do not install this extension into a real project.
+It submits the prompt `greet Ada` through the real host. A provider on an ephemeral
+loopback port first answers with a call to `hello`, then with a final reply. No external
+model is contacted, and the registration is removed with the project. Do not install
+this extension into a real project.
 
-Observed output on 2026-10-30, exit 0:
+Observed on 2026-10-30:
 
 ```text
-input hook: the model received 'GREET ADA'
-hello tool: the model received 'Hello, Ada!'
+PASS [  14.600s] (1/1) maestro-python-example::python_example the_host_runs_the_component
+Summary [  14.601s] 1 test run: 1 passed, 0 skipped
 ```
 
-The first line shows the hook's output reaching the model request. The second shows
-the model receiving the result of the tool's execution.
+The test asserts that the first model request ends with `GREET ADA`, which shows the
+hook's output reaching the model. It asserts that the model is offered `hello` and that
+its second request carries the tool result `Hello, Ada!`.
 
 ## Red run: the released compiler
 
-Build the same file with the released compiler:
+Run the same test with the released compiler first on `PATH`:
 
 ```sh
 uv tool install componentize-py==0.25.1
-componentize-py -d "$MAESTRO/crates/maestro-extensions-wasm/wit" -w extension \
-  componentize -p examples/python hello -o target/hello-released.wasm
-python3 examples/python/run_host.py \
-  "$PWD/target/maestro" "$PWD/target/hello-released.wasm" "$MAESTRO"
+cargo nextest run -p maestro-python-example --run-ignored only
 ```
 
-The driver exits 1 on its first assertion. The host rejects the component at
+The test fails on its exit-status assertion. The host rejects the component at
 `task.return invoke-event`:
 
 ```text
-AssertionError: Extension error (.../hello-released.wasm): component fault .../hello-released.wasm: error while executing at wasm backtrace:
-    ...
-    1: ... - <unknown>!task.return invoke-event
-    ...
+panicked at crates/maestro-python-example/tests/python_example.rs:62:5:
+...
    19: ... - libpython3.14.so!_PyFunction_Vectorcall: borrow handles still remain at the end of the call
 ```
 
