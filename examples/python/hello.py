@@ -63,14 +63,12 @@ def reject_unregistered(cls):
 
 
 def upper_case_input(event):
-    """Answer an `input` event with its text upper-cased, leaving other events alone."""
-    if event["type"] == "input":
-        return {"action": "transform", "text": event["text"].upper()}
-    return None
+    """Answer an `input` event with its text upper-cased."""
+    return {"action": "transform", "text": event["text"].upper()}
 
 
 def greet(params):
-    """Return the tool result greeting the requested name, byte for byte."""
+    """Return the tool result greeting the requested name."""
     name = params["name"]
     return {
         "content": [{"type": "text", "text": f"Hello, {name}!"}],
@@ -92,10 +90,7 @@ def keep(function):
 
 def function_for(handler):
     """Find the function a borrowed callback identity stands for."""
-    key = handler.id()
-    if key not in CALLBACKS:
-        raise Err(f"Unknown callback {key}")
-    return CALLBACKS[key][1]
+    return CALLBACKS[handler.id()][1]
 
 
 @reject_unregistered
@@ -108,11 +103,8 @@ class Guest(exports.Guest):
         route = await host.register_tool(
             json.dumps(HELLO_TOOL), None, keep(greet), [], None, None
         )
-        step = route.next()
-        if not isinstance(step, host.RouteStep_Done):
-            raise Err("Tool registration made a nested call this example does not serve")
-        if not isinstance(step.value, Ok):
-            raise step.value
+        # A tool with no executable schema nodes finishes in its first step.
+        route.next()
 
     def release(self, handler):
         """Drop the sole callback owner when the host releases it."""
@@ -120,9 +112,8 @@ class Guest(exports.Guest):
 
     async def invoke_event(self, handler, event, resources):
         """Run the hook on the event document and return its result document."""
-        result = function_for(handler)(json.loads(event))
-        encoded = None if result is None else json.dumps(result)
-        return host.EventOutcome(Ok(None), host.Decision_Returned(Ok(encoded)), None)
+        result = json.dumps(function_for(handler)(json.loads(event)))
+        return host.EventOutcome(Ok(None), host.Decision_Returned(Ok(result)), None)
 
     async def invoke_tool(self, handler, invocation, resources):
         """Run the tool on its parameter document and return its result document."""

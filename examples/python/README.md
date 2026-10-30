@@ -165,8 +165,9 @@ patch is the only difference between the two runs.
 - Keep state at module level. componentize-py 0.25.1 builds a separate `Guest` object
   for each exported function, so a table stored on `self` in `start` is empty in
   `invoke_event`. `main` shares one object per interface.
-- `register_tool` returns an import route. `hello.py` reads its first step and expects
-  `Done`; a tool with executable schema nodes also receives `Invoke` steps.
+- `register_tool` returns an import route. `hello.py` reads one step; its tool has no
+  executable schema nodes, so that step is `Done`. A tool with such nodes also receives
+  `Invoke` steps.
 - Every export the example does not serve fails with its declared error type
   (`reject_unregistered`), which keeps the generated async dispatch intact.
 - Generated bindings are build outputs, not source. Pyright reads
