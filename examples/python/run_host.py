@@ -1,4 +1,4 @@
-"""Confirm the async-borrow compiler fault with a disposable local provider."""
+"""Run the Python extension through a real Maestro host with a disposable local provider."""
 
 import http.server
 import json
@@ -11,7 +11,7 @@ from typing import ClassVar
 
 
 class Provider(http.server.BaseHTTPRequestHandler):
-    """Serve one fixed response without external traffic."""
+    """Serve a tool call to `hello`, then a final reply, without external traffic."""
 
     requests: ClassVar[list[dict]] = []
 
@@ -19,8 +19,18 @@ class Provider(http.server.BaseHTTPRequestHandler):
         """Capture each model request and supply a deterministic SSE reply."""
         body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
         self.requests.append(body)
-        delta = {"role": "assistant", "content": "Diagnostic provider reply."}
-        finish = "stop"
+        if len(self.requests) == 1:
+            call = {
+                "index": 0,
+                "id": "call_1",
+                "type": "function",
+                "function": {"name": "hello", "arguments": json.dumps({"name": "Ada"})},
+            }
+            delta = {"role": "assistant", "tool_calls": [call]}
+            finish = "tool_calls"
+        else:
+            delta = {"role": "assistant", "content": "Greeting delivered."}
+            finish = "stop"
         chunks = [
             {
                 "id": "controlled",
@@ -114,7 +124,7 @@ def run_host(binary, component, directory, env):
             "--thinking",
             "off",
             "--print",
-            "diagnose async borrow",
+            "greet Ada",
         ],
         cwd=directory,
         env=env,
@@ -127,23 +137,33 @@ def run_host(binary, component, directory, env):
     return result
 
 
+def message_text(message):
+    """Join the text parts of one chat message, whether plain or a list of parts."""
+    content = message["content"]
+    if isinstance(content, str):
+        return content
+    return "".join(part.get("text", "") for part in content)
+
+
 def verify(binary, component, package_dir):
-    """Succeed only when the pinned toolchain's expected ABI fault is observed."""
+    """Succeed only when the input hook and the tool both ran inside the host."""
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Provider)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     try:
         with tempfile.TemporaryDirectory(prefix="maestro-python-") as directory:
             env = host_environment(directory, server.server_port, package_dir)
             result = run_host(binary, component, directory, env)
-            assert len(Provider.requests) == 1, (Provider.requests, result.stderr)
-            assert "Diagnostic provider reply." in result.stdout, (
-                result.stdout + result.stderr
+            assert "component fault" not in result.stderr, result.stderr
+            assert len(Provider.requests) == 2, (Provider.requests, result.stderr)
+            first, second = (
+                [message_text(m) for m in request["messages"] if m["role"] == role]
+                for request, role in zip(Provider.requests, ("user", "tool"), strict=True)
             )
-            fault = "borrow handles still remain at the end of the call"
-            assert fault in result.stderr, result.stdout + result.stderr
-            assert "task.return invoke-event" in result.stderr, result.stderr
-            print("CONFIRMED async invoke-event: " + fault)
-            print("Host continued after rejecting the component.")
+            assert first[-1] == "GREET ADA", first
+            assert second == ["Hello, Ada!"], second
+            assert "Greeting delivered." in result.stdout, result.stdout + result.stderr
+            print("input hook: the model received " + repr(first[-1]))
+            print("hello tool: the model received " + repr(second[0]))
     finally:
         server.shutdown()
         server.server_close()

@@ -1,97 +1,174 @@
-# Python: async borrowed callback blocked
+# Python: input hook and greeting tool
 
-**Diagnostic only, not a working extension.** Toolchain:
-**componentize-py 0.25.1**. It parses the complete
-[extension world](../README.md#world-inspected), generates bindings and builds a
-valid component. Invoking an async callback with a borrowed resource traps at
-runtime, so no working Python extension is shipped.
+`hello.py` is a Python extension for the unchanged
+[extension world](../README.md#world-inspected). It registers an `input` hook that
+upper-cases the text and a `hello` tool that answers `Hello, <name>!`.
 
-`borrow_diagnostic.py` isolates the failure. It inherits the generated export
-base, registers one `input` observer and retains its callback owner until
-release. The observer returns no edits or decision and retains no invocation
-operands. Other exported callbacks reject calls with their declared WIT error
-types. This keeps the generated async dispatch without copying a guest SDK.
+It needs componentize-py 0.25.1 with a one-hunk patch. The released compiler
+builds the component, but the host stops it at its first callback (see
+[the defect](#the-defect)). Tracking: [#57](https://github.com/Orchestration-Maestro/maestro-packages/issues/57).
 
-## Build the diagnostic
+| Tool | Version |
+| --- | --- |
+| componentize-py | 0.25.1 plus [the patch](toolchain/release-borrows-before-task-return.patch) |
+| Rust | stable 1.99.0 with the `wasm32-wasip2` target |
+| WASI SDK | 34.0 (`clang version 23.1.0-wasi-sdk`) |
+| Maestro | `c9db49dc50b938c8804c9af29f21d7780691c49d` (world unchanged since `d3f7aa6`) |
+| Python | 3.12.3, runs `run_host.py` |
 
-Install the pinned compiler on your build machine:
+## The defect
 
-```sh
-uv tool install componentize-py==0.25.1
-```
-
-From this repository with the sibling Maestro checkout at
-`d3f7aa6a9906d23350f4b28a88a41e0fde8195a0`:
-
-```sh
-WIT="$PWD/../maestro/crates/maestro-extensions-wasm/wit"
-BUILD_DIR="$PWD/target"
-mkdir -p "$BUILD_DIR"
-componentize-py --version
-componentize-py -d "$WIT" -w extension bindings "$BUILD_DIR/guest-python"
-componentize-py -d "$WIT" -w extension componentize \
-  -p examples/python borrow_diagnostic -o "$BUILD_DIR/borrow-diagnostic.wasm"
-wasm-tools validate --features cm-async "$BUILD_DIR/borrow-diagnostic.wasm"
-```
-
-Observed on 2026-10-28: `componentize-py 0.25.1`; binding generation,
-component compilation and validation with wasm-tools 1.262.0 exit 0. Compilation
-prints `Component built successfully`. Component WIT inspection preserves the
-async exports and borrowed callback parameters.
-
-Generated bindings are build outputs, not checked-in source. The repository's
-Pyright configuration reads `target/guest-python` for editor checks.
-
-## Install and run the diagnostic
-
-Use the executable described by the [matching-host receipt](../README.md#matching-host)
-as `target/maestro`. Its source revision is
-`d3f7aa6a9906d23350f4b28a88a41e0fde8195a0`.
-After retrieving the component into `target/borrow-diagnostic.wasm`, run:
-
-```sh
-python3 examples/python/diagnose_host.py \
-  "$PWD/target/maestro" "$PWD/target/borrow-diagnostic.wasm" "$PWD/../maestro"
-```
-
-The third argument supplies the source-built host's package root, including
-its theme assets. Python **3.12.3** ran this driver. It clears live credentials,
-creates a temporary project and registers the diagnostic there with this
-install command:
-
-```sh
-maestro install "$COMPONENT" -l
-```
-
-It submits one input through the real host using a provider on an ephemeral
-loopback port. No external model is contacted, and the temporary registration
-is removed with the project. Do not install this diagnostic into a real project.
-
-Observed output, exit 0:
-
-```text
-CONFIRMED async invoke-event: borrow handles still remain at the end of the call
-Host continued after rejecting the component.
-```
-
-Exit 0 means the driver confirmed the expected failure, not that the extension
-worked. The host reports a component fault at `task.return invoke-event` and
-continues without that component. No successful extension run is claimed.
-
-## Exact blocker
-
-In componentize-py **0.25.1**,
+In componentize-py 0.25.1,
 [`runtime/src/lib.rs:500-502`](https://github.com/bytecodealliance/componentize-py/blob/v0.25.1/runtime/src/lib.rs#L500-L502)
-calls `func.call_task_return(&mut call)` before `release_borrows(...)`.
-The runtime still holds the imported callback borrow when the canonical ABI
-checks task completion, producing:
+calls `func.call_task_return(&mut call)` and only then `release_borrows(...)`. Every
+export except `start` receives `borrow<callback>`, so the first call traps:
 
 ```text
 borrow handles still remain at the end of the call
 ```
 
-The unchanged world requires `borrow<callback>` on async `invoke-event` and
-`invoke-tool`; converting them to synchronous functions would change the
-contract. The diagnostic neither retains the invocation borrow nor patches
-compiler internals. A toolchain fix must release these borrows before task
-completion; then registration, event and tool behavior need host qualification.
+The toolchain is wrong, not the world or the host:
+
+- The component model traps `task.return` while the task still holds a borrow
+  (`Task.return_` in the reference `definitions.py`: `trap_if(self.num_borrows > 0)`).
+- Maestro's Wasmtime
+  ([`ffff2e2d`](https://github.com/bytecodealliance/wasmtime/tree/ffff2e2db24a291f02429f123aba1631fa8eea67))
+  checks it in `concurrent.rs` `task_complete` (line 3964), which calls
+  `validate_scope_exit` and fails at `vm/component/resources.rs:402`. Wasmtime added
+  that check in 43.0.0 (pull request 12550).
+- `main` of componentize-py (`704719ea`) keeps the same order.
+
+The patch moves `release_borrows` before `call_task_return`. Nothing else changes.
+
+## Build the patched compiler
+
+The published crate ships the prebuilt CPython library, so only the runtime is
+rebuilt. Run this from the root of this repository; `$MAESTRO` is a Maestro checkout
+at the revision above.
+
+```sh
+REPO=$PWD
+MAESTRO=$PWD/../maestro
+WORK=$REPO/../componentize-py-patched
+mkdir -p "$WORK" && cd "$WORK"
+
+curl -sSLO https://static.crates.io/crates/componentize-py/componentize-py-0.25.1.crate
+curl -sSLo runtime-v0.25.1.tar.gz \
+  https://github.com/bytecodealliance/componentize-py/archive/refs/tags/v0.25.1.tar.gz
+curl -sSLO https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-34/wasi-sdk-34.0-x86_64-linux.tar.gz
+sha256sum -c <<'EOF'
+addb8010b8a05a736a7efaee36975e616bdc4762c458a3ad553405354b90ed47  componentize-py-0.25.1.crate
+07351b4879b568c5fcbcb6771c2863f1742cae3d2dab0986d68a95ec145d01da  runtime-v0.25.1.tar.gz
+b761e3a0721dbae9c09a0059e5fdb2bf917d1b4a8a7b430fb3b5aafb0984b2c4  wasi-sdk-34.0-x86_64-linux.tar.gz
+EOF
+
+mkdir crate runtime-src wasi-sdk pylib
+tar xzf componentize-py-0.25.1.crate -C crate --strip-components=1
+tar xzf runtime-v0.25.1.tar.gz -C runtime-src --strip-components=1
+tar xzf wasi-sdk-34.0-x86_64-linux.tar.gz -C wasi-sdk --strip-components=1
+patch -d runtime-src -p1 < "$REPO/examples/python/toolchain/release-borrows-before-task-return.patch"
+
+zstd -d crate/libpython3.14.so.zst -o pylib/libpython3.14.so
+{ cat runtime-src/pyo3-config.txt; echo "lib_dir=$WORK/pylib"; } > pyo3-config.txt
+
+# 1. The patched async runtime, linked the way the compiler's own build does.
+(cd runtime-src/runtime && \
+  RUSTFLAGS="--cfg pyo3_disable_reference_pool -Clink-args=-Wl,--skip-wit-component -Clink-args=-shared -Clink-args=-L$WORK/pylib -Clink-args=-lpython3.14 -Clink-self-contained=n" \
+  CARGO_TARGET_WASM32_WASIP2_LINKER="$WORK/wasi-sdk/bin/clang" \
+  CARGO_TARGET_DIR="$WORK/runtime-target" \
+  PYO3_CONFIG_FILE="$WORK/pyo3-config.txt" \
+  cargo build --locked --release --target=wasm32-wasip2 --features=async)
+
+# 2. The compiler, with only the async runtime replaced.
+zstd -19 -f runtime-target/wasm32-wasip2/release/componentize_py_runtime.wasm \
+  -o crate/libcomponentize_py_runtime_async.so.zst
+(cd crate && CARGO_TARGET_DIR="$WORK/compiler-target" \
+  cargo build --locked --release --bin componentize-py)
+```
+
+On 2026-10-30, with three build jobs on an 8-core Linux x86-64 machine, step 1
+took 21 seconds and step 2 took 3 minutes 11 seconds. The compiler is
+`$WORK/compiler-target/release/componentize-py`. The patched runtime,
+`runtime-target/wasm32-wasip2/release/componentize_py_runtime.wasm`, has SHA-256
+`054ce436596d64081111af7bf37ca4eac6db9373301e553100c166b6292c155a`; two separate
+builds produced the same bytes.
+
+## Build and run the extension
+
+```sh
+cd "$REPO"
+"$WORK/compiler-target/release/componentize-py" \
+  -d "$MAESTRO/crates/maestro-extensions-wasm/wit" -w extension \
+  componentize -p examples/python hello -o target/hello.wasm
+```
+
+Build Maestro from the same checkout and copy the executable to `target/maestro`
+(`cargo build --release --locked -p maestro` in `$MAESTRO`). The executable used here
+has SHA-256 `fd529e5646f03c33b487763ed681fd26fa864dcc2be0f1d9b909c8f0ad3c0726`.
+Then run the driver:
+
+```sh
+python3 examples/python/run_host.py \
+  "$PWD/target/maestro" "$PWD/target/hello.wasm" "$MAESTRO"
+```
+
+The driver clears live credentials, creates a temporary project and registers the
+component there with this install command:
+
+```sh
+maestro install "$COMPONENT" -l
+```
+
+It then submits the prompt `greet Ada` through the real host. A provider on an
+ephemeral loopback port first answers with a call to `hello`, then with a final
+reply. No external model is contacted, and the registration is removed with the
+project. Do not install this extension into a real project.
+
+Observed output on 2026-10-30, exit 0:
+
+```text
+input hook: the model received 'GREET ADA'
+hello tool: the model received 'Hello, Ada!'
+```
+
+The first line shows the hook's output reaching the model request. The second shows
+the model receiving the result of the tool's execution.
+
+## Red run: the released compiler
+
+Build the same file with the released compiler:
+
+```sh
+uv tool install componentize-py==0.25.1
+componentize-py -d "$MAESTRO/crates/maestro-extensions-wasm/wit" -w extension \
+  componentize -p examples/python hello -o target/hello-released.wasm
+python3 examples/python/run_host.py \
+  "$PWD/target/maestro" "$PWD/target/hello-released.wasm" "$MAESTRO"
+```
+
+The driver exits 1 on its first assertion. The host rejects the component at
+`task.return invoke-event`:
+
+```text
+AssertionError: Extension error (.../hello-released.wasm): component fault .../hello-released.wasm: error while executing at wasm backtrace:
+    ...
+    1: ... - <unknown>!task.return invoke-event
+    ...
+   19: ... - libpython3.14.so!_PyFunction_Vectorcall: borrow handles still remain at the end of the call
+```
+
+A compiler rebuilt from the same sources without the patch fails the same way, so the
+patch is the only difference between the two runs.
+
+## Notes for authors
+
+- Keep state at module level. componentize-py 0.25.1 builds a separate `Guest` object
+  for each exported function, so a table stored on `self` in `start` is empty in
+  `invoke_event`. `main` shares one object per interface.
+- `register_tool` returns an import route. `hello.py` reads its first step and expects
+  `Done`; a tool with executable schema nodes also receives `Invoke` steps.
+- Every export the example does not serve fails with its declared error type
+  (`reject_unregistered`), which keeps the generated async dispatch intact.
+- Generated bindings are build outputs, not source. Pyright reads
+  `target/guest-python`, which `componentize-py ... bindings target/guest-python`
+  writes.

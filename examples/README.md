@@ -2,15 +2,16 @@
 
 Tracking: [#41](https://github.com/Orchestration-Maestro/maestro-packages/issues/41).
 
-Neither pinned toolchain can run the unchanged extension contract:
+One pinned toolchain runs the unchanged extension contract; the other cannot:
 
 - [TypeScript](typescript/README.md): jco 1.39.0 generates declarations, but
   component compilation fails with both backends.
-- [Python](python/README.md): componentize-py 0.25.1 builds a valid component,
-  but its async borrowed callback traps in the matching host.
+- [Python](python/README.md): componentize-py 0.25.1 with a one-hunk patch builds
+  a working extension. The released compiler builds a component that traps at its
+  first async callback in the matching host.
 
-The named diagnostic sources reproduce these failures. They are not working
-extension examples. No Rust guest SDK or altered WIT is shipped.
+The TypeScript diagnostic source reproduces its failures and is not a working
+extension. No Rust guest SDK or altered WIT is shipped.
 
 ## World inspected
 
@@ -36,9 +37,9 @@ Generating declarations alone does not qualify an extension against this world.
 
 ## Matching host
 
-Python's runtime failure was reproduced with Maestro built from the exact
-revision above, not an older executable with missing imports. The accepted
-remote build receipt records:
+The released Python compiler's runtime failure was reproduced with Maestro built
+from the exact revision above, not an older executable with missing imports.
+The accepted remote build receipt records:
 
 ```json
 {
