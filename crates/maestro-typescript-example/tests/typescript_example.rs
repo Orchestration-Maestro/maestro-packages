@@ -11,7 +11,7 @@ use std::process::Command;
 
 use serde_json::{Value, json};
 
-use host::{Run, Scratch, Turn, describe, root};
+use host::{Run, Scratch, Turn, describe, last_text, root};
 
 /// The prompt the model is asked to act on.
 const PROMPT: &str = "greet Ada";
@@ -45,11 +45,6 @@ fn build(directory: &Path, source: &Path) -> PathBuf {
 /// The example extension's source.
 fn example() -> PathBuf {
     root().join("examples/typescript/extension.ts")
-}
-
-/// The text of the last message the model received in a request.
-fn last_text(request: &Value) -> &Value {
-    &request["messages"].as_array().unwrap().last().unwrap()["content"][0]["text"]
 }
 
 /// The pinned jco compiles the unchanged world, and the component connects its two interfaces.

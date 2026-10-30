@@ -45,6 +45,11 @@ pub fn describe(output: &Output) -> String {
     )
 }
 
+/// The text of the last message the model received in a request.
+pub fn last_text(request: &Value) -> &Value {
+    &request["messages"].as_array().unwrap().last().unwrap()["content"][0]["text"]
+}
+
 /// One scripted model turn.
 #[derive(Clone)]
 pub enum Turn {
