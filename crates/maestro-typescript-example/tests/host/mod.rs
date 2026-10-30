@@ -24,8 +24,7 @@ pub struct Scratch(pub PathBuf);
 impl Scratch {
     /// Creates a directory named for the test and this process.
     pub fn new(name: &str) -> Self {
-        let path =
-            std::env::temp_dir().join(format!("maestro-typescript-{name}-{}", std::process::id()));
+        let path = std::env::temp_dir().join(format!("maestro-host-{name}-{}", std::process::id()));
         fs::create_dir_all(&path).unwrap();
         Self(path)
     }
