@@ -43,7 +43,13 @@ and changing them would only route around a missing toolchain feature.
   fails with jco 1.39.0.
 - A host test installs the component into a Maestro executable and checks that the hook
   rewrote the prompt, the model was offered the tool and the tool result reached the model.
-- Both tests read the world from `target/wit` and the executable from `target/maestro`, so
+- A second host test installs the example next to a probe extension that queues a user
+  message from a tool, and checks that the model receives the message as sent, because
+  the example's hook leaves input from other extensions alone. `release` has no test: the
+  host never calls a released handle again, so nothing outside the guest observes it.
+- The host steps (executable, scripted model, install) live in one module that names no
+  guest language, so another guest's checks reuse it.
+- All tests read the world from `target/wit` and the executable from `target/maestro`, so
   they are ignored unless asked for. Cargo's locked SDK revision carries an older world than
   the host under test, and no released executable exists yet.
 - The example type-checks under `strict` against the declarations `jco guest-types`
