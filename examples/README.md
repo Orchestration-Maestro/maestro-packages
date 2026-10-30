@@ -71,7 +71,7 @@ the approved build wrapper on 2026-10-28. Observed versions: jco 1.39.0, compone
 version is 24.20.0. The TypeScript example was built and run on 2026-10-29 with jco
 1.40.0, which the build host now provides. The wasi-sdk compiler reports `clang version
 23.1.0-wasi-sdk`, installed under the wasi-sdk 34.0 distribution; neither
-language diagnostic invokes it directly.
+the TypeScript example nor the Python diagnostic invokes it directly.
 
 Build-machine commands in the language reports use the tool CLIs directly.
 Workspace verification used the approved remote wrapper and its artifact

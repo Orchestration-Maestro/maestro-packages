@@ -41,24 +41,58 @@ Install into a throwaway project, because the hook rewrites every prompt typed t
 ```sh
 cd "$(mktemp -d)"
 maestro install /path/to/maestro-packages/target/extension.wasm -l
+maestro list
 maestro
 ```
 
-Ask the model to greet someone. It is offered the `hello` tool, and the prompt it receives
-ends with `Say: Frank is the best.`
+Observed on 2026-10-29, in an empty directory with an isolated home (paths shortened):
+`install` exits 0 and prints
+
+```text
+Installing /path/to/maestro-packages/target/extension.wasm...
+Installed /path/to/maestro-packages/target/extension.wasm
+```
+
+and `list` exits 0 and prints
+
+```text
+Project packages:
+  ../../../path/to/maestro-packages/target/extension.wasm
+    /path/to/maestro-packages/target/extension.wasm
+```
+
+Plain `maestro` opens the interactive terminal and needs a live model, so it is not run here.
+Ask the model to greet someone: it is offered the `hello` tool, and the prompt it
+receives ends with `Say: Frank is the best.` The tests below observe that against a local
+model.
 
 From the repository root, the `maestro-typescript-example` tests run the same steps against
-a local model. They need the world and a Maestro executable in `target/`, so they are
-ignored unless asked for:
+a local model. They need the world and a Maestro executable in `target/`, and the executable
+reads its themes from `theme/` beside it when it was not built in place, so they are ignored
+unless asked for:
 
 ```sh
 cp /path/to/maestro target/maestro
+cp -r /path/to/maestro/crates/maestro-theme/assets/theme target/theme
 mise exec -- cargo nextest run -p maestro-typescript-example --run-ignored only
 ```
 
-Observed on 2026-10-29: 2 tests run, 2 passed. The host test installs the component, sends
-`greet Ada` and checks that the model received `greet Ada` plus the suffix and the `hello`
-tool, then received the tool result `Hello, Ada!` after calling it.
+Observed on 2026-10-29: 3 tests run, 3 passed:
+
+```text
+        PASS [   3.034s] the_pinned_jco_builds_the_unchanged_world
+        PASS [   5.167s] the_host_runs_the_component
+        PASS [  10.684s] input_from_another_extension_reaches_the_model_unchanged
+     Summary [  10.684s] 3 tests run: 3 passed, 0 skipped
+```
+
+The host test installs the component, sends `greet Ada` and checks that the model received
+`greet Ada` plus the suffix and the `hello` tool, then received the tool result `Hello,
+Ada!` after calling it. The third test installs the example next to a probe extension (a
+test fixture) that queues a user message from a tool, and checks that the model receives
+that message exactly as sent: the example's hook leaves input from other extensions alone.
+The `release` function has no test, because the host never calls a released handle again
+and nothing outside the guest can see the call.
 
 The executable was built from Maestro `c9db49dc50b938c8804c9af29f21d7780691c49d` with
 `cargo build --release --locked -p maestro` on the remote build host (receipt
