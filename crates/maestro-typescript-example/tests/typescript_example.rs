@@ -9,7 +9,7 @@ mod host;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use serde_json::{Value, json};
+use serde_json::json;
 
 use host::{Run, Scratch, Turn, describe, last_text, root};
 
