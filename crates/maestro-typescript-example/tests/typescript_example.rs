@@ -31,10 +31,8 @@ struct Scratch(PathBuf);
 impl Scratch {
     /// Creates a directory named for the test and this process.
     fn new(name: &str) -> Self {
-        let path = std::env::temp_dir().join(format!(
-            "maestro-typescript-{name}-{}",
-            std::process::id()
-        ));
+        let path =
+            std::env::temp_dir().join(format!("maestro-typescript-{name}-{}", std::process::id()));
         fs::create_dir_all(&path).unwrap();
         Self(path)
     }
@@ -60,7 +58,13 @@ fn build(directory: &Path) -> PathBuf {
     let component = directory.join("extension.wasm");
     let output = Command::new("jco")
         .args(["componentize", "extension.ts", "--backend", "quickjs"])
-        .args(["--wit", "../../target/wit", "--world-name", "extension", "--out"])
+        .args([
+            "--wit",
+            "../../target/wit",
+            "--world-name",
+            "extension",
+            "--out",
+        ])
         .arg(&component)
         .current_dir(root().join("examples/typescript"))
         .output()
@@ -75,10 +79,20 @@ fn build(directory: &Path) -> PathBuf {
 fn the_pinned_jco_builds_the_unchanged_world() {
     let scratch = Scratch::new("build");
     let component = build(&scratch.0);
-    let output = Command::new("jco").arg("wit").arg(&component).output().unwrap();
+    let output = Command::new("jco")
+        .arg("wit")
+        .arg(&component)
+        .output()
+        .unwrap();
     let wit = describe(&output);
-    assert!(wit.contains("import maestro:extension/host@0.1.0;"), "{wit}");
-    assert!(wit.contains("export maestro:extension/guest@0.1.0;"), "{wit}");
+    assert!(
+        wit.contains("import maestro:extension/host@0.1.0;"),
+        "{wit}"
+    );
+    assert!(
+        wit.contains("export maestro:extension/guest@0.1.0;"),
+        "{wit}"
+    );
 }
 
 /// The first model turn calls the `hello` tool; every later turn ends the conversation.
@@ -86,7 +100,10 @@ fn turn(number: usize) -> String {
     let (delta, finish) = if number == 0 {
         let call = json!({"index": 0, "id": "call_1", "type": "function",
             "function": {"name": "hello", "arguments": "{\"name\":\"Ada\"}"}});
-        (json!({"role": "assistant", "tool_calls": [call]}), "tool_calls")
+        (
+            json!({"role": "assistant", "tool_calls": [call]}),
+            "tool_calls",
+        )
     } else {
         (json!({"role": "assistant", "content": "done"}), "stop")
     };
@@ -174,7 +191,11 @@ fn run(maestro: &Path, directory: &Path, args: &[&str]) -> Output {
         .env("MAESTRO_TELEMETRY", "0")
         .output()
         .expect("a Maestro executable is needed in target/maestro");
-    assert!(output.status.success(), "{args:?} failed: {}", describe(&output));
+    assert!(
+        output.status.success(),
+        "{args:?} failed: {}",
+        describe(&output)
+    );
     output
 }
 
@@ -182,7 +203,11 @@ fn run(maestro: &Path, directory: &Path, args: &[&str]) -> Output {
 fn configure(directory: &Path, port: u16) {
     let agent = directory.join("agent");
     fs::create_dir_all(&agent).unwrap();
-    fs::write(agent.join("settings.json"), json!({"checkForUpdates": false}).to_string()).unwrap();
+    fs::write(
+        agent.join("settings.json"),
+        json!({"checkForUpdates": false}).to_string(),
+    )
+    .unwrap();
     let model = json!({"id": "guest-test", "contextWindow": 128_000, "maxTokens": 1024});
     let provider = json!({"baseUrl": format!("http://127.0.0.1:{port}/v1"),
         "api": "openai-completions", "apiKey": "controlled-placeholder", "models": [model]});
@@ -200,18 +225,53 @@ fn the_host_runs_the_component() {
     let provider = Provider::start();
     configure(&scratch.0, provider.port);
     let maestro = root().join("target/maestro");
-    run(&maestro, &scratch.0, &["install", component.to_str().unwrap(), "-l"]);
-    let flags = ["--offline", "--no-session", "--no-skills", "--no-prompt-templates"];
+    run(
+        &maestro,
+        &scratch.0,
+        &["install", component.to_str().unwrap(), "-l"],
+    );
+    let flags = [
+        "--offline",
+        "--no-session",
+        "--no-skills",
+        "--no-prompt-templates",
+    ];
     let hosted = ["--no-context-files", "--no-themes", "--no-builtin-tools"];
-    let model = ["--provider", "controlled-guest", "--model", "guest-test", "--thinking", "off"];
+    let model = [
+        "--provider",
+        "controlled-guest",
+        "--model",
+        "guest-test",
+        "--thinking",
+        "off",
+    ];
     let args = [&flags[..], &hosted, &model, &["--print", PROMPT]].concat();
     run(&maestro, &scratch.0, &args);
 
     let requests = provider.requests.lock().unwrap();
-    assert_eq!(requests.len(), 2, "the model is called before and after the tool");
+    assert_eq!(
+        requests.len(),
+        2,
+        "the model is called before and after the tool"
+    );
     let typed = &requests[0]["messages"].as_array().unwrap().last().unwrap()["content"][0]["text"];
-    assert_eq!(typed, &json!(format!("{PROMPT}{SUFFIX}")), "the input hook ran");
-    assert_eq!(requests[0]["tools"][0]["function"]["name"], "hello", "the tool is offered");
-    let answer = requests[1]["messages"].as_array().unwrap().last().unwrap().clone();
-    assert_eq!(answer, json!({"role": "tool", "content": "Hello, Ada!", "tool_call_id": "call_1"}));
+    assert_eq!(
+        typed,
+        &json!(format!("{PROMPT}{SUFFIX}")),
+        "the input hook ran"
+    );
+    assert_eq!(
+        requests[0]["tools"][0]["function"]["name"], "hello",
+        "the tool is offered"
+    );
+    let answer = requests[1]["messages"]
+        .as_array()
+        .unwrap()
+        .last()
+        .unwrap()
+        .clone();
+    assert_eq!(
+        answer,
+        json!({"role": "tool", "content": "Hello, Ada!", "tool_call_id": "call_1"})
+    );
 }
