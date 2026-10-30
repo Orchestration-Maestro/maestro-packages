@@ -9,9 +9,9 @@ mod host;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use serde_json::{Value, json};
+use serde_json::json;
 
-use host::{Run, Scratch, Turn, describe, root};
+use host::{Run, Scratch, Turn, describe, last_message, last_text, root};
 
 /// The prompt the model is asked to act on.
 const PROMPT: &str = "greet Ada";
@@ -45,11 +45,6 @@ fn build(directory: &Path, source: &Path) -> PathBuf {
 /// The example extension's source.
 fn example() -> PathBuf {
     root().join("examples/typescript/extension.ts")
-}
-
-/// The text of the last message the model received in a request.
-fn last_text(request: &Value) -> &Value {
-    &request["messages"].as_array().unwrap().last().unwrap()["content"][0]["text"]
 }
 
 /// The pinned jco compiles the unchanged world, and the component connects its two interfaces.
@@ -103,7 +98,7 @@ fn the_host_runs_the_component() {
         requests[0]["tools"][0]["function"]["name"], "hello",
         "the tool is offered"
     );
-    let answer = requests[1]["messages"].as_array().unwrap().last().unwrap();
+    let answer = last_message(&requests[1]);
     assert_eq!(
         answer,
         &json!({"role": "tool", "content": "Hello, Ada!", "tool_call_id": "call_1"})
