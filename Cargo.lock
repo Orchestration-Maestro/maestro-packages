@@ -932,6 +932,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "maestro-typescript-example"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+]
+
+[[package]]
 name = "matchers"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -1,17 +1,14 @@
-# Non-Rust guest toolchain diagnostics
+# Non-Rust guest toolchains
 
 Tracking: [#41](https://github.com/Orchestration-Maestro/maestro-packages/issues/41).
 
-One pinned toolchain runs the unchanged extension contract; the other cannot:
-
-- [TypeScript](typescript/README.md): jco 1.39.0 generates declarations, but
-  component compilation fails with both backends.
+- [TypeScript](typescript/README.md): jco 1.40.0 builds a component from the unchanged
+  extension contract, and Maestro's host installs and runs it. This is a working extension.
 - [Python](python/README.md): componentize-py 0.25.1 with a one-hunk patch builds
   a working extension. The released compiler builds a component that traps at its
   first async callback in the matching host.
 
-The TypeScript diagnostic source reproduces its failures and is not a working
-extension. No Rust guest SDK or altered WIT is shipped.
+No Rust guest SDK or altered WIT is shipped.
 
 ## World inspected
 
@@ -34,6 +31,9 @@ All 12 files in the WIT directory matched between the inspected checkout and
 build host. The guest guide at `docs/extensions/guest.md` in that revision
 requires callback registration, async event/tool invocation and callback release.
 Generating declarations alone does not qualify an extension against this world.
+
+The TypeScript example ran against a host built from a later revision,
+`c9db49dc50b938c8804c9af29f21d7780691c49d`, whose WIT directory is byte-identical.
 
 ## Matching host
 
@@ -64,12 +64,13 @@ An earlier interrupted build had no valid receipt and was not accepted.
 
 ## Verification environment
 
-All component compilation ran on the remote build host through the approved
-build wrapper on 2026-10-28. Observed versions: jco 1.39.0, componentize-py
+All component compilation for the diagnostics ran on the remote build host through
+the approved build wrapper on 2026-10-28. Observed versions: jco 1.39.0, componentize-py
 0.25.1 and wasm-tools 1.262.0 (`e22db44da`, 2026-10-13). The provisioned Node.js
-version is 24.20.0. The wasi-sdk compiler reports `clang version
+version is 24.20.0. The TypeScript example was built and run on 2026-10-29 with jco
+1.40.0, which the build host now provides. The wasi-sdk compiler reports `clang version
 23.1.0-wasi-sdk`, installed under the wasi-sdk 34.0 distribution; neither
-language diagnostic invokes it directly.
+the TypeScript example nor the Python diagnostic invokes it directly.
 
 Build-machine commands in the language reports use the tool CLIs directly.
 Workspace verification used the approved remote wrapper and its artifact
