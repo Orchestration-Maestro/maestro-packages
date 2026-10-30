@@ -34,6 +34,7 @@ all public text with the repository's public-text guard.
 
 ## Scope
 
-Examples, their documentation and the toolchain patch change. The Rust crates, the
-core WIT and the host stay untouched. The diagnostic that only reproduced the
+Examples, their documentation, the toolchain patch and the Rust host test
+(`maestro-python-example`, plus the shared `last_text` helper in
+`maestro-typescript-example`) change. The core WIT and the host stay untouched. The diagnostic that only reproduced the
 failure is removed because the example reproduces it.

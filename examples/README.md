@@ -64,13 +64,14 @@ An earlier interrupted build had no valid receipt and was not accepted.
 
 ## Verification environment
 
-All component compilation for the diagnostics ran on the remote build host through
-the approved build wrapper on 2026-10-28. Observed versions: jco 1.39.0, componentize-py
-0.25.1 and wasm-tools 1.262.0 (`e22db44da`, 2026-10-13). The provisioned Node.js
-version is 24.20.0. The TypeScript example was built and run on 2026-10-29 with jco
-1.40.0, which the build host now provides. The wasi-sdk compiler reports `clang version
-23.1.0-wasi-sdk`, installed under the wasi-sdk 34.0 distribution; neither
-the TypeScript example nor the Python diagnostic invokes it directly.
+The earlier diagnostics compiled on the remote build host through the approved build
+wrapper on 2026-10-28. Observed versions: jco 1.39.0, componentize-py 0.25.1 and
+wasm-tools 1.262.0 (`e22db44da`, 2026-10-13). The provisioned Node.js version is
+24.20.0. The TypeScript example was built and run on 2026-10-29 with jco 1.40.0, which
+the build host now provides. The Python example was built and run on 2026-10-30
+(OD-627). The wasi-sdk compiler reports `clang version 23.1.0-wasi-sdk`, installed
+under the wasi-sdk 34.0 distribution; the TypeScript example does not invoke it, and
+the Python recipe uses it as the linker.
 
 Build-machine commands in the language reports use the tool CLIs directly.
 Workspace verification used the approved remote wrapper and its artifact

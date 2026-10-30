@@ -1,4 +1,4 @@
-//! Builds the Python example with the patched componentize-py and runs it in a Maestro executable.
+//! Builds the Python example with the componentize-py on `PATH` and runs it in a Maestro executable.
 //!
 //! The test is ignored unless asked for. It reads the extension world from `target/wit`, the
 //! executable from `target/maestro` and the compiler from `PATH`; the example's README says
@@ -13,7 +13,7 @@ use std::process::Command;
 
 use serde_json::json;
 
-use host::{Run, Scratch, Turn, describe, last_text, root};
+use host::{Run, Scratch, Turn, describe, last_message, last_text, root};
 
 /// What the model answers once it has the tool's result.
 const FINAL_REPLY: &str = "Greeting delivered.";
@@ -78,7 +78,7 @@ fn the_host_runs_the_component() {
         requests[0]["tools"][0]["function"]["name"], "hello",
         "the tool is offered"
     );
-    let answer = requests[1]["messages"].as_array().unwrap().last().unwrap();
+    let answer = last_message(&requests[1]);
     assert_eq!(
         answer,
         &json!({"role": "tool", "content": "Hello, Ada!", "tool_call_id": "call_1"})

@@ -86,7 +86,7 @@ zstd -19 -f runtime-target/wasm32-wasip2/release/componentize_py_runtime.wasm \
   cargo build --locked --release --bin componentize-py)
 ```
 
-On 2026-10-30, with three build jobs on an 8-core Linux x86-64 machine, step 1
+On 2026-10-30, on an 8-core Linux x86-64 machine, step 1
 took 21 seconds and step 2 took 3 minutes 11 seconds. The compiler is
 `$WORK/compiler-target/release/componentize-py`. The patched runtime,
 `runtime-target/wasm32-wasip2/release/componentize_py_runtime.wasm`, has SHA-256
@@ -154,8 +154,8 @@ uv tool install componentize-py==0.25.1
 cargo nextest run -p maestro-python-example --run-ignored only
 ```
 
-The test fails on its exit-status assertion. The host rejects the component at
-`task.return invoke-event`:
+The test fails on its `component fault` assertion. The host exits 0 and reports a
+component fault at `task.return invoke-event`:
 
 ```text
 panicked at crates/maestro-python-example/tests/python_example.rs:62:5:

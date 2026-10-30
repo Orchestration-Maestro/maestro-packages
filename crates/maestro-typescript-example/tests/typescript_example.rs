@@ -11,7 +11,7 @@ use std::process::Command;
 
 use serde_json::json;
 
-use host::{Run, Scratch, Turn, describe, last_text, root};
+use host::{Run, Scratch, Turn, describe, last_message, last_text, root};
 
 /// The prompt the model is asked to act on.
 const PROMPT: &str = "greet Ada";
@@ -98,7 +98,7 @@ fn the_host_runs_the_component() {
         requests[0]["tools"][0]["function"]["name"], "hello",
         "the tool is offered"
     );
-    let answer = requests[1]["messages"].as_array().unwrap().last().unwrap();
+    let answer = last_message(&requests[1]);
     assert_eq!(
         answer,
         &json!({"role": "tool", "content": "Hello, Ada!", "tool_call_id": "call_1"})
