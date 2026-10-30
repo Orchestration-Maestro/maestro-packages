@@ -19,7 +19,7 @@ Neither failure comes from the world.
 | Backend | Failure | Root | Status |
 | --- | --- | --- | --- |
 | QuickJS | `[method]file-mutation.wait` has the wrong type: type mismatch with async | Wasmtime 47 `component/linker.rs:390`: `define_unknown_imports_as_traps` stubs every import with a synchronous function, so an `async func` import fails the type check. componentize-qjs 0.4.5 (jco 1.39.0) calls it while snapshotting the guest. | Fixed in Wasmtime 48 (`7e8021c83`). jco 1.40.0 carries componentize-qjs 0.5.0 on Wasmtime 50. |
-| Default (StarlingMonkey) | panic at `bindgen.rs:721:48` | ComponentizeJS 0.23.0 `spidermonkey-embedding-splicer/src/bindgen.rs:721`: `FunctionKind::AsyncFreestanding => todo!()`. Async imports are not implemented; nor are the neighbouring async method and static arms or the async ABI variants. | Still `todo!()` on the development branch. No release fixes it. |
+| Default (StarlingMonkey) | panic at `bindgen.rs:721:48` | ComponentizeJS 0.23.0 `spidermonkey-embedding-splicer/src/bindgen.rs:721`: `FunctionKind::AsyncFreestanding => todo!()`. The async method and static arms next to it, and the async ABI variants, are `todo!()` too. | Still `todo!()` on the development branch. No release fixes it. |
 
 The world is right as it stands. Native async imports and exports are the world's design,
 and changing them would only route around a missing toolchain feature.
