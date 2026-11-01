@@ -1,16 +1,18 @@
 # maestro-packages
 
-The [workspace rules](https://github.com/Orchestration-Maestro/maestro/blob/main/AGENTS.md)
-in the core repository's agent file are the single rule source. Load them in
-full from `../AGENTS.md`, one directory up from this repository's root. They
-win over this file, which adds only repository-specific lines. This repository
-is the marketplace for community extensions.
+The workspace rules in `../AGENTS.md`, one directory up from this repository's
+root, are the single rule source. Load them in full; they win over this file,
+which adds only repository-specific lines. The
+[core repository's agent file](https://github.com/Orchestration-Maestro/maestro/blob/main/AGENTS.md)
+is a separate reference.
 
 ## Repository-specific
 
 - Community extensions only: capability and default-on packages live in the core repository; this repository ships optional, community-published packages.
-- Every package is one crate with one job.
 - Every issue is labelled `packages` and opens with "Repository: maestro-packages".
+- Issue tracker: see `docs/agents/issue-tracker.md`.
+- Triage labels: see `docs/agents/triage-labels.md`.
+- Domain documentation: see `docs/agents/domain.md`.
 
 ## CI contract
 
