@@ -6,10 +6,8 @@ plus the workspace orchestration rules). Every file change stays in this repo.
 ## Roles and models
 
 - **Supervisor** (this session): orchestrates, rules, verifies, integrates.
-- **Subagents / lanes**: `deepseek/deepseek-flash` only (owner rule).
-  - Review lanes (Standards axis and Spec axis): deepseek-flash, read-only.
-  - Fix lanes: deepseek-flash.
-- No Claude and no Sol for subagents in this repository.
+- **Lane models**: follow section 12 of the workspace `AGENTS.md` (one directory
+  above this repository).
 
 ## Stages (Matt's flow)
 
@@ -24,7 +22,7 @@ plus the workspace orchestration rules). Every file change stays in this repo.
    - `maestro-remote-build run cargo clippy -p maestro-http -p maestro-security --all-targets`
    - `RUSTDOCFLAGS="-D warnings -D missing_docs" maestro-remote-build run cargo doc -p maestro-security --no-deps`
 6. **Two-axis review** — Standards (Rust idioms, quality) and Spec (matches the
-   issue). Both on deepseek-flash, read-only.
+   issue). Both reviews are read-only.
 7. **PR** — squash merge, conventional commit, signed.
 8. **Retro** — what would prevent the next bug; mechanical mistakes become
    deterministic checks.
@@ -43,4 +41,4 @@ plus the workspace orchestration rules). Every file change stays in this repo.
 - Branch: `feat/security-pipeline`.
 - Pending in the working tree: `maestro-http` retry plus tests, `SKILL.md`,
   clippy fixes (let-else, map_or_else, serve_loop/serve_one restructure).
-- Next: verify on AWS, commit, two-axis review (deepseek), PR, retro.
+- Next: verify on AWS, commit, two-axis review, PR, retro.
