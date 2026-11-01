@@ -127,7 +127,8 @@ Forge-branded board and pages, TUI status and widgets.
 ## 5. Owner decisions (register)
 
 - Sole assessment path; the ten box frameworks are retired (2026-10-25).
-- Subagents and all lanes: deepseek/deepseek-flash only.
+- Lane models: follow section 12 of the workspace `AGENTS.md` (one directory
+  above this repository).
 - Default model qwythos, resolved at runtime from the bridge/router.
 - Retry: default 3, overridable 1–5 per caller.
 - No new backends of any kind; schemas on existing stores.
