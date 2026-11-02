@@ -189,9 +189,7 @@ fn serve(listener: &TcpListener, stop: &AtomicBool, model: &str, replies: &[Stri
     while !stop.load(Ordering::Relaxed) && Instant::now() < deadline {
         match listener.accept() {
             Ok((mut stream, _)) => {
-                stream
-                    .set_nonblocking(false)
-                    .expect("blocking fixture stream");
+                blocking(&stream).expect("blocking fixture stream");
                 let request = read_request(&mut stream).unwrap();
                 let body = if request.starts_with("GET /page ") {
                     observed = Some("Login");
@@ -245,6 +243,18 @@ fn serve(listener: &TcpListener, stop: &AtomicBool, model: &str, replies: &[Stri
     );
 }
 
+/// Restore blocking reads and verify the accepted stream's mode on Unix.
+fn blocking(socket: &TcpStream) -> std::io::Result<()> {
+    // Accepted sockets inherit the listener's nonblocking mode on some platforms.
+    socket.set_nonblocking(false)?;
+    #[cfg(unix)]
+    assert!(
+        !socket2::SockRef::from(socket).nonblocking()?,
+        "accepted fixture stream must be blocking"
+    );
+    Ok(())
+}
+
 /// Accept one blocking loopback connection before the fixture's timeout.
 fn accept(listener: &TcpListener, timeout: Duration) -> std::io::Result<TcpStream> {
     let start = Instant::now();
@@ -257,8 +267,7 @@ fn accept(listener: &TcpListener, timeout: Duration) -> std::io::Result<TcpStrea
         }
         match listener.accept() {
             Ok((socket, _)) => {
-                // Accepted sockets inherit the listener's nonblocking mode on some platforms.
-                socket.set_nonblocking(false)?;
+                blocking(&socket)?;
                 return Ok(socket);
             }
             Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {

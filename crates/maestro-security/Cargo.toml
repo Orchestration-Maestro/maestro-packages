@@ -29,5 +29,8 @@ tokio.workspace = true
 [dev-dependencies]
 serde_json.workspace = true
 
+[target.'cfg(unix)'.dev-dependencies]
+socket2.workspace = true
+
 [lints]
 workspace = true

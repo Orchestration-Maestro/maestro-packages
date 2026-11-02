@@ -103,6 +103,11 @@ fn serve(listener: &TcpListener, replies: Vec<Reply>, completion: &Receiver<()>)
             match listener.accept() {
                 Ok((stream, _)) => {
                     stream.set_nonblocking(false)?;
+                    #[cfg(unix)]
+                    assert!(
+                        !socket2::SockRef::from(&stream).nonblocking()?,
+                        "accepted fixture stream must be blocking"
+                    );
                     break stream;
                 }
                 Err(error) if error.kind() != std::io::ErrorKind::WouldBlock => {
