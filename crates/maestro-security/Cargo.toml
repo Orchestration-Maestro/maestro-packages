@@ -31,5 +31,8 @@ maestro-test-directory.workspace = true
 maestro-test-process.workspace = true
 serde_json.workspace = true
 
+[target.'cfg(unix)'.dev-dependencies]
+socket2.workspace = true
+
 [lints]
 workspace = true
