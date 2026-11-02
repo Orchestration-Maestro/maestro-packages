@@ -9,6 +9,8 @@ license = "MIT"
 repository = "https://github.com/Orchestration-Maestro/maestro-packages"
 
 [workspace.dependencies]
+maestro-test-directory = { git = "https://github.com/Orchestration-Maestro/maestro" }
+maestro-test-process = { git = "https://github.com/Orchestration-Maestro/maestro" }
 serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = { version = "=1.0.151", features = ["preserve_order", "float_roundtrip"] }
 tokio = { version = "=1.54.1", features = ["rt", "macros", "net", "io-util", "io-std", "time", "signal"] }
