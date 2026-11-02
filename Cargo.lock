@@ -922,10 +922,28 @@ version = "0.1.0"
 dependencies = [
  "maestro-extensions-wasm",
  "maestro-http",
+ "maestro-test-directory",
+ "maestro-test-process",
  "rmcp",
  "serde",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "maestro-test-directory"
+version = "0.1.0"
+source = "git+https://github.com/Orchestration-Maestro/maestro#a0718577de5c8ba09c0ed69ef576d89dca59fd45"
+dependencies = [
+ "maestro-dependencies",
+]
+
+[[package]]
+name = "maestro-test-process"
+version = "0.1.0"
+source = "git+https://github.com/Orchestration-Maestro/maestro#a0718577de5c8ba09c0ed69ef576d89dca59fd45"
+dependencies = [
+ "maestro-dependencies",
 ]
 
 [[package]]
