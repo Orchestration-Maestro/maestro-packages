@@ -101,7 +101,10 @@ fn serve(listener: &TcpListener, replies: Vec<Reply>, completion: &Receiver<()>)
         let deadline = Instant::now() + Duration::from_secs(20);
         let mut stream = loop {
             match listener.accept() {
-                Ok((stream, _)) => break stream,
+                Ok((stream, _)) => {
+                    stream.set_nonblocking(false)?;
+                    break stream;
+                }
                 Err(error) if error.kind() != std::io::ErrorKind::WouldBlock => {
                     return Err(error.into());
                 }

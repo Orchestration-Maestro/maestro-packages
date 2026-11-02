@@ -103,7 +103,7 @@ fn request_framing_accepts_header_name_casing() -> TestResult {
         ("AUTHORIZATION", "CONTENT-TYPE", "CONTENT-LENGTH"),
         ("aUtHoRiZaTiOn", "cOnTeNt-TyPe", "cOnTeNt-LeNgTh"),
     ] {
-        let (url, server) = bridge_url(200, "")?;
+        let (url, server) = bridge_url(200, "reply")?;
         let address = url.trim_start_matches("http://").trim_end_matches("/v1");
         let mut socket = TcpStream::connect(address)?;
         socket.set_read_timeout(Some(Duration::from_secs(10)))?;
@@ -111,8 +111,13 @@ fn request_framing_accepts_header_name_casing() -> TestResult {
             "POST /v1 HTTP/1.1\r\n{auth}: Bearer fixture-key\r\n{kind}: application/json\r\n{length}: 4\r\n\r\nbody"
         );
         socket.write_all(request.as_bytes())?;
-        socket.read_to_string(&mut String::new())?;
+        let mut response = String::new();
+        socket.read_to_string(&mut response)?;
         let captured = captured(server)?;
+        assert_eq!(
+            response.split_once("\r\n\r\n").map(|(_, body)| body),
+            Some("reply")
+        );
         assert_eq!(captured, request, "{length}");
         assert_eq!(
             header_value(&captured, "Authorization"),
@@ -184,6 +189,9 @@ fn serve(listener: &TcpListener, stop: &AtomicBool, model: &str, replies: &[Stri
     while !stop.load(Ordering::Relaxed) && Instant::now() < deadline {
         match listener.accept() {
             Ok((mut stream, _)) => {
+                stream
+                    .set_nonblocking(false)
+                    .expect("blocking fixture stream");
                 let request = read_request(&mut stream).unwrap();
                 let body = if request.starts_with("GET /page ") {
                     observed = Some("Login");
@@ -237,7 +245,7 @@ fn serve(listener: &TcpListener, stop: &AtomicBool, model: &str, replies: &[Stri
     );
 }
 
-/// Accept one loopback request before the fixture's timeout.
+/// Accept one blocking loopback connection before the fixture's timeout.
 fn accept(listener: &TcpListener, timeout: Duration) -> std::io::Result<TcpStream> {
     let start = Instant::now();
     loop {
@@ -248,7 +256,11 @@ fn accept(listener: &TcpListener, timeout: Duration) -> std::io::Result<TcpStrea
             ));
         }
         match listener.accept() {
-            Ok((socket, _)) => return Ok(socket),
+            Ok((socket, _)) => {
+                // Accepted sockets inherit the listener's nonblocking mode on some platforms.
+                socket.set_nonblocking(false)?;
+                return Ok(socket);
+            }
             Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
                 thread::sleep(Duration::from_millis(5));
             }
@@ -311,4 +323,30 @@ pub fn output(text: &str) -> (u16, String) {
             serde_json::json!({"type":"exit", "code":0})
         ),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// An accepted connection must wait for its peer to send the request.
+    #[test]
+    fn accepted_stream_waits_for_request() -> TestResult {
+        let listener = TcpListener::bind("127.0.0.1:0")?;
+        listener.set_nonblocking(true)?;
+        let address = listener.local_addr()?;
+        let (ready, accepted) = std::sync::mpsc::sync_channel(0);
+        let server = thread::spawn(move || {
+            let mut stream = accept(&listener, Duration::from_secs(10))?;
+            ready.send(()).map_err(std::io::Error::other)?;
+            read_request(&mut stream)
+        });
+        let mut client = TcpStream::connect(address)?;
+        accepted.recv()?;
+        let request = "POST /v1 HTTP/1.1\r\nContent-Length: 4\r\n\r\nbody";
+        client.write_all(request.as_bytes())?;
+
+        assert_eq!(captured(server)?, request);
+        Ok(())
+    }
 }
