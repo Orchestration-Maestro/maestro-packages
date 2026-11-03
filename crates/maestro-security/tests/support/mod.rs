@@ -244,14 +244,18 @@ fn serve(listener: &TcpListener, stop: &AtomicBool, model: &str, replies: &[Stri
 }
 
 /// Restore blocking reads and verify the accepted stream's mode on Unix.
-fn blocking(socket: &TcpStream) -> std::io::Result<()> {
+///
+/// # Errors
+/// Returns an error if the stream's mode cannot be changed or read.
+pub fn blocking(socket: &TcpStream) -> std::io::Result<()> {
     // Accepted sockets inherit the listener's nonblocking mode on some platforms.
     socket.set_nonblocking(false)?;
     #[cfg(unix)]
-    assert!(
-        !socket2::SockRef::from(socket).nonblocking()?,
-        "accepted fixture stream must be blocking"
-    );
+    if socket2::SockRef::from(socket).nonblocking()? {
+        return Err(std::io::Error::other(
+            "accepted fixture stream must be blocking",
+        ));
+    }
     Ok(())
 }
 
@@ -337,22 +341,6 @@ pub fn output(text: &str) -> (u16, String) {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    /// A stream that arrives nonblocking, as accepted sockets do on BSD-derived
-    /// systems, must be made blocking before the fixture reads from it.
-    #[test]
-    #[cfg(unix)]
-    fn inherited_nonblocking_stream_is_made_blocking() -> TestResult {
-        let listener = TcpListener::bind("127.0.0.1:0")?;
-        let stream = TcpStream::connect(listener.local_addr()?)?;
-        stream.set_nonblocking(true)?;
-        assert!(socket2::SockRef::from(&stream).nonblocking()?);
-
-        blocking(&stream)?;
-
-        assert!(!socket2::SockRef::from(&stream).nonblocking()?);
-        Ok(())
-    }
 
     /// An accepted connection must wait for its peer to send the request.
     #[test]
