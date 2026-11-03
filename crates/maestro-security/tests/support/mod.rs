@@ -244,14 +244,19 @@ fn serve(listener: &TcpListener, stop: &AtomicBool, model: &str, replies: &[Stri
 }
 
 /// Restore blocking reads and verify the accepted stream's mode on Unix.
-fn blocking(socket: &TcpStream) -> std::io::Result<()> {
+///
+/// # Errors
+/// Returns an error if the stream's mode cannot be changed or read, or if the
+/// stream is still nonblocking afterwards.
+pub fn blocking(socket: &TcpStream) -> std::io::Result<()> {
     // Accepted sockets inherit the listener's nonblocking mode on some platforms.
     socket.set_nonblocking(false)?;
     #[cfg(unix)]
-    assert!(
-        !socket2::SockRef::from(socket).nonblocking()?,
-        "accepted fixture stream must be blocking"
-    );
+    if socket2::SockRef::from(socket).nonblocking()? {
+        return Err(std::io::Error::other(
+            "accepted fixture stream must be blocking",
+        ));
+    }
     Ok(())
 }
 
