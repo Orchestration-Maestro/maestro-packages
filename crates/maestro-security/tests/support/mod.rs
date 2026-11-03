@@ -246,7 +246,8 @@ fn serve(listener: &TcpListener, stop: &AtomicBool, model: &str, replies: &[Stri
 /// Restore blocking reads and verify the accepted stream's mode on Unix.
 ///
 /// # Errors
-/// Returns an error if the stream's mode cannot be changed or read.
+/// Returns an error if the stream's mode cannot be changed or read, or if the
+/// stream is still nonblocking afterwards.
 pub fn blocking(socket: &TcpStream) -> std::io::Result<()> {
     // Accepted sockets inherit the listener's nonblocking mode on some platforms.
     socket.set_nonblocking(false)?;
