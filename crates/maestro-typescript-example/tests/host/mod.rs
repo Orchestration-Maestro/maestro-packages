@@ -13,27 +13,11 @@ use std::thread;
 
 use serde_json::{Value, json};
 
+pub use maestro_test_directory::Scratch;
+
 /// The workspace root.
 pub fn root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
-}
-
-/// An empty directory that is removed when it goes out of scope.
-pub struct Scratch(pub PathBuf);
-
-impl Scratch {
-    /// Creates a directory named for the test and this process.
-    pub fn new(name: &str) -> Self {
-        let path = std::env::temp_dir().join(format!("maestro-host-{name}-{}", std::process::id()));
-        fs::create_dir_all(&path).unwrap();
-        Self(path)
-    }
-}
-
-impl Drop for Scratch {
-    fn drop(&mut self) {
-        let _ = fs::remove_dir_all(&self.0);
-    }
 }
 
 /// The standard output and error of a finished command, for assertion messages.

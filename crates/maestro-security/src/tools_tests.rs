@@ -1,6 +1,7 @@
 //! Behavioural tests for shared tool dispatch and argument validation.
 
 use super::*;
+use maestro_test_directory::Scratch;
 use serde_json::json;
 
 /// Routing returns a consumable domain or a clear no-match result.
@@ -87,8 +88,8 @@ fn baseline_disclosure_validates_action_and_payload() {
 /// Retained evidence resolves the newest matching agent, while an id takes priority.
 #[test]
 fn baseline_evidence_resolves_agent_and_prefers_explicit_id() {
-    let home = std::env::temp_dir().join(format!("tools-agent-{}", std::process::id()));
-    crate::evidence::with_home(&home, || {
+    let home = Scratch::new().expect("fresh state directory");
+    crate::evidence::with_home(home.path(), || {
         for (id, agent, started) in [
             ("old", "analyst", 1),
             ("new", "analyst", 2),
@@ -142,14 +143,13 @@ fn baseline_evidence_resolves_agent_and_prefers_explicit_id() {
             );
         }
     });
-    std::fs::remove_dir_all(home).unwrap();
 }
 
 /// Missing retained documents are reported with the tool-specific lookup context.
 #[test]
 fn baseline_retained_tools_report_lookup_failures() {
-    let home = std::env::temp_dir().join(format!("tools-missing-{}", std::process::id()));
-    crate::evidence::with_home(&home, || {
+    let home = Scratch::new().expect("fresh state directory");
+    crate::evidence::with_home(home.path(), || {
         for run in [run_report_page, run_validate] {
             assert!(
                 run(&json!({"run_id":"absent"}))

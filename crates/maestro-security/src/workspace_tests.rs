@@ -2,18 +2,13 @@
 use super::{Order, dispatch};
 use crate::evidence::{Ledger, LlmCall};
 use crate::store::{Status, Store, Workspace};
+use maestro_test_directory::Scratch;
 use serde_json::{Value, json};
-use std::sync::atomic::{AtomicU32, Ordering};
 
 /// Give each test its own retained state directory.
 fn isolated(test: impl FnOnce()) {
-    static NEXT: AtomicU32 = AtomicU32::new(0);
-    let home = std::env::temp_dir().join(format!(
-        "security-workspace-{}-{}",
-        std::process::id(),
-        NEXT.fetch_add(1, Ordering::Relaxed)
-    ));
-    crate::evidence::with_home(&home, || {
+    let home = Scratch::new().expect("fresh state directory");
+    crate::evidence::with_home(home.path(), || {
         Store
             .save_cards("review", &[])
             .expect("existing empty deck");
@@ -25,7 +20,6 @@ fn isolated(test: impl FnOnce()) {
             .expect("other empty credentials");
         test();
     });
-    std::fs::remove_dir_all(home).expect("remove workspace state");
 }
 
 /// A named action with an optional payload.

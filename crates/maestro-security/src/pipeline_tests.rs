@@ -9,6 +9,7 @@ use std::sync::{
 };
 use std::thread::JoinHandle;
 
+use maestro_test_directory::Scratch;
 use serde_json::{Value, json};
 
 use crate::pipeline::PhaseKind;
@@ -164,12 +165,8 @@ fn serve(
 
 /// Run within a fresh state directory and remove only that directory afterward.
 fn isolated(body: impl FnOnce() -> Result<(), String>) -> Result<(), String> {
-    let home = std::env::temp_dir().join(crate::pipeline::new_run_id("coverage"));
-    let result = crate::evidence::with_home(&home, body);
-    if home.exists() {
-        std::fs::remove_dir_all(home).map_err(|e| e.to_string())?;
-    }
-    result
+    let home = Scratch::new().map_err(|error| error.to_string())?;
+    crate::evidence::with_home(home.path(), body)
 }
 
 /// A role selecting only the phases relevant to a behaviour.
