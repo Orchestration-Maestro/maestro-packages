@@ -10,6 +10,7 @@ use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
 use maestro_security::Client;
+use maestro_test_directory::Scratch;
 
 /// Fallible test outcome, including fixture IO failures.
 pub type TestResult = Result<(), Box<dyn std::error::Error>>;
@@ -154,8 +155,7 @@ pub fn isolated(name: &str, model: &str, replies: &[&str], check: impl FnOnce(&s
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     listener.set_nonblocking(true).unwrap();
     let base = format!("http://{}", listener.local_addr().unwrap());
-    let home = std::env::temp_dir().join(format!("capability-{}-{name}", std::process::id()));
-    std::fs::create_dir_all(&home).unwrap();
+    let home = Scratch::new().unwrap();
     let stop = Arc::new(AtomicBool::new(false));
     let worker_stop = Arc::clone(&stop);
     let replies: Vec<String> = replies.iter().map(ToString::to_string).collect();
@@ -167,12 +167,11 @@ pub fn isolated(name: &str, model: &str, replies: &[&str], check: impl FnOnce(&s
         .env("MAESTRO_SECURITY_BRIDGE", &base)
         .env("MAESTRO_SECURITY_BRIDGE_KEY", "fixture-key")
         .env("MAESTRO_SECURITY_RUNNER", &base)
-        .env("MAESTRO_SECURITY_HOME", &home)
+        .env("MAESTRO_SECURITY_HOME", home.path())
         .output()
         .unwrap();
     stop.store(true, Ordering::Relaxed);
     worker.join().unwrap();
-    std::fs::remove_dir_all(home).unwrap();
     assert!(
         output.status.success(),
         "{}\n{}",
@@ -290,7 +289,7 @@ pub fn runner(test: &str, replies: Vec<(u16, String)>) -> bool {
     let listener = TcpListener::bind("127.0.0.1:0").expect("loopback runner");
     listener.set_nonblocking(true).expect("nonblocking");
     let url = format!("http://{}", listener.local_addr().expect("address"));
-    let home = std::env::temp_dir().join(format!("security-runner-{}-{test}", std::process::id()));
+    let home = Scratch::new().expect("fresh state directory");
     let server = std::thread::spawn(move || {
         for (status, body) in replies {
             let mut stream =
@@ -306,12 +305,11 @@ pub fn runner(test: &str, replies: Vec<(u16, String)>) -> bool {
         .args(["--exact", test, "--nocapture"])
         .env("SECURITY_TEST_CHILD", test)
         .env("MAESTRO_SECURITY_RUNNER", url)
-        .env("MAESTRO_SECURITY_HOME", &home)
+        .env("MAESTRO_SECURITY_HOME", home.path())
         .env("MAESTRO_SECURITY_BRIDGE", "http://127.0.0.1:1")
         .output()
         .expect("child test");
     server.join().expect("runner fixture");
-    let _ = std::fs::remove_dir_all(home);
     assert!(
         output.status.success(),
         "{}\n{}",

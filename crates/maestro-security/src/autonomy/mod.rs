@@ -195,7 +195,7 @@ mod tests {
         trigger_payload,
     };
     use crate::store::{Status, Store};
-    use std::sync::atomic::{AtomicU32, Ordering};
+    use maestro_test_directory::Scratch;
 
     /// Only functional commands are offered, each described.
     #[test]
@@ -285,13 +285,8 @@ mod tests {
     /// A started run lands in the run index under its returned id.
     #[test]
     fn a_started_run_is_recorded() {
-        static NEXT: AtomicU32 = AtomicU32::new(0);
-        let home = std::env::temp_dir().join(format!(
-            "maestro-security-index-{}-{}",
-            std::process::id(),
-            NEXT.fetch_add(1, Ordering::SeqCst)
-        ));
-        crate::evidence::with_home(&home, || {
+        let home = Scratch::new().expect("fresh state directory");
+        crate::evidence::with_home(home.path(), || {
             let run_id = start_run("registry-test.example").expect("start_run");
             let runs = Store.list_runs(0).expect("run index");
             assert!(
@@ -300,7 +295,6 @@ mod tests {
             );
             finish_run(&run_id, Err("test cleanup")).expect("settle the test run");
         });
-        let _ = std::fs::remove_dir_all(&home);
     }
 
     /// A payload without a run id or target decodes to nothing.

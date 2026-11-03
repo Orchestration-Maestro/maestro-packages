@@ -51,8 +51,8 @@ fn example() -> PathBuf {
 #[test]
 #[ignore = "needs the extension world in target/wit"]
 fn the_pinned_jco_builds_the_unchanged_world() {
-    let scratch = Scratch::new("build");
-    let component = build(&scratch.0, &example());
+    let scratch = Scratch::new().unwrap();
+    let component = build(scratch.path(), &example());
     let output = Command::new("jco")
         .arg("wit")
         .arg(&component)
@@ -74,14 +74,14 @@ fn the_pinned_jco_builds_the_unchanged_world() {
 #[test]
 #[ignore = "needs a Maestro executable in target/maestro and the world in target/wit"]
 fn the_host_runs_the_component() {
-    let scratch = Scratch::new("host");
-    let component = build(&scratch.0, &example());
+    let scratch = Scratch::new().unwrap();
+    let component = build(scratch.path(), &example());
     let call = Turn::Call {
         tool: "hello",
         arguments: "{\"name\":\"Ada\"}",
     };
 
-    let Run { requests, output } = host::run(&scratch.0, &[&component], PROMPT, &[call]);
+    let Run { requests, output } = host::run(scratch.path(), &[&component], PROMPT, &[call]);
 
     assert!(output.status.success(), "{}", describe(&output));
     assert_eq!(
@@ -110,15 +110,15 @@ fn the_host_runs_the_component() {
 #[test]
 #[ignore = "needs a Maestro executable in target/maestro and the world in target/wit"]
 fn input_from_another_extension_reaches_the_model_unchanged() {
-    let scratch = Scratch::new("probe");
-    let example = build(&scratch.0, &example());
-    let probe = build(&scratch.0, &root().join(PROBE));
+    let scratch = Scratch::new().unwrap();
+    let example = build(scratch.path(), &example());
+    let probe = build(scratch.path(), &root().join(PROBE));
     let call = Turn::Call {
         tool: "probe",
         arguments: "{}",
     };
 
-    let Run { requests, output } = host::run(&scratch.0, &[&example, &probe], PROMPT, &[call]);
+    let Run { requests, output } = host::run(scratch.path(), &[&example, &probe], PROMPT, &[call]);
 
     assert!(output.status.success(), "{}", describe(&output));
     assert_eq!(

@@ -1,9 +1,9 @@
 //! Behavioral checks over the public MCP stdio transport.
 #![cfg(test)]
+use maestro_test_directory::Scratch;
 use serde_json::{Value, json};
 use std::io::{BufRead, BufReader, Write};
 use std::process::{Child, ChildStdin, Command, Stdio};
-use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::mpsc::{Receiver, channel};
 use std::time::{Duration, Instant};
 
@@ -15,21 +15,16 @@ struct Client {
     input: Option<ChildStdin>,
     /// Responses read independently so a broken server cannot hang the test.
     output: Receiver<Value>,
-    /// Isolated persistent state.
-    home: std::path::PathBuf,
+    /// Isolated persistent state, removed when the client drops.
+    _home: Scratch,
 }
 
 impl Client {
     /// Start the shipped executable and complete the MCP handshake.
     fn start() -> Self {
-        static NEXT: AtomicU32 = AtomicU32::new(0);
-        let home = std::env::temp_dir().join(format!(
-            "security-mcp-{}-{}",
-            std::process::id(),
-            NEXT.fetch_add(1, Ordering::Relaxed)
-        ));
+        let home = Scratch::new().expect("fresh state directory");
         let mut child = Command::new(env!("CARGO_BIN_EXE_maestro-security-mcp"))
-            .env("MAESTRO_SECURITY_HOME", &home)
+            .env("MAESTRO_SECURITY_HOME", home.path())
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::inherit())
@@ -43,7 +38,7 @@ impl Client {
             child,
             input: Some(input),
             output: receiver,
-            home,
+            _home: home,
         };
         let result = client.request(
             1,
@@ -101,7 +96,6 @@ impl Drop for Client {
         }
         let _ = self.child.kill();
         let _ = self.child.wait();
-        let _ = std::fs::remove_dir_all(&self.home);
     }
 }
 

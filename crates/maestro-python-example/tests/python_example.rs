@@ -42,8 +42,8 @@ fn build(component: &Path) {
 #[test]
 #[ignore = "needs a Maestro executable in target/maestro and the world in target/wit"]
 fn the_host_runs_the_component() {
-    let scratch = Scratch::new("python");
-    let component = scratch.0.join("hello.wasm");
+    let scratch = Scratch::new().unwrap();
+    let component = scratch.path().join("hello.wasm");
     build(&component);
     let call = Turn::Call {
         tool: "hello",
@@ -51,7 +51,7 @@ fn the_host_runs_the_component() {
     };
 
     let Run { requests, output } = host::run(
-        &scratch.0,
+        scratch.path(),
         &[&component],
         "greet Ada",
         &[call, Turn::Say(FINAL_REPLY)],

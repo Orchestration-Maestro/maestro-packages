@@ -20,6 +20,8 @@ use std::{
     task::{Context, Poll, Waker},
 };
 
+use maestro_test_directory::Scratch;
+
 /// Host capturing registrations and emitted payloads without running network work.
 #[derive(Default)]
 struct Host {
@@ -259,8 +261,8 @@ fn registered_assess_dispatches_to_the_trigger_listener() {
     ready(factory(ExtensionAPI::new(Rc::new(ApiHost(host.clone()))))).expect("register");
     let names: Vec<_> = host.commands.borrow().keys().cloned().collect();
     assert_eq!(names, ["assess", "security-steer", "security-stop"]);
-    let home = std::env::temp_dir().join(format!("security-boundary-{}", std::process::id()));
-    crate::evidence::with_home(&home, || {
+    let home = Scratch::new().expect("fresh state directory");
+    crate::evidence::with_home(home.path(), || {
         let handler = host.commands.borrow()["assess"].handler.clone();
         ready(handler(
             "  example.test  ".into(),
@@ -291,7 +293,6 @@ fn registered_assess_dispatches_to_the_trigger_listener() {
             "trigger payload needs run_id and target"
         );
     });
-    let _ = std::fs::remove_dir_all(home);
 }
 
 /// Baseline: every registered tool validates its own required input.
@@ -329,9 +330,8 @@ fn baseline_registered_tools_reject_missing_arguments() {
 fn baseline_registered_evidence_returns_the_retained_ledger() {
     let host = Rc::new(Host::default());
     ready(factory(ExtensionAPI::new(Rc::new(ApiHost(host.clone()))))).expect("register");
-    let home =
-        std::env::temp_dir().join(format!("security-extension-ledger-{}", std::process::id()));
-    crate::evidence::with_home(&home, || {
+    let home = Scratch::new().expect("fresh state directory");
+    crate::evidence::with_home(home.path(), || {
         let mut ledger = crate::evidence::Ledger::new();
         ledger.record_exec("recon", "inspect", &"é".repeat(200), 0);
         ledger
@@ -359,7 +359,6 @@ fn baseline_registered_evidence_returns_the_retained_ledger() {
         assert_eq!(doc["entries"][0]["output"], "é".repeat(200));
         assert_eq!(result.content.len(), 1);
     });
-    std::fs::remove_dir_all(home).expect("remove ledger");
 }
 
 /// Baseline: a blank assess command cannot create a run or emit a trigger.
@@ -367,9 +366,8 @@ fn baseline_registered_evidence_returns_the_retained_ledger() {
 fn baseline_blank_assess_does_not_start_a_run() {
     let host = Rc::new(Host::default());
     ready(factory(ExtensionAPI::new(Rc::new(ApiHost(host.clone()))))).expect("register");
-    let home =
-        std::env::temp_dir().join(format!("security-extension-blank-{}", std::process::id()));
-    crate::evidence::with_home(&home, || {
+    let home = Scratch::new().expect("fresh state directory");
+    crate::evidence::with_home(home.path(), || {
         let handler = host.commands.borrow()["assess"].handler.clone();
         ready(handler(
             " \t\n ".into(),
@@ -399,9 +397,8 @@ fn baseline_failed_trigger_delivery_settles_the_run() {
     let host = Rc::new(Host::default());
     host.reject_emits.replace(true);
     ready(factory(ExtensionAPI::new(Rc::new(ApiHost(host.clone()))))).expect("register");
-    let home =
-        std::env::temp_dir().join(format!("security-extension-refused-{}", std::process::id()));
-    crate::evidence::with_home(&home, || {
+    let home = Scratch::new().expect("fresh state directory");
+    crate::evidence::with_home(home.path(), || {
         let handler = host.commands.borrow()["assess"].handler.clone();
         ready(handler(
             "example.test".into(),
@@ -414,7 +411,6 @@ fn baseline_failed_trigger_delivery_settles_the_run() {
         assert_eq!(runs[0].summary, "delivery refused");
         assert!(runs[0].finished_at.is_some());
     });
-    std::fs::remove_dir_all(home).expect("remove index");
 }
 
 /// Baseline: registered read tools return usable data for retained runs.
@@ -422,8 +418,8 @@ fn baseline_failed_trigger_delivery_settles_the_run() {
 fn baseline_registered_read_tools_return_report_ledger_and_validation() {
     let host = Rc::new(Host::default());
     ready(factory(ExtensionAPI::new(Rc::new(ApiHost(host.clone()))))).expect("register");
-    let home = std::env::temp_dir().join(format!("security-extension-read-{}", std::process::id()));
-    crate::evidence::with_home(&home, || {
+    let home = Scratch::new().expect("fresh state directory");
+    crate::evidence::with_home(home.path(), || {
         let report: crate::Assessment = serde_json::from_value(json!({
             "schema":crate::SCHEMA, "run_id":"run-read", "target":"<target>",
             "agent":"maestro.security", "model":"fixture", "phases":[],
@@ -472,7 +468,6 @@ fn baseline_registered_read_tools_return_report_ledger_and_validation() {
         assert_eq!(workspace["action"], "list");
         assert!(invoke("security_route", json!({"task":"xyzzy"})).contains("no domain matched"));
     });
-    std::fs::remove_dir_all(home).expect("remove retained state");
 }
 
 /// Doctor registration must supply a schema object, not serialized schema text.

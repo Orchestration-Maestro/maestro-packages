@@ -1,6 +1,7 @@
 //! Routing behaviour through default, supplied and file-backed documents.
 
 use maestro_security::{Domain, DomainsDoc, Router};
+use maestro_test_directory::Scratch;
 use std::path::Path;
 
 /// A supplied domain whose mixed-case hint also tests case-insensitive matching.
@@ -84,16 +85,9 @@ fn baseline_embedded_domains_dispatch_to_capabilities() {
 /// File configuration replaces defaults; bad files retain usable routing.
 #[test]
 fn baseline_loads_custom_documents_and_falls_back_on_bad_files() -> super::support::TestResult {
-    let directory = std::env::temp_dir().join(format!("maestro-router-{}", std::process::id()));
-    std::fs::create_dir(&directory)?;
-    let path = directory.join("domains.json");
-    let result = check_file_routes(&path);
-    let cleanup = std::fs::remove_file(&path);
-    let cleanup_directory = std::fs::remove_dir(&directory);
-    result?;
-    cleanup?;
-    cleanup_directory?;
-    Ok(())
+    let directory = Scratch::new()?;
+    let path = directory.path().join("domains.json");
+    check_file_routes(&path)
 }
 
 /// Exercise readable, missing, invalid and empty documents at the file boundary.
