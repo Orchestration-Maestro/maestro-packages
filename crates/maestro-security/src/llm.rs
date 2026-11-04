@@ -12,8 +12,6 @@ use crate::pipeline::truncate;
 /// Default bridge base URL (loopback, WASM-visible): the local model router,
 /// which serves every registered model directly, no capability key needed.
 pub const DEFAULT_BASE_URL: &str = "http://127.0.0.1:8080/v1";
-/// Default capability key (machine-local; also in /work/tools/pi-bridge.env).
-pub const DEFAULT_KEY: &str = "3648e45e792d925d2bf138156fb820e491a5f89f3c5d33f2d6963920b170592f";
 
 /// A configured bridge client. The model is never stored here: it is resolved
 /// per run from [`Client::available_models`] or supplied by the caller.
@@ -26,12 +24,13 @@ pub struct Client {
 }
 
 impl Client {
-    /// Client pointed at the local bridge defaults.
+    /// Client pointed at the local bridge defaults, without a capability key:
+    /// the key comes from configuration and is never built in.
     #[must_use]
     pub fn local() -> Self {
         Self {
             base_url: DEFAULT_BASE_URL.into(),
-            key: DEFAULT_KEY.into(),
+            key: String::new(),
         }
     }
 
@@ -49,6 +48,24 @@ impl Client {
         self
     }
 
+    /// Send one bridge request, carrying the bearer header only when a key is
+    /// configured.
+    fn send(
+        &self,
+        method: &str,
+        url: &str,
+        extra: &[(&str, &str)],
+        body: &[u8],
+    ) -> Result<maestro_http::Response, String> {
+        let authorization = (!self.key.is_empty()).then(|| format!("Bearer {}", self.key));
+        let mut headers: Vec<(&str, &str)> = authorization
+            .iter()
+            .map(|value| ("authorization", value.as_str()))
+            .collect();
+        headers.extend_from_slice(extra);
+        maestro_http::request(method, url, &headers, body)
+    }
+
     /// Models the bridge currently serves, in bridge order.
     ///
     /// # Errors
@@ -56,12 +73,7 @@ impl Client {
     /// model list.
     pub fn available_models(&self) -> Result<Vec<String>, String> {
         let url = format!("{}/models", self.base_url);
-        let resp = maestro_http::request(
-            "GET",
-            &url,
-            &[("authorization", &format!("Bearer {}", self.key))],
-            &[],
-        )?;
+        let resp = self.send("GET", &url, &[], &[])?;
         if resp.status != 200 {
             return Err(format!("bridge http {} on /models", resp.status));
         }
@@ -104,13 +116,10 @@ impl Client {
         })
         .to_string();
         let url = format!("{}/chat/completions", self.base_url);
-        let resp = maestro_http::request(
+        let resp = self.send(
             "POST",
             &url,
-            &[
-                ("authorization", &format!("Bearer {}", self.key)),
-                ("content-type", "application/json"),
-            ],
+            &[("content-type", "application/json")],
             body.as_bytes(),
         )?;
         if resp.status != 200 {

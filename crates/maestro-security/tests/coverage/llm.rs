@@ -1,6 +1,6 @@
 //! Model calls exercised over a loopback HTTP bridge.
 
-use super::support::{TestResult, bridge, captured, header_value};
+use super::support::{TestResult, bridge, bridge_url, captured, header_value};
 
 /// An HTTP error remains an error when its byte cap splits a Unicode character.
 #[test]
@@ -30,6 +30,18 @@ fn baseline_catalog_preserves_order_and_authorizes() -> TestResult {
         header_value(&request, "Authorization"),
         Some("Bearer fixture-key")
     );
+    Ok(())
+}
+
+/// An unconfigured client carries no credential: no key ships with it and the
+/// bearer header is absent from the request.
+#[test]
+fn client_without_a_configured_key_sends_no_authorization() -> TestResult {
+    let (url, server) = bridge_url(200, r#"{"data":[{"id":"served"}]}"#)?;
+    let client = maestro_security::Client::local().with_base_url(url);
+    assert_eq!(client.available_models()?, ["served"]);
+    let request = captured(server)?;
+    assert_eq!(header_value(&request, "Authorization"), None);
     Ok(())
 }
 

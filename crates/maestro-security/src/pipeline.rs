@@ -74,7 +74,7 @@ const CANONICAL: [PhaseKind; 7] = [
 pub struct Config {
     /// Bridge base URL including the audience segment.
     pub bridge: String,
-    /// Bridge capability key.
+    /// Bridge capability key; empty sends no bearer header.
     pub bridge_key: String,
     /// Sandbox base URL.
     pub runner: String,
@@ -89,7 +89,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             bridge: crate::llm::DEFAULT_BASE_URL.into(),
-            bridge_key: crate::llm::DEFAULT_KEY.into(),
+            bridge_key: String::new(),
             runner: crate::runner::DEFAULT_RUNNER_URL.into(),
             default_model: "qwythos".into(),
             max_hypotheses: 8,
