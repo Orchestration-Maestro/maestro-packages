@@ -13,6 +13,7 @@ use maestro_test_directory::Scratch;
 use serde_json::{Value, json};
 
 use crate::pipeline::PhaseKind;
+use crate::test_support::blocking;
 use crate::{Agent, Assessment, Config, Engine, RunOptions, Verdict};
 
 /// A local bridge and runner, retaining requests for boundary assertions.
@@ -73,8 +74,10 @@ impl Fixture {
 impl Drop for Fixture {
     fn drop(&mut self) {
         self.stop.store(true, Ordering::Relaxed);
-        if let Some(worker) = self.worker.take() {
-            assert!(matches!(worker.join(), Ok(Ok(()))), "fixture server failed");
+        if let Some(worker) = self.worker.take()
+            && let Err(error) = worker.join().expect("fixture server panicked")
+        {
+            panic!("fixture server failed: {error}");
         }
     }
 }
@@ -89,7 +92,10 @@ fn serve_until_stopped(
     let mut replies: VecDeque<_> = replies.into();
     while !done.load(Ordering::Relaxed) {
         match listener.accept() {
-            Ok((stream, _)) => serve(stream, seen, &mut replies)?,
+            Ok((stream, _)) => {
+                blocking(&stream).map_err(|e| e.to_string())?;
+                serve(stream, seen, &mut replies)?;
+            }
             Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                 std::thread::sleep(std::time::Duration::from_millis(1));
             }
@@ -227,6 +233,35 @@ fn likely_findings_are_not_deepened() -> Result<(), String> {
         assert_eq!(chats, 3, "LIKELY must not request deepening");
         Ok(())
     })
+}
+
+/// A failed serving thread is reported with its own error when the fixture drops.
+#[test]
+fn dropped_fixture_reports_the_serving_error() -> Result<(), String> {
+    let fixture = Fixture::new(vec![])?;
+    let mut client =
+        TcpStream::connect(fixture.url.trim_start_matches("http://")).map_err(|e| e.to_string())?;
+    client
+        .write_all(b"GET /rejected HTTP/1.1\r\n\r\n")
+        .map_err(|e| e.to_string())?;
+    // The server closes the connection after rejecting the path.
+    client
+        .read_to_end(&mut Vec::new())
+        .map_err(|e| e.to_string())?;
+
+    let panic = std::panic::catch_unwind(std::panic::AssertUnwindSafe(move || drop(fixture)))
+        .expect_err("drop must fail");
+
+    let message = panic
+        .downcast_ref::<String>()
+        .map(String::as_str)
+        .or_else(|| panic.downcast_ref::<&str>().copied())
+        .ok_or("no panic message")?;
+    assert!(
+        message.contains("unexpected request: /rejected"),
+        "{message}"
+    );
+    Ok(())
 }
 
 /// Recon passes target data literally to tools, never through shell expansion.
