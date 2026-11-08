@@ -81,7 +81,8 @@ fn the_host_runs_the_component() {
         arguments: "{\"name\":\"Ada\"}",
     };
 
-    let Run { requests, output } = run(scratch.path(), &[&component], PROMPT, &[call]).unwrap();
+    let Run { requests, output } = run(scratch.path(), &[&component], PROMPT, &[call])
+        .unwrap_or_else(|error| panic!("{error}"));
 
     assert!(output.status.success(), "{}", describe(&output));
     assert_eq!(
@@ -118,8 +119,8 @@ fn input_from_another_extension_reaches_the_model_unchanged() {
         arguments: "{}",
     };
 
-    let Run { requests, output } =
-        run(scratch.path(), &[&example, &probe], PROMPT, &[call]).unwrap();
+    let Run { requests, output } = run(scratch.path(), &[&example, &probe], PROMPT, &[call])
+        .unwrap_or_else(|error| panic!("{error}"));
 
     assert!(output.status.success(), "{}", describe(&output));
     assert_eq!(

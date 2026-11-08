@@ -55,7 +55,7 @@ fn the_host_runs_the_component() {
         "greet Ada",
         &[call, Turn::Say(FINAL_REPLY)],
     )
-    .unwrap();
+    .unwrap_or_else(|error| panic!("{error}"));
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(output.status.success(), "{}", describe(&output));

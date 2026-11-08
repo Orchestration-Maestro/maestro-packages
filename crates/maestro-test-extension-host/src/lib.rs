@@ -130,7 +130,8 @@ fn serve(mut stream: TcpStream, script: &[Turn], seen: &Mutex<Vec<Value>>) -> io
 /// Answers connections in turn until one cannot be served.
 fn serve_all(listener: &TcpListener, script: &[Turn], seen: &Mutex<Vec<Value>>) {
     for stream in listener.incoming().flatten() {
-        if serve(stream, script, seen).is_err() {
+        if let Err(error) = serve(stream, script, seen) {
+            eprintln!("the scripted model stopped serving: {error}");
             break;
         }
     }
@@ -296,6 +297,10 @@ mod tests {
         ]});
 
         assert_eq!(last_text(&request), &json!("latest"));
+    }
+
+    #[test]
+    fn last_message_is_null_when_a_request_carries_no_messages() {
         assert_eq!(last_message(&json!({})), &Value::Null);
     }
 }
