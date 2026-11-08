@@ -10,6 +10,7 @@ repository = "https://github.com/Orchestration-Maestro/maestro-packages"
 
 [workspace.dependencies]
 maestro-test-directory = { git = "https://github.com/Orchestration-Maestro/maestro" }
+maestro-test-extension-host = { path = "crates/maestro-test-extension-host" }
 maestro-test-process = { git = "https://github.com/Orchestration-Maestro/maestro" }
 serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = { version = "=1.0.151", features = ["preserve_order", "float_roundtrip"] }

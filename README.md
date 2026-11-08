@@ -12,7 +12,8 @@ WIT world and current verification status.
 |---|---|
 | `maestro-prompt-suffix` | Input hook that appends an instruction to user prompts. |
 | `maestro-security` | Unified security framework: one pipeline, five agents, extension and MCP surfaces. |
-| `maestro-python-example` | Tests that build the Python example extension and run it in a Maestro executable. |
-| `maestro-typescript-example` | Tests that build the TypeScript example extension and run it in a Maestro executable. |
+| `maestro-python-example` | Verifies the Python example extension through `maestro-test-extension-host`. |
+| `maestro-test-extension-host` | Test support that runs extension components in a Maestro executable against a scripted model. |
+| `maestro-typescript-example` | Verifies the TypeScript example extension through `maestro-test-extension-host`. |
 
 Until `maestro-extensions-wasm` is published on crates.io, extension crates depend on it through the maestro repository's `main` branch.

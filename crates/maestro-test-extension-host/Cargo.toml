@@ -1,0 +1,15 @@
+[package]
+name = "maestro-test-extension-host"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+description = "Runs installed extension components in a Maestro executable against a scripted model."
+
+[dependencies]
+maestro-test-directory.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true
