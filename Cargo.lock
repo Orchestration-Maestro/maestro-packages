@@ -901,7 +901,7 @@ dependencies = [
 name = "maestro-python-example"
 version = "0.1.0"
 dependencies = [
- "maestro-test-directory",
+ "maestro-test-extension-host",
  "serde_json",
 ]
 
@@ -941,6 +941,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "maestro-test-extension-host"
+version = "0.1.0"
+dependencies = [
+ "maestro-test-directory",
+ "serde_json",
+]
+
+[[package]]
 name = "maestro-test-process"
 version = "0.1.0"
 source = "git+https://github.com/Orchestration-Maestro/maestro#a0718577de5c8ba09c0ed69ef576d89dca59fd45"
@@ -962,7 +970,7 @@ dependencies = [
 name = "maestro-typescript-example"
 version = "0.1.0"
 dependencies = [
- "maestro-test-directory",
+ "maestro-test-extension-host",
  "serde_json",
 ]
 
