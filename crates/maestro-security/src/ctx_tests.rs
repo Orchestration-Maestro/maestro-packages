@@ -6,6 +6,7 @@ use std::thread::JoinHandle;
 
 use super::CapabilityCtx;
 use crate::pipeline::Config;
+use crate::test_support::blocking;
 
 /// Keep recording requests until the test explicitly shuts down the listener.
 struct Service {
@@ -56,7 +57,10 @@ fn accept(listener: &TcpListener, stopped: &Receiver<()>) -> Option<TcpStream> {
             return None;
         }
         match listener.accept() {
-            Ok((stream, _)) => return Some(stream),
+            Ok((stream, _)) => {
+                blocking(&stream).expect("blocking fixture stream");
+                return Some(stream);
+            }
             Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
                 assert!(std::time::Instant::now() < deadline, "request not received");
                 std::thread::sleep(std::time::Duration::from_millis(5));
