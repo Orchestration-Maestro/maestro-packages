@@ -924,6 +924,7 @@ dependencies = [
  "maestro-extensions-wasm",
  "maestro-http",
  "maestro-test-directory",
+ "maestro-test-extension-host",
  "maestro-test-process",
  "rmcp",
  "serde",

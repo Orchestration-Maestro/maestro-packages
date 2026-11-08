@@ -3,6 +3,9 @@
 //! Nothing here knows the guest language: a caller supplies the compiled components, the
 //! prompt and the model's turns, then judges the requests the model saw and the executable's
 //! exit and output.
+//!
+//! The request reader and the output description stand apart from the guest, so the loopback
+//! fixtures in other crates' tests use them too.
 use std::fs;
 use std::io::{self, BufRead, BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream};
@@ -87,13 +90,42 @@ fn chunks(turn: &Turn) -> String {
     )
 }
 
-/// Reads one request's headers and body.
-fn read_body(stream: &TcpStream) -> io::Result<Vec<u8>> {
+/// One request read off a connection.
+#[derive(Debug)]
+pub struct Request {
+    /// The request line and headers, including the blank line that ends them.
+    pub head: String,
+    /// The body, as long as the `Content-Length` header says (empty without one).
+    pub body: Vec<u8>,
+}
+
+impl Request {
+    /// The whole request as text, with a body that is not UTF-8 replaced lossily.
+    #[must_use]
+    pub fn text(&self) -> String {
+        format!("{}{}", self.head, String::from_utf8_lossy(&self.body))
+    }
+}
+
+/// Reads one framed request: its headers, then exactly as many body bytes as `Content-Length`
+/// announces. Header names match in any letter case.
+///
+/// # Errors
+/// Returns an error when the peer closes before the headers end or before the whole body
+/// arrives, when `Content-Length` is not a number, and any read failure.
+pub fn read_request(stream: impl Read) -> io::Result<Request> {
     let mut reader = BufReader::new(stream);
+    let mut head = String::new();
     let mut length = 0;
     loop {
         let mut line = String::new();
-        reader.read_line(&mut line)?;
+        if reader.read_line(&mut line)? == 0 {
+            return Err(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "the request ended before its headers did",
+            ));
+        }
+        head.push_str(&line);
         if line.trim().is_empty() {
             break;
         }
@@ -105,7 +137,7 @@ fn read_body(stream: &TcpStream) -> io::Result<Vec<u8>> {
     }
     let mut body = vec![0; length];
     reader.read_exact(&mut body)?;
-    Ok(body)
+    Ok(Request { head, body })
 }
 
 /// Locks the recorded requests; a panic elsewhere never hides what was already recorded.
@@ -115,7 +147,7 @@ fn locked(requests: &Mutex<Vec<Value>>) -> MutexGuard<'_, Vec<Value>> {
 
 /// Records one request and answers it with the next scripted turn.
 fn serve(mut stream: TcpStream, script: &[Turn], seen: &Mutex<Vec<Value>>) -> io::Result<()> {
-    let body = read_body(&stream)?;
+    let body = read_request(&stream)?.body;
     let mut seen = locked(seen);
     seen.push(serde_json::from_slice(&body)?);
     let reply = chunks(script.get(seen.len() - 1).unwrap_or(&CLOSING));
@@ -287,6 +319,57 @@ mod tests {
             *locked(&provider.requests),
             [json!({"n": 1}), json!({"n": 2}), json!({"n": 3})]
         );
+    }
+
+    /// Hands the bytes over one at a time, as a slow peer does.
+    struct Trickle<'a>(&'a [u8]);
+
+    impl Read for Trickle<'_> {
+        fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
+            let Some((&byte, rest)) = self.0.split_first() else {
+                return Ok(0);
+            };
+            buffer[0] = byte;
+            self.0 = rest;
+            Ok(1)
+        }
+    }
+
+    #[test]
+    fn read_request_waits_for_the_whole_body_whatever_the_header_casing() {
+        for name in ["content-length", "Content-Length", "CONTENT-LENGTH"] {
+            let wire = format!("POST /v1 HTTP/1.1\r\n{name}: 4\r\n\r\nbodyextra");
+
+            let request = read_request(Trickle(wire.as_bytes())).unwrap();
+
+            assert_eq!(request.body, b"body", "{name}");
+            assert_eq!(
+                request.text(),
+                format!("POST /v1 HTTP/1.1\r\n{name}: 4\r\n\r\nbody")
+            );
+        }
+    }
+
+    #[test]
+    fn read_request_without_a_length_has_an_empty_body() {
+        let request = read_request(&b"GET /models HTTP/1.1\r\n\r\n"[..]).unwrap();
+
+        assert_eq!(request.head, "GET /models HTTP/1.1\r\n\r\n");
+        assert!(request.body.is_empty());
+    }
+
+    #[test]
+    fn read_request_fails_when_the_peer_ends_early_or_sends_a_bad_length() {
+        let cut_headers = read_request(&b"POST / HTTP/1.1\r\nHost: a\r\n"[..]).unwrap_err();
+        let cut_body = read_request(&b"POST / HTTP/1.1\r\nContent-Length: 4\r\n\r\nbo"[..]);
+        let bad_length = read_request(&b"POST / HTTP/1.1\r\nContent-Length: x\r\n\r\n"[..]);
+
+        assert_eq!(cut_headers.kind(), io::ErrorKind::UnexpectedEof);
+        assert_eq!(
+            cut_body.err().map(|e| e.kind()),
+            Some(io::ErrorKind::UnexpectedEof)
+        );
+        assert!(bad_length.is_err());
     }
 
     #[test]

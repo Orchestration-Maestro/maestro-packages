@@ -1,7 +1,7 @@
 //! Behaviour checks through engine runs with isolated bridge and runner fixtures.
 
 use std::collections::VecDeque;
-use std::io::{BufRead, Read, Write};
+use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::sync::{
     Arc, Mutex,
@@ -110,29 +110,14 @@ fn request(stream: &mut TcpStream) -> Result<(String, Value), String> {
     stream
         .set_read_timeout(Some(std::time::Duration::from_secs(5)))
         .map_err(|e| e.to_string())?;
-    let mut reader = std::io::BufReader::new(stream);
-    let mut line = String::new();
-    reader.read_line(&mut line).map_err(|e| e.to_string())?;
-    let path = line
+    let request = maestro_test_extension_host::read_request(&*stream).map_err(|e| e.to_string())?;
+    let path = request
+        .head
         .split_whitespace()
         .nth(1)
         .ok_or("missing request path")?
         .to_string();
-    let mut length = 0;
-    loop {
-        line.clear();
-        reader.read_line(&mut line).map_err(|e| e.to_string())?;
-        if line == "\r\n" || line.is_empty() {
-            break;
-        }
-        if let Some((name, value)) = line.split_once(':')
-            && name.eq_ignore_ascii_case("content-length")
-        {
-            length = value.trim().parse::<usize>().map_err(|e| e.to_string())?;
-        }
-    }
-    let mut body = vec![0; length];
-    reader.read_exact(&mut body).map_err(|e| e.to_string())?;
+    let body = request.body;
     let value = if body.is_empty() {
         Value::Null
     } else {
