@@ -1,5 +1,5 @@
 //! Baseline context behaviour against ephemeral loopback services.
-use std::io::{Read, Write};
+use std::io::Write;
 use std::net::{TcpListener, TcpStream};
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread::JoinHandle;
@@ -70,33 +70,14 @@ fn accept(listener: &TcpListener, stopped: &Receiver<()>) -> Option<TcpStream> {
     }
 }
 
-/// Read the complete HTTP body even when TCP splits it across reads.
+/// Read the complete HTTP request even when TCP splits it across reads.
 fn read_request(stream: &mut TcpStream) -> String {
     stream
         .set_read_timeout(Some(std::time::Duration::from_secs(5)))
         .unwrap();
-    let mut request = Vec::new();
-    let mut buffer = [0; 4096];
-    loop {
-        let count = stream.read(&mut buffer).unwrap();
-        assert!(count > 0, "incomplete request");
-        request.extend_from_slice(&buffer[..count]);
-        let text = String::from_utf8_lossy(&request);
-        let Some((head, content)) = text.split_once("\r\n\r\n") else {
-            continue;
-        };
-        let length = head
-            .lines()
-            .find_map(|line| {
-                let (name, value) = line.split_once(':')?;
-                name.eq_ignore_ascii_case("content-length")
-                    .then(|| value.trim().parse::<usize>().unwrap())
-            })
-            .unwrap_or(0);
-        if content.len() >= length {
-            return String::from_utf8(request).unwrap();
-        }
-    }
+    maestro_test_extension_host::read_request(&*stream)
+        .unwrap()
+        .text()
 }
 
 /// Configuration with explicit test-only endpoints, never the local router.

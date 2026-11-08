@@ -1,6 +1,6 @@
 //! Loopback fixtures for public clients and isolated capability and runner tests.
 
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::sync::{
     Arc,
@@ -11,6 +11,7 @@ use std::time::{Duration, Instant};
 
 use maestro_security::Client;
 use maestro_test_directory::Scratch;
+use maestro_test_extension_host::{describe, read_request};
 
 /// Fallible test outcome, including fixture IO failures.
 pub type TestResult = Result<(), Box<dyn std::error::Error>>;
@@ -45,7 +46,7 @@ pub fn bridge_url(
         let mut socket = accept(&listener, Duration::from_secs(10))?;
         socket.set_read_timeout(Some(Duration::from_secs(10)))?;
         socket.set_write_timeout(Some(Duration::from_secs(10)))?;
-        let request = read_request(&mut socket)?;
+        let request = read_request(&socket)?.text();
         write!(
             socket,
             "HTTP/1.1 {status} Reply\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{body}",
@@ -64,35 +65,6 @@ pub fn header_value<'a>(request: &'a str, name: &str) -> Option<&'a str> {
         .take_while(|line| !line.is_empty())
         .filter_map(|line| line.split_once(':'))
         .find_map(|(key, value)| key.eq_ignore_ascii_case(name).then_some(value.trim()))
-}
-
-/// Read the framed request before replying, including a POST body.
-fn read_request(socket: &mut TcpStream) -> std::io::Result<String> {
-    let mut reader = BufReader::new(socket);
-    let mut head = String::new();
-    let mut length = 0;
-    loop {
-        let mut line = String::new();
-        if reader.read_line(&mut line)? == 0 {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::UnexpectedEof,
-                "request head",
-            ));
-        }
-        head.push_str(&line);
-        if line == "\r\n" {
-            break;
-        }
-        if let Some(value) = header_value(&line, "Content-Length") {
-            length = value
-                .parse()
-                .map_err(|error| std::io::Error::new(std::io::ErrorKind::InvalidData, error))?;
-        }
-    }
-    let mut body = vec![0; length];
-    reader.read_exact(&mut body)?;
-    head.push_str(&String::from_utf8_lossy(&body));
-    Ok(head)
 }
 
 /// Valid header-name casing must not cause the fixture to discard a body.
@@ -172,12 +144,7 @@ pub fn isolated(name: &str, model: &str, replies: &[&str], check: impl FnOnce(&s
         .unwrap();
     stop.store(true, Ordering::Relaxed);
     worker.join().unwrap();
-    assert!(
-        output.status.success(),
-        "{}\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+    assert!(output.status.success(), "{}", describe(&output));
 }
 
 /// Serve only the deterministic page, bridge and sandbox responses.
@@ -189,7 +156,7 @@ fn serve(listener: &TcpListener, stop: &AtomicBool, model: &str, replies: &[Stri
         match listener.accept() {
             Ok((mut stream, _)) => {
                 blocking(&stream).expect("blocking fixture stream");
-                let request = read_request(&mut stream).unwrap();
+                let request = read_request(&stream).unwrap().text();
                 let body = if request.starts_with("GET /page ") {
                     observed = Some("Login");
                     "<title>Login</title><a href='/login'>Sign in</a><form action='/auth' method='post'><input name='user'></form>".to_string()
@@ -302,7 +269,7 @@ pub fn runner(test: &str, replies: Vec<(u16, String)>) -> bool {
             stream
                 .set_read_timeout(Some(Duration::from_secs(5)))
                 .expect("read timeout");
-            read_request(&mut stream).expect("runner request");
+            read_request(&stream).expect("runner request");
             write!(stream, "HTTP/1.1 {status} Fixture\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len()).expect("response");
         }
     });
@@ -315,12 +282,7 @@ pub fn runner(test: &str, replies: Vec<(u16, String)>) -> bool {
         .output()
         .expect("child test");
     server.join().expect("runner fixture");
-    assert!(
-        output.status.success(),
-        "{}\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+    assert!(output.status.success(), "{}", describe(&output));
     false
 }
 
@@ -349,9 +311,9 @@ mod tests {
         let address = listener.local_addr()?;
         let (ready, accepted) = std::sync::mpsc::sync_channel(0);
         let server = thread::spawn(move || {
-            let mut stream = accept(&listener, Duration::from_secs(10))?;
+            let stream = accept(&listener, Duration::from_secs(10))?;
             ready.send(()).map_err(std::io::Error::other)?;
-            read_request(&mut stream)
+            read_request(&stream).map(|request| request.text())
         });
         let mut client = TcpStream::connect(address)?;
         accepted.recv()?;

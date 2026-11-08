@@ -6,6 +6,7 @@ use std::process::Command;
 use std::sync::mpsc::{self, Receiver};
 use std::time::{Duration, Instant};
 
+use maestro_test_extension_host::{describe, read_request};
 use serde_json::json;
 
 /// Test and server errors cross the fixture thread boundary.
@@ -87,9 +88,8 @@ pub fn case(name: &str, replies: Vec<Reply>, check: impl FnOnce() -> Result) -> 
     let child = child?;
     assert!(
         child.status.success(),
-        "child failed:\n{}\n{}",
-        String::from_utf8_lossy(&child.stdout),
-        String::from_utf8_lossy(&child.stderr)
+        "child failed:\n{}",
+        describe(&child)
     );
     exchanges
 }
@@ -121,7 +121,7 @@ fn serve(listener: &TcpListener, replies: Vec<Reply>, completion: &Receiver<()>)
             }
         };
         stream.set_read_timeout(Some(Duration::from_secs(10)))?;
-        let request = read_request(&mut stream)?;
+        let request = read_request(&stream)?.text();
         let reply = replies
             .next()
             .ok_or_else(|| format!("unscripted request: {request}"))?;
@@ -145,36 +145,6 @@ fn serve(listener: &TcpListener, replies: Vec<Reply>, completion: &Receiver<()>)
     replies.peek().map_or(Ok(()), |reply| {
         Err(format!("missing request to {}", reply.path).into())
     })
-}
-
-/// Read headers and the complete request body before responding.
-fn read_request(
-    stream: &mut TcpStream,
-) -> std::result::Result<String, Box<dyn std::error::Error + Send + Sync>> {
-    let mut bytes = Vec::new();
-    let mut buffer = [0; 4096];
-    loop {
-        let count = stream.read(&mut buffer)?;
-        if count == 0 {
-            return Err("incomplete HTTP request".into());
-        }
-        bytes.extend_from_slice(&buffer[..count]);
-        if let Some(end) = bytes.windows(4).position(|part| part == b"\r\n\r\n") {
-            let headers = String::from_utf8_lossy(&bytes[..end]);
-            let length: usize = headers
-                .lines()
-                .find_map(|line| {
-                    let (key, value) = line.split_once(':')?;
-                    key.eq_ignore_ascii_case("content-length")
-                        .then(|| value.trim().parse().ok())
-                        .flatten()
-                })
-                .ok_or("missing content length")?;
-            if bytes.len() >= end + 4 + length {
-                return Ok(String::from_utf8(bytes)?);
-            }
-        }
-    }
 }
 
 /// A swallowed runner failure must still fail the parent fixture.

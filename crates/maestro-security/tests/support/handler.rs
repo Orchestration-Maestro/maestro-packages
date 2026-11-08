@@ -1,6 +1,6 @@
 //! Process-isolated HTTP fixtures for capability behaviour tests.
 
-use std::io::{Read, Write};
+use std::io::Write;
 use std::net::{TcpListener, TcpStream};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -8,6 +8,7 @@ use std::thread;
 use std::time::Duration;
 
 use maestro_test_directory::Scratch;
+use maestro_test_extension_host::read_request;
 use maestro_test_process::TestProcess;
 use serde_json::{Value, json};
 
@@ -65,36 +66,9 @@ fn serve(listener: &TcpListener, stop: &AtomicBool, handler: Handler) {
 /// Read one content-length-framed request and send a connection-close response.
 fn respond(stream: &mut TcpStream, handler: Handler) -> std::io::Result<()> {
     stream.set_read_timeout(Some(Duration::from_secs(10)))?;
-    let mut bytes = Vec::new();
-    let mut buffer = [0; 4096];
-    let end = loop {
-        let count = stream.read(&mut buffer)?;
-        if count == 0 {
-            return Err(std::io::ErrorKind::UnexpectedEof.into());
-        }
-        bytes.extend_from_slice(&buffer[..count]);
-        if let Some(index) = bytes.windows(4).position(|w| w == b"\r\n\r\n") {
-            break index + 4;
-        }
-    };
-    let header = String::from_utf8_lossy(&bytes[..end]).into_owned();
-    let length = header
-        .lines()
-        .find_map(|line| {
-            let (key, value) = line.split_once(':')?;
-            key.eq_ignore_ascii_case("content-length")
-                .then(|| value.trim().parse::<usize>().ok())?
-        })
-        .unwrap_or(0);
-    while bytes.len() < end + length {
-        let count = stream.read(&mut buffer)?;
-        if count == 0 {
-            return Err(std::io::ErrorKind::UnexpectedEof.into());
-        }
-        bytes.extend_from_slice(&buffer[..count]);
-    }
-    let path = header.split_whitespace().nth(1).unwrap_or("");
-    let body = serde_json::from_slice(&bytes[end..]).unwrap_or(Value::Null);
+    let request = read_request(&*stream)?;
+    let path = request.head.split_whitespace().nth(1).unwrap_or("");
+    let body = serde_json::from_slice(&request.body).unwrap_or(Value::Null);
     let (status, response) = handler(path, &body);
     write!(
         stream,
