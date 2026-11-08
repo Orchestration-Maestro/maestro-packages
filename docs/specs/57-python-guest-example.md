@@ -13,7 +13,7 @@ host stay unchanged.
 A Maestro host built from source loads the component and a Rust test shows both
 registrations working: the model request carries the hook's output, and the model
 receives the tool's result. The test is the `maestro-python-example` crate, which
-runs the host steps from the shared `tests/host` module.
+runs the host steps from the shared `maestro-test-extension-host` crate.
 
 ## Toolchain
 
@@ -36,5 +36,5 @@ all public text with the repository's public-text guard.
 
 Examples, their documentation, the toolchain patch and the Rust host test
 (`maestro-python-example`, plus the shared `last_text` helper in
-`maestro-typescript-example`) change. The core WIT and the host stay untouched. The diagnostic that only reproduced the
+`maestro-test-extension-host`) change. The core WIT and the host stay untouched. The diagnostic that only reproduced the
 failure is removed because the example reproduces it.

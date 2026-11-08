@@ -4,11 +4,11 @@
 //! prompt and the model's turns, then judges the requests the model saw and the executable's
 //! exit and output.
 use std::fs;
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::{self, BufRead, BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::thread;
 
 use serde_json::{Value, json};
@@ -16,11 +16,13 @@ use serde_json::{Value, json};
 pub use maestro_test_directory::Scratch;
 
 /// The workspace root.
+#[must_use]
 pub fn root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
 
 /// The standard output and error of a finished command, for assertion messages.
+#[must_use]
 pub fn describe(output: &Output) -> String {
     format!(
         "{}\n{}",
@@ -29,12 +31,17 @@ pub fn describe(output: &Output) -> String {
     )
 }
 
-/// The last message the model received in a request.
+/// The last message the model received in a request, or `null` when it received none.
+#[must_use]
 pub fn last_message(request: &Value) -> &Value {
-    request["messages"].as_array().unwrap().last().unwrap()
+    request["messages"]
+        .as_array()
+        .and_then(|messages| messages.last())
+        .unwrap_or(&Value::Null)
 }
 
 /// The text of the last message the model received in a request.
+#[must_use]
 pub fn last_text(request: &Value) -> &Value {
     &last_message(request)["content"][0]["text"]
 }
@@ -81,31 +88,36 @@ fn chunks(turn: &Turn) -> String {
 }
 
 /// Reads one request's headers and body.
-fn read_body(stream: &TcpStream) -> Vec<u8> {
+fn read_body(stream: &TcpStream) -> io::Result<Vec<u8>> {
     let mut reader = BufReader::new(stream);
     let mut length = 0;
     loop {
         let mut line = String::new();
-        reader.read_line(&mut line).unwrap();
+        reader.read_line(&mut line)?;
         if line.trim().is_empty() {
             break;
         }
         if let Some((name, value)) = line.split_once(':')
             && name.eq_ignore_ascii_case("content-length")
         {
-            length = value.trim().parse().unwrap();
+            length = value.trim().parse().map_err(io::Error::other)?;
         }
     }
     let mut body = vec![0; length];
-    reader.read_exact(&mut body).unwrap();
-    body
+    reader.read_exact(&mut body)?;
+    Ok(body)
+}
+
+/// Locks the recorded requests; a panic elsewhere never hides what was already recorded.
+fn locked(requests: &Mutex<Vec<Value>>) -> MutexGuard<'_, Vec<Value>> {
+    requests.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
 /// Records one request and answers it with the next scripted turn.
-fn serve(mut stream: TcpStream, script: &[Turn], seen: &Mutex<Vec<Value>>) {
-    let body = read_body(&stream);
-    let mut seen = seen.lock().unwrap();
-    seen.push(serde_json::from_slice(&body).unwrap());
+fn serve(mut stream: TcpStream, script: &[Turn], seen: &Mutex<Vec<Value>>) -> io::Result<()> {
+    let body = read_body(&stream)?;
+    let mut seen = locked(seen);
+    seen.push(serde_json::from_slice(&body)?);
     let reply = chunks(script.get(seen.len() - 1).unwrap_or(&CLOSING));
     write!(
         stream,
@@ -113,7 +125,15 @@ fn serve(mut stream: TcpStream, script: &[Turn], seen: &Mutex<Vec<Value>>) {
          Content-Length: {}\r\nConnection: close\r\n\r\n{reply}",
         reply.len()
     )
-    .unwrap();
+}
+
+/// Answers connections in turn until one cannot be served.
+fn serve_all(listener: &TcpListener, script: &[Turn], seen: &Mutex<Vec<Value>>) {
+    for stream in listener.incoming().flatten() {
+        if serve(stream, script, seen).is_err() {
+            break;
+        }
+    }
 }
 
 /// A model on a loopback port that records every request it receives.
@@ -126,22 +146,18 @@ struct Provider {
 
 impl Provider {
     /// Starts answering requests on an ephemeral port, one scripted turn per request.
-    fn start(script: Vec<Turn>) -> Self {
-        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
-        let port = listener.local_addr().unwrap().port();
+    fn start(script: Vec<Turn>) -> io::Result<Self> {
+        let listener = TcpListener::bind("127.0.0.1:0")?;
+        let port = listener.local_addr()?.port();
         let requests = Arc::new(Mutex::new(Vec::new()));
         let seen = Arc::clone(&requests);
-        thread::spawn(move || {
-            for stream in listener.incoming().flatten() {
-                serve(stream, &script, &seen);
-            }
-        });
-        Self { port, requests }
+        thread::spawn(move || serve_all(&listener, &script, &seen));
+        Ok(Self { port, requests })
     }
 }
 
 /// Runs the executable in the directory with an isolated home and no live credentials.
-fn execute(maestro: &Path, directory: &Path, args: &[&str]) -> Output {
+fn execute(maestro: &Path, directory: &Path, args: &[&str]) -> io::Result<Output> {
     Command::new(maestro)
         .args(args)
         .current_dir(directory)
@@ -152,23 +168,25 @@ fn execute(maestro: &Path, directory: &Path, args: &[&str]) -> Output {
         .env("MAESTRO_OFFLINE", "1")
         .env("MAESTRO_TELEMETRY", "0")
         .output()
-        .expect("a Maestro executable is needed in target/maestro")
+        .map_err(|error| {
+            let message = format!("a Maestro executable is needed in target/maestro: {error}");
+            io::Error::new(error.kind(), message)
+        })
 }
 
 /// Points the executable at the provider as its only model.
-fn configure(directory: &Path, port: u16) {
+fn configure(directory: &Path, port: u16) -> io::Result<()> {
     let agent = directory.join("agent");
-    fs::create_dir_all(&agent).unwrap();
+    fs::create_dir_all(&agent)?;
     fs::write(
         agent.join("settings.json"),
         json!({"checkForUpdates": false}).to_string(),
-    )
-    .unwrap();
+    )?;
     let model = json!({"id": "guest-test", "contextWindow": 128_000, "maxTokens": 1024});
     let provider = json!({"baseUrl": format!("http://127.0.0.1:{port}/v1"),
         "api": "openai-completions", "apiKey": "controlled-placeholder", "models": [model]});
     let models = json!({"providers": {"controlled-guest": provider}});
-    fs::write(agent.join("models.json"), models.to_string()).unwrap();
+    fs::write(agent.join("models.json"), models.to_string())
 }
 
 /// What a run of the executable produced.
@@ -181,19 +199,30 @@ pub struct Run {
 
 /// Installs each component, then sends the prompt once with the model following the script.
 ///
-/// An install that fails stops the test; the run's own exit status is the caller's to judge.
-pub fn run(directory: &Path, components: &[&Path], prompt: &str, script: &[Turn]) -> Run {
-    let provider = Provider::start(script.to_vec());
-    configure(directory, provider.port);
+/// # Errors
+/// Returns the failure to start the model, to write its settings or to start the executable
+/// (which is expected in `target/maestro`), and an install that exits unsuccessfully. The run's
+/// own exit status is the caller's to judge.
+pub fn run(
+    directory: &Path,
+    components: &[&Path],
+    prompt: &str,
+    script: &[Turn],
+) -> io::Result<Run> {
+    let provider = Provider::start(script.to_vec())?;
+    configure(directory, provider.port)?;
     let maestro = root().join("target/maestro");
     for component in components {
-        let install = ["install", component.to_str().unwrap(), "-l"];
-        let output = execute(&maestro, directory, &install);
-        assert!(
-            output.status.success(),
-            "install failed: {}",
-            describe(&output)
-        );
+        let component = component.to_str().ok_or_else(|| {
+            io::Error::new(io::ErrorKind::InvalidInput, "non-UTF-8 component path")
+        })?;
+        let output = execute(&maestro, directory, &["install", component, "-l"])?;
+        if !output.status.success() {
+            return Err(io::Error::other(format!(
+                "install failed: {}",
+                describe(&output)
+            )));
+        }
     }
     let flags = [
         "--offline",
@@ -211,7 +240,62 @@ pub fn run(directory: &Path, components: &[&Path], prompt: &str, script: &[Turn]
         "off",
     ];
     let args = [&flags[..], &hosted, &model, &["--print", prompt]].concat();
-    let output = execute(&maestro, directory, &args);
-    let requests = provider.requests.lock().unwrap().clone();
-    Run { requests, output }
+    let output = execute(&maestro, directory, &args)?;
+    let requests = locked(&provider.requests).clone();
+    Ok(Run { requests, output })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Posts a JSON body to the provider and returns the whole response text.
+    fn post(port: u16, body: &Value) -> String {
+        let mut stream = TcpStream::connect(("127.0.0.1", port)).unwrap();
+        let body = body.to_string();
+        write!(
+            stream,
+            "POST /v1/chat/completions HTTP/1.1\r\nContent-Length: {}\r\n\r\n{body}",
+            body.len()
+        )
+        .unwrap();
+        let mut response = String::new();
+        stream.read_to_string(&mut response).unwrap();
+        response
+    }
+
+    #[test]
+    fn provider_records_each_request_and_answers_with_the_next_scripted_turn() {
+        let provider = Provider::start(vec![
+            Turn::Call {
+                tool: "hello",
+                arguments: "{\"name\":\"Ada\"}",
+            },
+            Turn::Say("second"),
+        ])
+        .unwrap();
+
+        let first = post(provider.port, &json!({"n": 1}));
+        let second = post(provider.port, &json!({"n": 2}));
+        let third = post(provider.port, &json!({"n": 3}));
+
+        assert!(first.contains("\"name\":\"hello\""), "{first}");
+        assert!(second.contains("\"content\":\"second\""), "{second}");
+        assert!(third.contains("\"content\":\"done\""), "{third}");
+        assert_eq!(
+            *locked(&provider.requests),
+            [json!({"n": 1}), json!({"n": 2}), json!({"n": 3})]
+        );
+    }
+
+    #[test]
+    fn last_text_is_the_first_text_part_of_the_last_message() {
+        let request = json!({"messages": [
+            {"content": [{"text": "earlier"}]},
+            {"content": [{"text": "latest"}]},
+        ]});
+
+        assert_eq!(last_text(&request), &json!("latest"));
+        assert_eq!(last_message(&json!({})), &Value::Null);
+    }
 }

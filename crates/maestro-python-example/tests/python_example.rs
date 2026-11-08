@@ -5,15 +5,14 @@
 //! how to place them.
 #![cfg(test)]
 
-#[path = "../../maestro-typescript-example/tests/host/mod.rs"]
-mod host;
-
 use std::path::Path;
 use std::process::Command;
 
 use serde_json::json;
 
-use host::{Run, Scratch, Turn, describe, last_message, last_text, root};
+use maestro_test_extension_host::{
+    Run, Scratch, Turn, describe, last_message, last_text, root, run,
+};
 
 /// What the model answers once it has the tool's result.
 const FINAL_REPLY: &str = "Greeting delivered.";
@@ -50,12 +49,13 @@ fn the_host_runs_the_component() {
         arguments: "{\"name\":\"Ada\"}",
     };
 
-    let Run { requests, output } = host::run(
+    let Run { requests, output } = run(
         scratch.path(),
         &[&component],
         "greet Ada",
         &[call, Turn::Say(FINAL_REPLY)],
-    );
+    )
+    .unwrap();
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(output.status.success(), "{}", describe(&output));
