@@ -9,11 +9,24 @@ license = "MIT"
 repository = "https://github.com/Orchestration-Maestro/maestro-packages"
 
 [workspace.dependencies]
+base64 = { version = "=0.23.1", default-features = false, features = ["std"] }
 indexmap = "=2.14.2"
+maestro-agent = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
+maestro-app = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
+maestro-credentials = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
+maestro-extensions = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
 maestro-extensions-wasm = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
+maestro-models = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
+maestro-path = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
+maestro-resources = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
+maestro-settings = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
 maestro-test-directory = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
 maestro-test-extension-host = { path = "crates/maestro-test-extension-host" }
 maestro-test-process = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
+maestro-theme = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
+maestro-tools = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
+maestro-tui = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
+maestro-tui-crossterm = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
 serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = { version = "=1.0.151", features = ["preserve_order", "float_roundtrip"] }
 tokio = { version = "=1.53.3", features = ["rt", "macros", "net", "io-util", "io-std", "time", "signal"] }
