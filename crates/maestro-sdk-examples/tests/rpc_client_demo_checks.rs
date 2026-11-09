@@ -189,18 +189,19 @@ fn illustration_interrupts_follow_the_waiting_state() {
         next_of(&mut events, "agent_start").await;
         flow.interrupt.send(()).unwrap();
         flow.prompts.recv().await.unwrap();
-        assert!(flow.text().ends_with("You: \n[Aborting...]\n\n\nYou: "));
+        let aborted = flow.text();
+        assert!(aborted.ends_with("You: \n[Aborting...]\n\n\nYou: "));
+        // An idle interrupt ends the flow without aborting; its termination request is
+        // checked through the peer's control channel by the idle-interrupt check below.
         flow.interrupt.send(()).unwrap();
         flow.finished().await.unwrap();
+        assert_eq!(flow.text(), aborted);
         let kinds: Vec<_> = flow
             .commands()
             .into_iter()
             .map(|command| command["type"].clone())
             .collect();
         assert_eq!(kinds, [json!("get_state"), json!("prompt"), json!("abort")]);
-        // A second stop awaits the child's end and its forwarded diagnostics.
-        flow.client.stop().await.unwrap();
-        assert!(flow.client.get_stderr().contains("terminated"));
     });
 }
 
