@@ -229,14 +229,22 @@ renders that region, the index table in `examples/extensions/README.md` and
 the guide fixture's lock from the sources. `just example-index-check` checks
 all three without rewriting them, and `just check` runs it.
 
-The crate's one integration program, `tests/integration.rs`, holds three test
+The crate's one integration program, `tests/integration.rs`, holds these test
 modules:
 
 | Module | Loads the examples through |
 |---|---|
+| `guest` | Maestro's public test harness: the production engine over in-memory history, credentials and catalog, and the scripted model provider |
 | `host` | Maestro's native host: the artifact factory, the extension runner and the toolkit widgets |
 | `executable` | Maestro's executable over RPC, and its SDK session in process |
 | `shipped_examples` | the folder indexes: every entry is listed, and every listed path exists |
+
+A `guest` test names the built component by its setup variable, loads it with
+`Harness::load`, and reaches the extension only through what the application
+calls: the runner's registered tools and commands, its events and the terminal
+UI the test installs. Nothing in it fakes the extension host. The recorded
+corpora sit beside the tests as `<name>_expected.json`, byte for byte as
+recorded.
 
 ### Add an extension example
 
@@ -249,10 +257,11 @@ modules:
    marked example and exports its path under that variable. Keep an existing
    variable's spelling unchanged.
 3. Run `just example-index` to render the target and the index row.
-4. Add the test as `<name>_example.rs` under `tests/host/` or
+4. Add the test as `<name>_example.rs` under `tests/guest/`, `tests/host/` or
    `tests/executable/`, and declare it in that folder's `mod.rs`, in name
    order. The test reads its component from the variable; the
-   `author-component` setup exports it.
+   `author-component` setup exports it. Start a `guest` test from
+   `tests/guest/hello_example.rs`.
 5. Run `just prepare-tests`, then
    `cargo nextest run --locked -p maestro-extension-examples`.
 

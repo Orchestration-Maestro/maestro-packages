@@ -4,4 +4,5 @@ mod support;
 
 mod hello_example;
 mod pirate_example;
+mod prompt_customizer_example;
 mod with_deps_example;
