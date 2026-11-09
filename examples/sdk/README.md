@@ -47,7 +47,7 @@ just prepare-tests
 cargo nextest run --locked -p maestro-sdk-examples -E 'binary(rpc_extension_ui)'
 ```
 
-This command runs all 16 terminal client example tests, including the SDK checks.
+This command runs all 17 terminal client example tests, including the SDK checks.
 The SDK checks cover LF framing with Unicode separators, startup dialogs, response
 correlation, run completion in either order, refusals, end of input and child
 exit status. They need neither Maestro nor credentials.
@@ -101,11 +101,29 @@ compile through its single registered entry point, not as separate examples.
 
 ## Running
 
-The [package index](../README.md) gives the client's build commands, companion
-component and opt-in prerequisites. After those builds, run it from the package
-root:
+The client starts `target/debug/maestro` (`maestro.exe` on Windows) and loads
+the companion extension `target/wasm32-wasip2/release/examples/rpc_demo.wasm`,
+both under the directory that `MAESTRO_PACKAGE_DIR` names. Without that
+variable it looks in the Maestro sources Cargo fetched for this workspace,
+where neither file is built.
+
+Build both in a Maestro checkout at the
+[revision this repository pins](../../docs/examples.md#the-maestro-pin), with
+the pinned Rust toolchain and the `wasm32-wasip2` target:
 
 ```sh
-CARGO_TARGET_DIR=target CARGO_BUILD_JOBS=3 cargo run --locked \
+rustup target add wasm32-wasip2
+CARGO_TARGET_DIR=target cargo build --locked -p maestro
+CARGO_TARGET_DIR=target cargo build --locked \
+  -p maestro-extensions-wasm --example rpc_demo --target wasm32-wasip2 --release
+```
+
+Then run the client from this repository's root, pointing it at that checkout:
+
+```sh
+MAESTRO_PACKAGE_DIR=path/to/maestro cargo run --locked \
   -p maestro-sdk-examples --example rpc_extension_ui
 ```
+
+The backend runs without saved session history and loads only the companion
+extension.

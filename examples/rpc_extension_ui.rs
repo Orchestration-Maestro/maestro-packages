@@ -653,6 +653,46 @@ mod tests {
         });
     }
 
+    /// Extension notices, statuses, widget lines and titles are literal data, not terminal commands.
+    #[cfg(unix)]
+    #[test]
+    fn extension_notices_cannot_issue_terminal_control_commands() {
+        run_async(async {
+            let root = Scratch::new().unwrap();
+            let clipboard = "\u{1b}]52;c;YQ==\u{7}";
+            let records = serde_json::json!([
+                {"type": "extension_ui_request", "id": "n", "method": "notify",
+                    "message": format!("notice{clipboard}")},
+                {"type": "extension_ui_request", "id": "s", "method": "setStatus",
+                    "statusKey": format!("key{clipboard}"), "statusText": format!("status{clipboard}")},
+                // The title precedes the widget whose frame ends the case.
+                {"type": "extension_ui_request", "id": "t", "method": "setTitle",
+                    "title": format!("title{clipboard}")},
+                {"type": "extension_ui_request", "id": "w", "method": "setWidget",
+                    "widgetKey": format!("widget{clipboard}"),
+                    "widgetLines": [format!("last line{clipboard}")]},
+            ]);
+            let mut command = peer(&root, Scenario::Records);
+            command.env("PEER_RECORDS", records.to_string());
+            let case = run_case(command, vec![("last line", "\x04")]).await;
+            assert_eq!(case.steps, 1);
+            assert!(
+                !case.raw.contains("\x1b]52;"),
+                "untrusted clipboard command reached the terminal"
+            );
+            let output = maestro_app::strip_ansi(&case.raw).unwrap();
+            // Only the control introducers go; the rest of each sequence stays visible.
+            for expected in [
+                "Notification: [info] notice]52;c;YQ==",
+                "Notification: [status: key]52;c;YQ==] status]52;c;YQ==",
+                "Notification: [widget: widget]52;c;YQ==]",
+                "  last line]52;c;YQ==",
+            ] {
+                assert!(output.contains(expected), "missing {expected}: {output}");
+            }
+        });
+    }
+
     /// The client example keeps LF framing, Unicode separators and a cancelled dialog.
     #[test]
     fn sdk_example_keeps_records_and_cancels_startup_dialogs() {

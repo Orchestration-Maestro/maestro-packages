@@ -1,8 +1,5 @@
 //! Real-session qualification of live console delivery and listener cleanup.
-use super::{
-    super::*,
-    writer::{Failure, RecordingWriter},
-};
+use super::{super::*, writer::RecordingWriter};
 use maestro_agent::AgentEvent;
 use maestro_app::AgentSessionEvent;
 use maestro_models::AssistantMessageEvent;
@@ -61,16 +58,21 @@ fn stream_writes_and_flushes_each_live_delta() -> Result<(), Error> {
 /// A write or flush failure survives later deltas and releases the subscription.
 #[test]
 fn stream_retains_first_error_and_suppresses_later_writes() -> Result<(), Error> {
-    for (failure, expected, attempts) in [
-        (Failure::Write, "write failure 1", 1),
-        (Failure::Flush, "flush failure 2", 2),
+    let refusing_writes = RecordingWriter {
+        refuse_writes: true,
+        ..RecordingWriter::default()
+    };
+    let refusing_flushes = RecordingWriter {
+        refuse_flushes: true,
+        ..RecordingWriter::default()
+    };
+    for (writer, expected, attempts) in [
+        (refusing_writes, "write failure 1", 1),
+        (refusing_flushes, "flush failure 2", 2),
     ] {
         support::execute(|sample| async move {
             let created = create_agent_session(sample.options()?).await?;
-            let output = Rc::new(RefCell::new(RecordingWriter {
-                failure: Some(failure),
-                ..RecordingWriter::default()
-            }));
+            let output = Rc::new(RefCell::new(writer));
             let finish = stream::subscribe(&created.session, output.clone());
             for _ in 0..2 {
                 queue_answer(&sample);

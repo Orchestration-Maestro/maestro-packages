@@ -227,23 +227,28 @@ impl Client {
             Method::SetStatus {
                 status_key,
                 status_text,
-            } => self.log.append(format!(
+            } => self.log.append(OutputLog::literal(&format!(
                 "Notification: [status: {status_key}] {}",
                 status_text.as_deref().unwrap_or("(cleared)")
-            )),
+            ))),
             Method::SetWidget {
                 widget_key,
                 widget_lines: Some(lines),
                 ..
             } if !lines.is_empty() => {
-                self.log
-                    .append(format!("Notification: [widget: {widget_key}]"));
+                self.log.append(OutputLog::literal(&format!(
+                    "Notification: [widget: {widget_key}]"
+                )));
                 for line in lines {
-                    self.log.append(format!("  {line}"));
+                    self.log.append(OutputLog::literal(&format!("  {line}")));
                 }
             }
             Method::SetWidget { .. } => {}
-            Method::SetTitle { title } => self.tui.terminal().borrow_mut().set_title(title)?,
+            Method::SetTitle { title } => self
+                .tui
+                .terminal()
+                .borrow_mut()
+                .set_title(&OutputLog::literal(title))?,
             Method::SetEditorText { text } => self.prompt.set_value(text.clone()),
             _ => {
                 self.dialogs.push_back(Dialog { request, remote });
@@ -262,7 +267,7 @@ impl Client {
         self.log.append(paint(
             self.theme.get().ok().as_deref(),
             &color,
-            &format!("Notification: [{label}] {message}"),
+            &OutputLog::literal(&format!("Notification: [{label}] {message}")),
         ));
     }
 

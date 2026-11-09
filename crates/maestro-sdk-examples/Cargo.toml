@@ -38,6 +38,7 @@ test = true
 [[example]]
 name = "rpc_client_demo"
 path = "../../examples/sdk/rpc_client_demo/main.rs"
+test = true
 
 [[example]]
 name = "api_keys_and_oauth"

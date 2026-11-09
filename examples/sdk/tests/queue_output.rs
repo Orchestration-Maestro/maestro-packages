@@ -1,8 +1,5 @@
 //! Real queue events qualify console error retention and listener removal.
-use super::{
-    super::*,
-    writer::{Failure, RecordingWriter},
-};
+use super::{super::*, writer::RecordingWriter};
 
 /// Queue output is immediate and removal stops both observations and writes.
 #[test]
@@ -34,7 +31,7 @@ fn queue_output_retains_first_error_and_suppresses_later_writes() -> Result<(), 
         let created = maestro_app::create_agent_session(sample.options()?).await?;
         let queues = Rc::new(RefCell::new(Vec::new()));
         let output = Rc::new(RefCell::new(RecordingWriter {
-            failure: Some(Failure::Write),
+            refuse_writes: true,
             ..RecordingWriter::default()
         }));
         let finish = bind(created.session.clone(), queues.clone(), output.clone()).await?;
@@ -51,16 +48,4 @@ fn queue_output_retains_first_error_and_suppresses_later_writes() -> Result<(), 
         Ok(Value::Null)
     })?;
     Ok(())
-}
-
-/// The shared recording sink can refuse a flush independently of byte writes.
-#[test]
-fn recording_writer_distinguishes_flush_failure() {
-    use std::io::Write;
-    let mut output = RecordingWriter {
-        failure: Some(Failure::Flush),
-        ..RecordingWriter::default()
-    };
-    output.write_all(b"text").unwrap();
-    assert_eq!(output.flush().unwrap_err().to_string(), "flush failure 2");
 }

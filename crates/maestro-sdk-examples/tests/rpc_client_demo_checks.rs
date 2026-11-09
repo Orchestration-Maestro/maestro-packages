@@ -198,9 +198,9 @@ fn illustration_interrupts_follow_the_waiting_state() {
             .map(|command| command["type"].clone())
             .collect();
         assert_eq!(kinds, [json!("get_state"), json!("prompt"), json!("abort")]);
-        while !flow.client.get_stderr().contains("terminated") {
-            tokio::task::yield_now().await;
-        }
+        // A second stop awaits the child's end and its forwarded diagnostics.
+        flow.client.stop().await.unwrap();
+        assert!(flow.client.get_stderr().contains("terminated"));
     });
 }
 
