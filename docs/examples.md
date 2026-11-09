@@ -15,9 +15,9 @@ just test
 ```
 
 The first example family adds `just prepare-tests`, and `just test` then runs
-it first. The first preparation compiles Maestro's development tool and the
-programs the tests start. Later runs reuse the installed tool while the pinned
-commit stays the same.
+it first. From then on, the first preparation compiles Maestro's development
+tool and the programs the tests start. Later runs reuse the installed tool
+while the pinned commit stays the same.
 
 ## Layout
 
@@ -45,6 +45,9 @@ family crates.
 | `maestro-sdk-examples` | SDK examples, the terminal RPC client and the RPC client demo |
 | `maestro-web-example` | the browser chat example |
 | `maestro-python-example`, `maestro-typescript-example` | the other-language extensions |
+
+The first three crates arrive with their family crates. Only the two
+other-language crates exist today.
 
 ## The Maestro pin
 
@@ -95,7 +98,8 @@ Preparation runs two steps:
 2. `development prepare-test-setup prepare target/test-setup <target>` builds
    the example components and installs `maestro` and `native_fixture` from the
    locked Maestro commit into the bundle at `target/test-setup`. `<target>` is
-   `CARGO_TARGET_DIR`, or `target/test-prepare` when that is unset.
+   `CARGO_TARGET_DIR`, or `target/test-prepare` when that is unset. The
+   component build waits for the first example family's component crate.
 
 Shared CI runs them from `test_prepare` in `.github/ci.toml` once per run when
 a selected test reads the bundle, then hands the bundle to every test shard.
