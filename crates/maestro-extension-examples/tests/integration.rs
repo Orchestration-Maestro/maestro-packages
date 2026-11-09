@@ -3,6 +3,7 @@
 #![cfg(not(target_arch = "wasm32"))]
 
 mod executable;
+mod guest;
 mod host;
 mod shipped_examples;
 mod source;
