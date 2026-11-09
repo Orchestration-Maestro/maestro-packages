@@ -1,7 +1,7 @@
 wasm_crates = ["maestro-prompt-suffix"]
 browser_test_crates = []
 test_tools = true
-test_prepare = "cargo install --locked --git https://github.com/Orchestration-Maestro/maestro --rev 1a57f478148aa8b88a52a265b6f02aa467bc8d0f maestro-tooling --bin development --root target/development && target/development/bin/development prepare-test-setup prepare \"$TEST_PREPARE_OUTPUT\" \"${CARGO_TARGET_DIR:-target/test-prepare}\""
+test_prepare = "cargo install --quiet --locked --git https://github.com/Orchestration-Maestro/maestro --rev 1a57f478148aa8b88a52a265b6f02aa467bc8d0f maestro-tooling --bin development --root target/development && target/development/bin/development prepare-test-setup prepare \"$TEST_PREPARE_OUTPUT\" \"${CARGO_TARGET_DIR:-target/test-prepare}\""
 test_prepare_setups = []
 test_prepare_inputs = ["Cargo.toml", "Cargo.lock", "rust-toolchain.toml", ".config/nextest.toml", "examples/**", "crates/**"]
 test_inputs = {}
