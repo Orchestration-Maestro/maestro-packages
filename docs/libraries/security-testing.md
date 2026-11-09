@@ -6,7 +6,7 @@ The assertions verify blocking accepted streams before reading requests; other
 platforms retain the request-capture and response-delivery tests.
 The crate is licensed under MIT OR Apache-2.0. No production dependency changes.
 
-The extension tests use `indexmap =2.14.2`, Maestro's exact pin, as a
-development dependency only. Their stand-in host names the ordered tool maps
-that two host methods return. The crate is licensed under MIT OR Apache-2.0
-and was already in the lock; no production dependency changes.
+The extension tests take `indexmap =2.14.2`, Maestro's exact pin, as a
+development dependency only, because two methods of their stand-in host return
+an `IndexMap` of tools. The crate is licensed under MIT OR Apache-2.0 and was
+already in the lock. No production dependency changes.

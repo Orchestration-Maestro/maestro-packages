@@ -17,8 +17,7 @@ change adds no example and no tooling crate.
   exact `rev`: a full commit hash on Maestro's `main`. Member crates inherit
   the entry with `workspace = true`.
 - `Cargo.lock` resolves every Maestro package to that commit.
-- `.github/ci.toml` and the `prepare-tests` recipe install the development tool
-  at the same commit.
+- `.github/ci.toml` installs the development tool at the same commit.
 
 ## Shared versions
 
@@ -62,14 +61,18 @@ the filter rules.
 
 ## Local recipe
 
-`just prepare-tests` runs the same two steps, with `target/test-setup` as the
-output. `just test` depends on it.
+The pinned tool stops when no member crate holds the generated example region,
+so a local recipe would make `just test` fail. The extension example change
+adds `just prepare-tests`, which runs the same two steps with
+`target/test-setup` as the output, together with the component crate that
+holds the region, and makes `just test` depend on it. `just test` runs as
+before until then.
 
 ## Pin moves
 
-One change moves every Maestro `rev`, the install `rev` in `.github/ci.toml`
-and in the `prepare-tests` recipe, the lock, and every shared version Maestro
-moved, and fixes what the move breaks.
+One change moves every Maestro `rev`, the install `rev` in `.github/ci.toml`,
+the lock, and every shared version Maestro moved, and fixes what the move
+breaks.
 
 ## Existing crates at the new pin
 
@@ -91,15 +94,15 @@ existing crates follow them:
 
 ## Verification
 
-- `Cargo.lock` names one Maestro commit, equal to every `rev` and to both
-  install revisions.
+- `Cargo.lock` names one Maestro commit, equal to every `rev` and to the
+  install revision.
 - Every registry package both locks contain has a version Maestro's lock holds.
-- On `main`, `just prepare-tests` fails because the recipe is missing. On
-  this change, it installs `development` at the pinned commit. The pinned tool
-  then stops because no member crate holds the generated example region yet.
-  Preparation completes once the extension example crate adds that region, or
-  once the pin moves to a Maestro commit whose tool skips the component steps
-  when no member holds it.
+- The `test_prepare` steps install `development` at the pinned commit. The
+  pinned tool then stops because no member crate holds the generated example
+  region yet. Preparation completes once the extension example crate adds that
+  region, or once the pin moves to a Maestro commit whose tool skips the
+  component steps when no member holds it.
+- `just test` runs the existing suites.
 - Shared CI is green: the existing crates build and test, the declaration
   validates and cargo-deny passes with no stale exception.
 
@@ -108,7 +111,7 @@ existing crates follow them:
 `Cargo.toml`, `Cargo.lock`, the two crate manifests that name
 `maestro-extensions-wasm`, `crates/maestro-prompt-suffix/src/lib.rs`,
 `crates/maestro-security/src/extension.rs` and its tests, `.github/ci.toml`,
-`.config/nextest.toml`, `justfile`, `AGENTS.md`, `README.md`,
+`.config/nextest.toml`, `AGENTS.md`, `README.md`,
 `docs/examples.md`, `docs/libraries/security-testing.md` and this file
 change. No test is added; the existing suites and the preparation logs
 are the proof.

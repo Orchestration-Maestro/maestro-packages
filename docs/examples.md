@@ -8,15 +8,14 @@ development tool prepares.
 
 ## Quick start
 
-Prepare the test setup, then run the tests:
+Run the tests:
 
 ```sh
-just prepare-tests
 just test
 ```
 
-`just test` runs `just prepare-tests` first, so the second command alone is
-enough. The first preparation compiles Maestro's development tool and the
+The first example family adds `just prepare-tests`, and `just test` then runs
+it first. The first preparation compiles Maestro's development tool and the
 programs the tests start. Later runs reuse the installed tool while the pinned
 commit stays the same.
 
@@ -68,7 +67,8 @@ Move the pin in one change:
 1. Set the new commit as the `rev` of every Maestro entry in the root
    `Cargo.toml`.
 2. Set the same commit as the install `--rev` in `test_prepare` in
-   `.github/ci.toml` and in the `prepare-tests` recipe in `justfile`.
+   `.github/ci.toml`, and in the `prepare-tests` recipe in `justfile` once
+   it exists.
 3. Update the lock with `cargo update -p maestro-test-directory`, then align
    every shared package with Maestro's lock at that commit, using
    `cargo update -p <package>@<version> --precise <version>`.
@@ -88,7 +88,7 @@ one commit.
 
 ## Test preparation
 
-`just prepare-tests` runs two steps:
+Preparation runs two steps:
 
 1. `cargo install` builds `development` from `maestro-tooling` at the pinned
    commit into `target/development`.
@@ -97,9 +97,11 @@ one commit.
    locked Maestro commit into the bundle at `target/test-setup`. `<target>` is
    `CARGO_TARGET_DIR`, or `target/test-prepare` when that is unset.
 
-Shared CI runs the same steps from `test_prepare` in `.github/ci.toml` once per
-run when a selected test reads the bundle, then hands the bundle to every test
-shard.
+Shared CI runs them from `test_prepare` in `.github/ci.toml` once per run when
+a selected test reads the bundle, then hands the bundle to every test shard.
+Locally, the `just prepare-tests` recipe runs them with `target/test-setup` as
+the bundle. The recipe arrives with the first example family, whose component
+crate the preparation needs.
 
 The nextest setups in `.config/nextest.toml` run
 `target/test-setup/development nextest-setup <name>` and export what the tests

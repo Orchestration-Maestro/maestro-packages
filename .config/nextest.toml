@@ -1,7 +1,7 @@
 experimental = ["setup-scripts"]
 
-# Every setup runs Maestro's development tool from `target/test-setup`, where `just prepare-tests`
-# and the CI preparation stage it. The example crates add the filter rules that select each setup.
+# Every setup runs Maestro's development tool from `target/test-setup`, where the test preparation
+# stages it. The example crates add the filter rules that select each setup.
 
 [scripts.setup.author-component]
 command = "target/test-setup/development nextest-setup author-component"
