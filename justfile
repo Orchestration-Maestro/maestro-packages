@@ -44,7 +44,7 @@ browser-chat-example *args: browser-build
 
 # Serve the bound browser chat example on loopback; extra arguments reach the server.
 browser-chat-serve *args:
-    @{{serve}} {{quote(target / "maestro-browser/chat")}} --interfaces 127.0.0.1 --index index.html "$@"
+    @{{quote(serve)}} {{quote(target / "maestro-browser/chat")}} --interfaces 127.0.0.1 --index index.html "$@"
 
 # Run every browser test of the chat example in the supplied Chromium, even after a failure.
 browser-test:
