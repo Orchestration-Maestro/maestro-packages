@@ -1,5 +1,9 @@
 experimental = ["setup-scripts"]
 
+# A browser export that waits for a page change that never comes ends at 120 s, not at the job limit.
+[profile.default]
+slow-timeout = { period = "30s", terminate-after = 4 }
+
 # Every setup runs Maestro's development tool from `target/test-setup`, where the test preparation
 # stages it. The example crates add the filter rules that select each setup.
 
@@ -14,3 +18,12 @@ command = "target/test-setup/development nextest-setup native-fixture"
 
 [scripts.setup.executable]
 command = "target/test-setup/development nextest-setup executable"
+
+# Compiles and binds the chat example's browser exports once, before the browser tests that read
+# them. Cargo builds the program with the package's tests.
+[scripts.setup.browser-exports]
+command = { command-line = "debug/examples/prepare_browser_exports", relative-to = "target" }
+
+[[profile.default.scripts]]
+filter = "package(=maestro-web-example) & test(/^browser::chat_example_/)"
+setup = "browser-exports"
