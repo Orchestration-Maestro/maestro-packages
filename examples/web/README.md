@@ -14,9 +14,11 @@ mise exec -- just browser-chat-example --port 9000
 Open `http://127.0.0.1:9000`. The first message asks for a provider key and keeps
 your draft until you supply one.
 
-The recipe builds `chat` for `wasm32-unknown-unknown`, binds it with
-`wasm-bindgen` into `target/maestro-browser/chat` beside `index.html`, and serves
-that directory with `miniserve`. Extra arguments go to `miniserve`. Mise pins
+The recipe runs `just browser-build`, which builds `chat` for
+`wasm32-unknown-unknown` and binds it with `wasm-bindgen` into
+`maestro-browser/chat` beside `index.html`, under Cargo's target directory
+(`CARGO_TARGET_DIR`, or `target`). `just browser-chat-serve` then serves that
+directory with `miniserve`. Each extra argument goes to `miniserve` as given. Mise pins
 `wasm-bindgen` 0.2.129, the version the lock holds for the library, and
 `miniserve` 0.35.0.
 
@@ -29,7 +31,7 @@ that directory with `miniserve`. Extra arguments go to `miniserve`. Mise pins
 | `chat/title.rs` | Derives, shows and edits the session title |
 | `chat/custom_messages.rs` | Adds the example's own notification message type |
 | `chat/index.html` | The page that loads the module |
-| `assets/brand/brand.json` | The brand pack the page is drawn with |
+| `assets/brand/brand.json` | Maestro's shipped brand pack, copied until `maestro-theme` exposes it |
 
 `crates/maestro-web-example` builds `chat.rs` as a `cdylib` example and runs the
 browser tests. The example reaches Maestro only through the public API of

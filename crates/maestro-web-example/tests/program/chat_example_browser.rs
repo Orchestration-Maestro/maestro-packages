@@ -16,6 +16,9 @@ mod app;
 mod custom_messages;
 /// Controlled response completion and title-write settlement.
 mod held;
+/// Browser storage that signals each committed write.
+mod stored;
+use stored::Stored;
 
 /// The page address without a query, as a fresh visit has it.
 fn reset_url() {
@@ -68,38 +71,16 @@ fn send(root: &Element, draft: &str) {
         .unchecked_into::<HtmlElement>()
         .click();
 }
-/// The stored summary of `id` once its save is visible, reading through browser storage.
-async fn stored(
-    storage: &AppStorage,
-    id: &str,
-    ready: impl Fn(&SessionMetadata) -> bool,
-) -> SessionMetadata {
-    loop {
-        if let Some(metadata) = storage.sessions.get_metadata(id).await.unwrap()
-            && ready(&metadata)
-        {
-            return metadata;
-        }
-    }
-}
-/// Storage with a key for the example's model.
-async fn keyed(name: &str) -> Rc<AppStorage> {
-    let storage = app::storage(name);
-    storage
-        .provider_keys
-        .set("anthropic", "sk-test")
-        .await
-        .unwrap();
-    storage
-}
 /// One completed exchange starting with `draft`, waited for in the transcript and in storage.
-async fn converse(root: &Element, storage: &AppStorage, draft: &str) -> (String, SessionMetadata) {
+async fn converse(root: &Element, storage: &Stored, draft: &str) -> (String, SessionMetadata) {
     let before = rows(root);
     send(root, draft);
     until(|| rows(root) == before + 2).await;
     let id = url_session().expect("an exchange names the session in the address");
     let count = f64::from(before + 2);
-    let metadata = stored(storage, &id, |metadata| metadata.message_count >= count).await;
+    let metadata = storage
+        .stored(&id, |metadata| metadata.message_count >= count)
+        .await;
     (id, metadata)
 }
 /// A user message with `text`.
@@ -130,7 +111,7 @@ pub fn chat_example_titles_and_admission_follow_the_first_user_message() {
 
 /// Two exchanges: the first titles, names and stores the session; the second keeps the
 /// creation time and title.
-async fn two_exchanges(root: &Element, storage: &AppStorage) -> String {
+async fn two_exchanges(root: &Element, storage: &Stored) -> String {
     assert_eq!(
         text(&select(root, ".example-name")),
         "Maestro Web UI Example"
@@ -181,23 +162,23 @@ pub async fn chat_example_saves_and_restores_sessions_from_the_url(import: js_sy
     let shown = view();
     let _host = host(&shown, &import);
     reset_url();
-    let storage = keyed("example-save").await;
+    let storage = Stored::keyed("example-save").await;
     let fetch = Fetch::install(vec![
         (200, "text/event-stream", completed_reply()),
         (200, "text/event-stream", completed_reply()),
     ]);
     let root = container();
-    let running = app::App::init(&shown, Rc::clone(&storage), &root)
+    let running = app::App::init(&shown, storage.shared(), &root)
         .await
         .unwrap();
     let id = two_exchanges(&root, &storage).await;
     assert_eq!(fetch.requests().len(), 2);
     drop(running);
-    reopen(&shown, &root, storage, &id).await;
+    reopen(&shown, &root, storage.shared(), &id).await;
 }
 
 /// Edit the title of the stored session `id` with the keyboard.
-async fn retitle(root: &Element, storage: &AppStorage, id: &str) {
+async fn retitle(root: &Element, storage: &Stored, id: &str) {
     select(root, ".example-title-button")
         .unchecked_into::<HtmlElement>()
         .click();
@@ -211,7 +192,9 @@ async fn retitle(root: &Element, storage: &AppStorage, id: &str) {
     );
     field.set_value("  Renamed ");
     press("Enter").await;
-    stored(storage, id, |metadata| metadata.title == "Renamed").await;
+    storage
+        .stored(id, |metadata| metadata.title == "Renamed")
+        .await;
     until(|| {
         root.query_selector(".example-title-button")
             .unwrap()
@@ -281,10 +264,10 @@ pub async fn chat_example_edits_titles_and_follows_new_and_deleted_sessions(
     let shown = view();
     let _host = host(&shown, &import);
     reset_url();
-    let storage = keyed("example-edit").await;
+    let storage = Stored::keyed("example-edit").await;
     let _fetch = Fetch::install(vec![(200, "text/event-stream", completed_reply())]);
     let root = container();
-    let _running = app::App::init(&shown, Rc::clone(&storage), &root)
+    let _running = app::App::init(&shown, storage.shared(), &root)
         .await
         .unwrap();
     let (id, _) = converse(&root, &storage, "Plan a trip.").await;
@@ -377,10 +360,10 @@ pub async fn chat_example_message_completion_keeps_title_drafts(import: js_sys::
     let shown = view();
     let _host = host(&shown, &import);
     reset_url();
-    let storage = keyed("example-title-draft").await;
+    let storage = Stored::keyed("example-title-draft").await;
     let _fetch = Fetch::install(vec![(200, "text/event-stream", completed_reply())]);
     let root = container();
-    let _running = app::App::init(&shown, Rc::clone(&storage), &root)
+    let _running = app::App::init(&shown, storage.shared(), &root)
         .await
         .unwrap();
     let (id, _) = converse(&root, &storage, "Plan a trip.").await;
@@ -391,7 +374,9 @@ pub async fn chat_example_message_completion_keeps_title_drafts(import: js_sys::
     field.set_selection_range(2, 7).unwrap();
     held.finish();
     until(|| rows(&root) == 4).await;
-    stored(&storage, &id, |metadata| metadata.message_count >= 4.0).await;
+    storage
+        .stored(&id, |metadata| metadata.message_count >= 4.0)
+        .await;
     assert!(field.is_same_node(Some(&select(&root, ".example-title input"))));
     assert_eq!(field.value(), "Unfinished title");
     assert!(focused(&field));
@@ -410,14 +395,14 @@ pub async fn chat_example_title_saves_stay_with_the_originating_session(import: 
     let shown = view();
     let _host = host(&shown, &import);
     reset_url();
-    let storage = keyed("example-title-origin").await;
+    let storage = Stored::keyed("example-title-origin").await;
     let _fetch = Fetch::install(vec![
         (200, "text/event-stream", completed_reply()),
         (200, "text/event-stream", completed_reply()),
         (200, "text/event-stream", completed_reply()),
     ]);
     let root = container();
-    let _running = app::App::init(&shown, Rc::clone(&storage), &root)
+    let _running = app::App::init(&shown, storage.shared(), &root)
         .await
         .unwrap();
     let (a, _) = converse(&root, &storage, "Session A").await;
@@ -427,18 +412,27 @@ pub async fn chat_example_title_saves_stay_with_the_originating_session(import: 
     held.ready().await;
     start_new_session(&root).await;
     converse(&root, &storage, "Session B").await;
-    finish_outgoing_title_while_editing(&root, &held).await;
+    finish_outgoing_title_while_editing(&root, &held, &storage, &a).await;
     let (_, saved) = converse(&root, &storage, "continue B").await;
     assert_eq!(saved.title, "Session B");
-    assert_eq!(stored(&storage, &a, |_| true).await.title, "Renamed A");
+    assert_eq!(storage.stored(&a, |_| true).await.title, "Renamed A");
 }
 
 /// Finish the outgoing write while editing the new session, preserving its editor and title.
-async fn finish_outgoing_title_while_editing(root: &Element, held: &held::HeldTitleWrite) {
+async fn finish_outgoing_title_while_editing(
+    root: &Element,
+    held: &held::HeldTitleWrite,
+    storage: &Stored,
+    outgoing: &str,
+) {
     let field = title_field(root, "B draft");
     field.set_selection_range(1, 3).unwrap();
     held.finish();
-    crate::contributions_support::frames(2).await;
+    // The page continues the finished write in microtasks, which run before the read's own
+    // task completes, so the stored title is back only after the page has settled the write.
+    storage
+        .stored(outgoing, |metadata| metadata.title == "Renamed A")
+        .await;
     assert!(
         field.is_same_node(
             root.query_selector(".example-title input")
@@ -464,15 +458,16 @@ pub async fn chat_example_new_session_aborts_the_outgoing_request(import: js_sys
     let shown = view();
     let _host = host(&shown, &import);
     reset_url();
-    let storage = keyed("example-new-abort").await;
+    let storage = Stored::keyed("example-new-abort").await;
     let root = container();
-    let _running = app::App::init(&shown, storage, &root).await.unwrap();
+    let _running = app::App::init(&shown, storage.shared(), &root)
+        .await
+        .unwrap();
     let held = held::HeldResponse::install(&completed_reply());
     send(&root, "pending");
     held.ready().await;
     start_new_session(&root).await;
-    crate::contributions_support::frames(2).await;
-    assert!(held.aborted());
+    held.aborted().await;
     assert_eq!(
         text(&select(&root, ".example-name")),
         "Maestro Web UI Example"

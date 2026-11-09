@@ -55,11 +55,15 @@ two other-language crates exist today.
 `wasm32-unknown-unknown` and runs its browser tests in Chromium. See
 [the example's page](../examples/web/README.md) for what it shows.
 
-Serve the page on loopback:
+Build and serve the page on loopback:
 
 ```sh
 mise exec -- just browser-chat-example --port 9000
 ```
+
+`just browser-build` builds and binds the page without serving it, and
+`just browser-chat-serve` serves what it built. Each recipe reads Cargo's
+`CARGO_TARGET_DIR` when it is set, and `target` otherwise.
 
 Run the browser tests with a Chromium executable:
 
@@ -79,8 +83,9 @@ and checks that the package is unchanged afterwards.
 Shared CI runs `just browser-test` in the pinned Chromium job because
 `browser_test_crates` in `.github/ci.toml` names the crate. Pull requests skip that
 job. Merge groups run it when the crate or one of its dependencies changed, and
-pushes to main always run it. The crate is also in `wasm_crates`, so every run builds
-it for `wasm32-unknown-unknown`.
+pushes to main always run it. `browser_build` in `.github/ci.toml` makes every run
+execute `just browser-build`, which builds the `chat` example for
+`wasm32-unknown-unknown` and binds it. A startup that no longer compiles fails the run.
 
 The program holds the exports and only the browser helpers they read. It reaches
 `maestro-web` through its public API. A helper that needs a private item exposes a gap

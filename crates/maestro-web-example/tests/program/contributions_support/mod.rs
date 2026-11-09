@@ -75,10 +75,6 @@ pub(crate) fn container() -> Element {
     body().append_child(&element).unwrap();
     element
 }
-/// Wait for one frame that aligns to the next paint, then `count` more frames.
-pub(crate) async fn frames(count: u32) {
-    page::frames(count).await;
-}
 
 /// One required descendant, reporting the missing selector.
 pub(crate) fn select(node: &Node, selector: &str) -> Element {

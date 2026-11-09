@@ -30,24 +30,3 @@ pub(crate) async fn changed(target: &Node) {
     });
     settle(promise.into()).await.unwrap();
 }
-
-/// The time of the next animation frame, in milliseconds.
-async fn frame() -> f64 {
-    let window = web_sys::window().unwrap();
-    let promise = js_sys::Promise::new(&mut |resolve, _| {
-        window.request_animation_frame(&resolve).unwrap();
-    });
-    settle(promise.into()).await.unwrap().as_f64().unwrap()
-}
-
-/// Intervals between the next `count` animation frames, in milliseconds.
-pub(crate) async fn frames(count: u32) -> Vec<f64> {
-    let mut previous = frame().await;
-    let mut intervals = Vec::new();
-    for _ in 0..count {
-        let time = frame().await;
-        intervals.push(time - previous);
-        previous = time;
-    }
-    intervals
-}

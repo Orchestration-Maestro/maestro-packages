@@ -12,8 +12,8 @@ use wasm_bindgen::{JsCast as _, JsValue, closure::Closure};
 pub(super) struct HeldResponse {
     /// Settles once the page has received the opening events.
     ready: js_sys::Promise,
-    /// Whether the page aborted the request.
-    aborted: Rc<Cell<bool>>,
+    /// Settles once the page has aborted the request.
+    aborted: js_sys::Promise,
     /// The reply stream's controller, once the page has fetched.
     controller: Rc<RefCell<Option<JsValue>>>,
     /// The reply bytes held back.
@@ -28,16 +28,16 @@ impl HeldResponse {
         let split = body.find("event: content_block_stop").unwrap();
         let first = js_sys::Uint8Array::from(&body.as_bytes()[..split]);
         let (ready, started) = signal();
-        let aborted = Rc::new(Cell::new(false));
+        let (aborted, aborting) = signal();
         let controller: Rc<RefCell<Option<JsValue>>> = Rc::default();
-        let (seen, held) = (Rc::clone(&aborted), Rc::clone(&controller));
+        let held = Rc::clone(&controller);
         let fetch = Patch::method(&global("window"), "fetch", move |_, _, args| {
             let request = construct("Request", &[&args.get(0), &args.get(1)]);
-            let (seen, aborting) = (Rc::clone(&seen), Rc::clone(&held));
+            let (aborting, stream) = (aborting.clone(), Rc::clone(&held));
             let on_abort = Closure::once_into_js(move || {
-                seen.set(true);
+                aborting.call0(&JsValue::NULL).unwrap();
                 let error = dom_exception("Aborted", "AbortError");
-                invoke(aborting.borrow().as_ref().unwrap(), "error", &[&error]).unwrap();
+                invoke(stream.borrow().as_ref().unwrap(), "error", &[&error]).unwrap();
             });
             let once = object(&[("once", &JsValue::TRUE)]);
             invoke(
@@ -78,9 +78,11 @@ impl HeldResponse {
             .unwrap();
     }
 
-    /// Whether the page aborted the held request.
-    pub(super) fn aborted(&self) -> bool {
-        self.aborted.get()
+    /// Wait until the page has aborted the held request.
+    pub(super) async fn aborted(&self) {
+        crate::contributions_support::settle(self.aborted.clone().into())
+            .await
+            .unwrap();
     }
 
     /// Deliver the held events and end the reply.
