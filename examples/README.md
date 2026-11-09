@@ -76,3 +76,12 @@ the Python recipe uses it as the linker.
 Build-machine commands in the language reports use the tool CLIs directly.
 Workspace verification used the approved remote wrapper and its artifact
 output directory. All source WIT files remained read-only.
+
+## SDK and RPC clients
+
+| Path | Purpose |
+| --- | --- |
+| [sdk/](sdk/README.md) | In-process SDK samples, the Python RPC client and the interactive RPC client demo. |
+| `rpc_extension_ui.rs` | A terminal RPC client with streaming output and extension dialogs. |
+
+The `maestro-sdk-examples` crate builds them and runs their checks.

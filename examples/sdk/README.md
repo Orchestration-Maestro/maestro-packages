@@ -7,6 +7,20 @@ the [Rust client](../../docs/client.md) provides typed subprocess operations.
 | File | Purpose |
 |---|---|
 | `rpc.py` | Inspect session state or print one prompted run with an LF-only JSONL reader. |
+| `rpc_client_demo/` | An interactive terminal client of a Maestro child in RPC mode, built on the Rust client. |
+| `minimal.rs` | Prompt a session, receive text deltas and inspect stored messages. |
+| `custom_model.rs` | Find catalog models, select one explicitly and request a thinking level. |
+| `custom_prompt.rs` | Replace a system prompt or append instructions, then prompt each session. |
+| `skills.rs` | Filter discovered skills and add an SDK-attributed skill. |
+| `tools.rs` | Select read-only or custom built-in tools for a supplied working directory. |
+| `extensions.rs` | Register an inline extension with a command, events and an executable tool. |
+| `context_files.rs` | Discover project instructions and add caller-supplied context files. |
+| `prompt_templates.rs` | Merge discovered templates with a deployment template and expand it. |
+| `api_keys_and_oauth.rs` | Supply credential owners, custom paths and non-persisted runtime keys. |
+| `settings.rs` | Apply runtime preferences, change a persistent preference and flush it. |
+| `sessions.rs` | Use memory history, create a file, continue it, list sessions and reopen one. |
+| `full_control.rs` | Select model, thinking, settings, tools and resources without discovery. |
+| `session_runtime.rs` | Create directory-bound services, replace the session and rebind subscriptions. |
 
 ## Inspect a session
 
@@ -30,7 +44,7 @@ are native Rust fixtures, so only `rpc.py` itself runs under Python 3:
 
 ```sh
 just prepare-tests
-cargo nextest run --locked -p maestro-chat -E 'binary(rpc_extension_ui)'
+cargo nextest run --locked -p maestro-sdk-examples -E 'binary(rpc_extension_ui)'
 ```
 
 This command runs all 16 terminal client example tests, including the SDK checks.
@@ -38,12 +52,40 @@ The SDK checks cover LF framing with Unicode separators, startup dialogs, respon
 correlation, run completion in either order, refusals, end of input and child
 exit status. They need neither Maestro nor credentials.
 
-For the interactive Rust flow, see the application-owned
-[`rpc_client_demo`](../../crates/maestro-app/examples/rpc_client_demo/main.rs).
+## Run an in-process sample
 
-The [embedding examples guide](../../docs/application/examples.md) lists thirteen
-executable in-process Rust samples, with controlled model requests and
-disposable configuration. Run one with `cargo run -p maestro-app --example minimal`.
+The thirteen `.rs` samples above use the session SDK in-process, with Maestro's
+scripted model and disposable configuration. They make no paid request and
+need no credentials. Run one from the repository root:
+
+```sh
+cargo run -p maestro-sdk-examples --example minimal
+```
+
+The [embedding examples guide](../../docs/application/examples.md) explains
+what each sample shows. The `support/` folder holds their shared setup and
+`tests/` their larger checks. Each sample's tests run with the others:
+
+```sh
+cargo nextest run -p maestro-sdk-examples
+```
+
+After `just prepare-tests`, that command also runs the RPC client checks above
+and the interactive client demo's checks against a native test peer.
+
+## Drive an interactive RPC session
+
+[`rpc_client_demo`](rpc_client_demo/main.rs) streams a session's output, reads
+one prompt per line, and stops on `exit`. An interrupt aborts the running turn,
+or quits when none runs. Pass the path of a built Maestro executable:
+
+```sh
+cargo run -p maestro-sdk-examples --example rpc_client_demo -- path/to/maestro
+```
+
+The demo selects a provider and model, so its prompts need credentials and
+can incur charges.
+
 Other SDK examples are listed in the
 [examples tracking issue](https://github.com/Orchestration-Maestro/maestro/issues/2074).
 
@@ -65,5 +107,5 @@ root:
 
 ```sh
 CARGO_TARGET_DIR=target CARGO_BUILD_JOBS=3 cargo run --locked \
-  -p maestro-chat --example rpc_extension_ui
+  -p maestro-sdk-examples --example rpc_extension_ui
 ```
