@@ -40,7 +40,7 @@ service rather than binding it in code.
 ## 3. The contract with Maestro
 
 - **Extension**: cdylib for `wasm32-wasip2` (WASI 0.3 async), 9 registered
-  tools; MCP stdio server on rmcp 3.7.0 for host use.
+  tools; MCP stdio server on rmcp 3.9.0 for host use.
 - **Events/hooks**: `on`/`event-on`/`event-emit`/`send-message` plus the UI
   context (status, working message, widgets) — the binding for autonomy
   (chapter R1). Always bind to Maestro hooks and events.

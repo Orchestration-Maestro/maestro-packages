@@ -21,7 +21,13 @@ Tracking: [#41](https://github.com/Orchestration-Maestro/maestro-packages/issues
 
 No Rust guest SDK or altered WIT is shipped.
 
-### World inspected
+## Browser example
+
+- [Browser chat](web/README.md): a complete chat built only from the published web
+  components. `just browser-chat-example` serves it, and `just browser-test` runs its
+  seven browser tests in Chromium.
+
+## World inspected
 
 Repository: <https://github.com/Orchestration-Maestro/maestro>
 
