@@ -8,6 +8,8 @@ mod child;
 #[path = "../../../examples/sdk/rpc_client_demo/interactive.rs"]
 mod rpc_client_demo;
 #[cfg(unix)]
+mod rpc_client_demo_checks;
+#[cfg(unix)]
 #[path = "support/rpc_peer.rs"]
 mod rpc_peer;
 #[cfg(unix)]
