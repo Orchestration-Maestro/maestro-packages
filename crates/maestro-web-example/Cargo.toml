@@ -21,6 +21,10 @@ path = "tests/program/lib.rs"
 name = "prepare_browser_exports"
 path = "tests/prepare.rs"
 
+[[bin]]
+name = "argv-recorder"
+path = "tests/argv_recorder.rs"
+
 [[test]]
 name = "integration"
 path = "tests/integration.rs"

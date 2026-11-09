@@ -4,13 +4,18 @@
 use maestro_test_directory::Scratch;
 use std::{path::Path, process::Command};
 
-/// Run `just browser-chat-serve` with `arguments`, the server replaced by a command that prints
-/// each argument it receives on its own line, and return those lines.
+/// Run `just browser-chat-serve` with `arguments`, the server replaced by the argument recorder,
+/// and return the lines it printed, one per argument it received.
 fn served(target: &Path, arguments: &[&str]) -> Vec<String> {
     let output = Command::new("just")
         .current_dir(Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."))
         .env("CARGO_TARGET_DIR", target)
-        .args(["--set", "serve", "printf '%s\\n'", "browser-chat-serve"])
+        .args([
+            "--set",
+            "serve",
+            env!("CARGO_BIN_EXE_argv-recorder"),
+            "browser-chat-serve",
+        ])
         .args(arguments)
         .output()
         .unwrap();
