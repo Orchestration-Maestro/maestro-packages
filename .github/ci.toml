@@ -1,5 +1,5 @@
-wasm_crates = ["maestro-prompt-suffix"]
-browser_test_crates = []
+wasm_crates = ["maestro-prompt-suffix", "maestro-web-example"]
+browser_test_crates = ["maestro-web-example"]
 test_tools = true
 test_prepare = "cargo install --quiet --locked --git https://github.com/Orchestration-Maestro/maestro --rev 1a57f478148aa8b88a52a265b6f02aa467bc8d0f maestro-tooling --bin development --root target/development && target/development/bin/development prepare-test-setup prepare \"$TEST_PREPARE_OUTPUT\" \"${CARGO_TARGET_DIR:-target/test-prepare}\""
 test_prepare_setups = []
@@ -14,6 +14,10 @@ check_targets = [
     "aarch64-apple-darwin",
     "x86_64-pc-windows-msvc",
 ]
-advisory_exceptions = []
+advisory_exceptions = [
+  { id = "RUSTSEC-2025-0141", package = "bincode", version = "1.3.3", reason = "syntect's packaged syntax and theme dumps, read through maestro-theme; owner-approved in Maestro" },
+  { id = "RUSTSEC-2025-0141", package = "bincode", version = "2.0.1", reason = "Maestro's daemon protocol encoding, read through maestro-app; owner-approved in Maestro despite unmaintained status" },
+  { id = "RUSTSEC-2026-0387", package = "crypto-bigint", version = "0.5.5", reason = "aws-config credentials-login signs with p256 0.13 inside maestro-app's model adapters; the example never starts a Bedrock login; no patched 0.5.x; remove when aws-config moves to p256 0.14" },
+]
 license_exceptions = []
 git_sources = ["https://github.com/Orchestration-Maestro/maestro"]

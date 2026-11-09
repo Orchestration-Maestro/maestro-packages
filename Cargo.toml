@@ -10,13 +10,22 @@ repository = "https://github.com/Orchestration-Maestro/maestro-packages"
 
 [workspace.dependencies]
 indexmap = "=2.14.2"
+js-sys = "=0.3.106"
+maestro-app = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
 maestro-extensions-wasm = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
+maestro-test-browser = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
 maestro-test-directory = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
 maestro-test-extension-host = { path = "crates/maestro-test-extension-host" }
 maestro-test-process = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
+maestro-theme = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
+maestro-tooling = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
+maestro-web = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
 serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = { version = "=1.0.151", features = ["preserve_order", "float_roundtrip"] }
 tokio = { version = "=1.53.3", features = ["rt", "macros", "net", "io-util", "io-std", "time", "signal"] }
+wasm-bindgen = "=0.2.129"
+wasm-bindgen-futures = "=0.4.79"
+web-sys = "=0.3.106"
 rustls = { version = "0.23", default-features = false, features = ["std", "tls12", "ring"] }
 webpki-roots = "0.26"
 socket2 = { version = "=0.6.5", default-features = false, features = ["all"] }

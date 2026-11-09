@@ -34,8 +34,8 @@ examples/
   python/  typescript/   extensions in other languages
 ```
 
-`python/` and `typescript/` are here today. The other folders arrive with their
-family crates.
+`python/`, `typescript/` and `web/` are here today. The other folders arrive with
+their family crates.
 
 ## Crates
 
@@ -46,8 +46,45 @@ family crates.
 | `maestro-web-example` | the browser chat example |
 | `maestro-python-example`, `maestro-typescript-example` | the other-language extensions |
 
-The first three crates arrive with their family crates. Only the two
-other-language crates exist today.
+The first two crates arrive with their family crates. The browser crate and the
+two other-language crates exist today.
+
+## Browser example
+
+`maestro-web-example` builds the browser chat in `examples/web/` for
+`wasm32-unknown-unknown` and runs its browser tests in Chromium. See
+[the example's page](../examples/web/README.md) for what it shows.
+
+Serve the page on loopback:
+
+```sh
+mise exec -- just browser-chat-example --port 9000
+```
+
+Run the browser tests with a Chromium executable:
+
+```sh
+CHROMIUM_PATH=/path/to/chrome mise exec -- just browser-test
+```
+
+`just browser-test` runs the ignored `browser::` tests of the crate through
+nextest. The `browser-exports` setup in `.config/nextest.toml` runs once before
+them: it compiles `crates/maestro-web-example/tests/program` for
+`wasm32-unknown-unknown` with `--cfg test`, requires the `wasm-bindgen` command line
+to match the locked library, binds the program into `target/browser-exports` and
+exports that directory as `MAESTRO_BROWSER_EXPORTS`. Each test then runs one export
+in its own browser through Maestro's driver, which serves the package on loopback
+and checks that the package is unchanged afterwards.
+
+Shared CI runs `just browser-test` in the pinned Chromium job because
+`browser_test_crates` in `.github/ci.toml` names the crate. Pull requests skip that
+job. Merge groups run it when the crate or one of its dependencies changed, and
+pushes to main always run it. The crate is also in `wasm_crates`, so every run builds
+it for `wasm32-unknown-unknown`.
+
+The program holds the exports and only the browser helpers they read. It reaches
+`maestro-web` through its public API. A helper that needs a private item exposes a gap
+in that API; report the gap.
 
 ## The Maestro pin
 

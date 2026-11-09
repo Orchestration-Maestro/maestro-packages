@@ -26,3 +26,14 @@ pre-commit:
 test *args:
     cargo nextest run --workspace --locked "$@"
     cargo test --workspace --locked --doc "$@"
+
+# Build the runnable browser chat example, then serve it on loopback.
+browser-chat-example *args:
+    cargo build --locked -p maestro-web-example --example chat --target wasm32-unknown-unknown --release
+    wasm-bindgen {{quote(justfile_directory() / "target/wasm32-unknown-unknown/release/examples/chat.wasm")}} --target web --out-dir {{quote(justfile_directory() / "target/maestro-browser/chat")}} --out-name chat
+    cp {{quote(justfile_directory() / "examples/web/chat/index.html")}} {{quote(justfile_directory() / "target/maestro-browser/chat/index.html")}}
+    @miniserve {{quote(justfile_directory() / "target/maestro-browser/chat")}} --interfaces 127.0.0.1 --index index.html {{quote(args)}}
+
+# Run every browser test of the chat example in the supplied Chromium, even after a failure.
+browser-test:
+    cargo nextest run --locked -p maestro-web-example --run-ignored only --no-fail-fast -E 'test(/^browser::/)'
