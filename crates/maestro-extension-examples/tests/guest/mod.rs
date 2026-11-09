@@ -3,4 +3,5 @@
 mod support;
 
 mod hello_example;
+mod pirate_example;
 mod with_deps_example;

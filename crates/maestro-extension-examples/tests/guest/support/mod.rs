@@ -1,7 +1,7 @@
 //! Loading a prepared example component into the production engine and calling what it
 //! registered.
 use maestro_extensions_wasmtime::test_support::maestro_extensions::{
-    AgentToolResult, ExtensionRunner, Local, wrap_registered_tool,
+    AgentToolResult, ExtensionRunner, Local, Presence, wrap_registered_tool,
 };
 use maestro_extensions_wasmtime::test_support::{Harness, HarnessOptions, Loaded};
 use serde_json::{Value, json};
@@ -70,4 +70,28 @@ pub async fn call_tool(
         .await
         .map(|result| result_value(&result))
         .map_err(|error| error.to_string())
+}
+
+mod ui;
+pub use ui::Notifications;
+
+/// Delivers a recorded `before_agent_start` event document to the runner as the application does
+/// and returns what the handlers answered: the replacement prompt, or null when none changed it.
+pub async fn before_agent_start(runner: &ExtensionRunner<Local>, event: &Value) -> Value {
+    let options = serde_json::from_value(event["systemPromptOptions"].clone()).unwrap();
+    let mut images = Presence::Missing;
+    let combined = runner
+        .emit_before_agent_start(
+            event["prompt"].as_str().unwrap().to_owned(),
+            &mut images,
+            event["systemPrompt"].as_str().unwrap().to_owned(),
+            options,
+        )
+        .await
+        .unwrap();
+    let Some(combined) = combined else {
+        return Value::Null;
+    };
+    assert!(combined.messages.is_none(), "no custom message is expected");
+    json!({"systemPrompt": combined.system_prompt})
 }
