@@ -41,8 +41,8 @@ examples/
   python/  typescript/   extensions in other languages
 ```
 
-`extensions/`, `python/`, `typescript/` and `web/` are here today. The other folders arrive
-with their family crates.
+`extensions/`, `sdk/`, `rpc_extension_ui.rs`, `python/`, `typescript/` and `web/` are here today.
+All folders have their family crate.
 
 ## Crates
 
@@ -53,8 +53,7 @@ with their family crates.
 | `maestro-web-example` | the browser chat example |
 | `maestro-python-example`, `maestro-typescript-example` | the other-language extensions |
 
-`maestro-extension-examples`, the browser crate and the two other-language crates exist
-today. The SDK crate arrives with its family crate.
+All four family crates and the two other-language crates exist today.
 
 ## Browser example
 
@@ -97,6 +96,53 @@ execute `just browser-build`, which builds the `chat` example for
 The program holds the exports and only the browser helpers they read. It reaches
 `maestro-web` through its public API. A helper that needs a private item exposes a gap
 in that API; report the gap.
+
+## SDK and RPC examples
+
+Run an in-process SDK sample:
+
+```sh
+cargo run -p maestro-sdk-examples --example minimal
+```
+
+Run every SDK and RPC check:
+
+```sh
+just prepare-tests
+cargo nextest run --locked -p maestro-sdk-examples
+```
+
+`maestro-sdk-examples` builds three groups of sources from `examples/` and runs
+their tests:
+
+| Source | Example target | Checks |
+|---|---|---|
+| `sdk/*.rs`, with `sdk/support/` and `sdk/tests/` | one per sample, such as `minimal` | each sample's own tests, run in-process |
+| `rpc_extension_ui.rs`, with `sdk/rpc_extension_ui/` | `rpc_extension_ui` | the terminal client's tests, and the checks of `sdk/rpc.py` under Python 3 |
+| `sdk/rpc_client_demo/` | `rpc_client_demo` | the demo's checks, in the crate's `tests/integration.rs` |
+
+The thirteen SDK samples use Maestro's scripted model provider and disposable
+configuration, so they need no credentials and make no paid request. Their tests
+need no preparation.
+
+The RPC checks start Maestro's native test peers instead of a real Maestro
+child. They cover correlated dialogs and literal replies, terminal start and
+stop, the termination marker, exit outcomes, LF and CRLF framing with U+2028
+and U+2029, refusals, early end of stream and cleanup. The `native-fixture`
+setup exports `MAESTRO_NATIVE_FIXTURE` for the `rpc_extension_ui` example
+binary and the crate's integration binary. The interactive demo's checks run
+on Unix.
+
+The Python client's checks run the shipped `examples/sdk/rpc.py` with `python3`,
+so Python 3 must be on `PATH`. Every peer is a native Rust program.
+
+Add a sample in three steps:
+
+1. Put the source in `examples/sdk/`, with its tests in a trailing `tests`
+   module.
+2. Add an `[[example]]` entry with `test = true` and a relative `path` to
+   `crates/maestro-sdk-examples/Cargo.toml`.
+3. Add its row to `examples/sdk/README.md`.
 
 ## The Maestro pin
 

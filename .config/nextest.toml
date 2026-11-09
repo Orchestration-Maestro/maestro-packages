@@ -51,3 +51,9 @@ max-threads = 1
 [[profile.default.overrides]]
 filter = "package(=maestro-extension-examples) & test(file_trigger_)"
 test-group = "file-trigger"
+
+[[profile.default.scripts]]
+# The terminal RPC client's checks and the RPC client demo's checks install Maestro's native
+# test peers.
+filter = "binary_id(maestro-sdk-examples::example/rpc_extension_ui) | binary_id(maestro-sdk-examples::integration)"
+setup = "native-fixture"
