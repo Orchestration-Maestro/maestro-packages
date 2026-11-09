@@ -15,7 +15,7 @@ name = "maestro-security-mcp"
 path = "src/bin/maestro-security-mcp.rs"
 
 [dependencies]
-maestro-extensions-wasm = { git = "https://github.com/Orchestration-Maestro/maestro" }
+maestro-extensions-wasm.workspace = true
 maestro-http = { path = "../maestro-http" }
 serde.workspace = true
 serde_json.workspace = true
@@ -27,6 +27,7 @@ rmcp = { version = "=3.7.0", features = ["transport-io"] }
 tokio.workspace = true
 
 [dev-dependencies]
+indexmap.workspace = true
 maestro-test-directory.workspace = true
 maestro-test-extension-host.workspace = true
 maestro-test-process.workspace = true
