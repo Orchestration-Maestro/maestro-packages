@@ -31,7 +31,7 @@ pre-commit:
 # Install Maestro's development tool from the pinned commit into `target/development`.
 [private]
 development:
-    cargo install --quiet --locked --git https://github.com/Orchestration-Maestro/maestro --rev 1a57f478148aa8b88a52a265b6f02aa467bc8d0f maestro-tooling --bin development --root target/development
+    cargo install --quiet --locked --git https://github.com/Orchestration-Maestro/maestro --rev 32388227f40ebc368d6374515056b3287f14cf90 maestro-tooling --bin development --root target/development
 
 # Build the example components and install the programs the tests start into `target/test-setup`.
 prepare-tests: development

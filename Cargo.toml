@@ -14,33 +14,33 @@ chrono = { version = "=0.4.45", default-features = false, features = ["std"] }
 httpdate = "=1.0.3"
 indexmap = "=2.14.2"
 js-sys = "=0.3.106"
-maestro-agent = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
-maestro-app = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
-maestro-catalog = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
-maestro-chat = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
-maestro-credentials = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
-maestro-extensions = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
-maestro-extensions-wasm = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
-maestro-extensions-wasmtime = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
-maestro-json = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
-maestro-listing = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
-maestro-lock = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
-maestro-markdown = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
-maestro-models = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
-maestro-path = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
-maestro-resources = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
-maestro-session = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
-maestro-settings = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
-maestro-test-browser = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
-maestro-test-directory = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
+maestro-agent = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "32388227f40ebc368d6374515056b3287f14cf90" }
+maestro-app = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "32388227f40ebc368d6374515056b3287f14cf90" }
+maestro-catalog = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "32388227f40ebc368d6374515056b3287f14cf90" }
+maestro-chat = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "32388227f40ebc368d6374515056b3287f14cf90" }
+maestro-credentials = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "32388227f40ebc368d6374515056b3287f14cf90" }
+maestro-extensions = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "32388227f40ebc368d6374515056b3287f14cf90" }
+maestro-extensions-wasm = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "32388227f40ebc368d6374515056b3287f14cf90" }
+maestro-extensions-wasmtime = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "32388227f40ebc368d6374515056b3287f14cf90" }
+maestro-json = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "32388227f40ebc368d6374515056b3287f14cf90" }
+maestro-listing = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "32388227f40ebc368d6374515056b3287f14cf90" }
+maestro-lock = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "32388227f40ebc368d6374515056b3287f14cf90" }
+maestro-markdown = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "32388227f40ebc368d6374515056b3287f14cf90" }
+maestro-models = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "32388227f40ebc368d6374515056b3287f14cf90" }
+maestro-path = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "32388227f40ebc368d6374515056b3287f14cf90" }
+maestro-resources = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "32388227f40ebc368d6374515056b3287f14cf90" }
+maestro-session = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "32388227f40ebc368d6374515056b3287f14cf90" }
+maestro-settings = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "32388227f40ebc368d6374515056b3287f14cf90" }
+maestro-test-browser = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "32388227f40ebc368d6374515056b3287f14cf90" }
+maestro-test-directory = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "32388227f40ebc368d6374515056b3287f14cf90" }
 maestro-test-extension-host = { path = "crates/maestro-test-extension-host" }
-maestro-test-process = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
-maestro-theme = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
-maestro-tooling = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
-maestro-tools = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
-maestro-tui = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
-maestro-tui-crossterm = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
-maestro-web = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "1a57f478148aa8b88a52a265b6f02aa467bc8d0f" }
+maestro-test-process = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "32388227f40ebc368d6374515056b3287f14cf90" }
+maestro-theme = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "32388227f40ebc368d6374515056b3287f14cf90" }
+maestro-tooling = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "32388227f40ebc368d6374515056b3287f14cf90" }
+maestro-tools = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "32388227f40ebc368d6374515056b3287f14cf90" }
+maestro-tui = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "32388227f40ebc368d6374515056b3287f14cf90" }
+maestro-tui-crossterm = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "32388227f40ebc368d6374515056b3287f14cf90" }
+maestro-web = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "32388227f40ebc368d6374515056b3287f14cf90" }
 num-traits = "=0.2.19"
 regex = "=1.13.1"
 ryu-js = "=1.0.3"
