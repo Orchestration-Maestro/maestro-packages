@@ -16,7 +16,7 @@ use std::rc::Rc;
 
 use maestro_extensions_wasm::{
     ExtensionAPI, ExtensionContext, ExtensionEvent, ExtensionEventResult, ExtensionFuture,
-    InputEventResult, InputSource, InputTransform, Presence,
+    HookFuture, InputEventResult, InputSource, InputTransform, Presence,
 };
 
 /// The instruction appended to every transformed prompt.
@@ -46,7 +46,7 @@ pub fn decide(text: &str, source: &InputSource) -> InputEventResult {
 fn input_handler(
     event: &mut ExtensionEvent,
     _ctx: ExtensionContext,
-) -> ExtensionFuture<'_, Option<ExtensionEventResult>> {
+) -> HookFuture<'_, Option<ExtensionEventResult>> {
     Box::pin(async move {
         let ExtensionEvent::Input(input) = event else {
             return Ok(None);

@@ -22,7 +22,12 @@ _check *selection:
 pre-commit:
     python3 scripts/pre_commit.py
 
+# Install Maestro's development tool at the pinned commit, then prepare the test setup with it.
+prepare-tests:
+    cargo install --locked --git https://github.com/Orchestration-Maestro/maestro --rev 1a57f478148aa8b88a52a265b6f02aa467bc8d0f maestro-tooling --bin development --root target/development
+    target/development/bin/development prepare-test-setup prepare target/test-setup "${CARGO_TARGET_DIR:-target/test-prepare}"
+
 # Run all workspace tests.
-test *args:
+test *args: prepare-tests
     cargo nextest run --workspace --locked "$@"
     cargo test --workspace --locked --doc "$@"

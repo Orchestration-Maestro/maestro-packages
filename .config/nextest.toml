@@ -1,0 +1,16 @@
+experimental = ["setup-scripts"]
+
+# Every setup runs Maestro's development tool from `target/test-setup`, where `just prepare-tests`
+# and the CI preparation stage it. The example crates add the filter rules that select each setup.
+
+[scripts.setup.author-component]
+command = "target/test-setup/development nextest-setup author-component"
+
+[scripts.setup.cargo-checks]
+command = "target/test-setup/development nextest-setup cargo-checks"
+
+[scripts.setup.native-fixture]
+command = "target/test-setup/development nextest-setup native-fixture"
+
+[scripts.setup.executable]
+command = "target/test-setup/development nextest-setup executable"

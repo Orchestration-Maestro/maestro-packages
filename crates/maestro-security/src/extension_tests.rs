@@ -1,15 +1,23 @@
 //! Behavioral checks at the registered command and listener boundary.
 use super::factory;
 use crate::autonomy;
+use indexmap::IndexMap;
+use maestro_extensions_wasm::bindings::maestro::extension::host::{
+    FrontmatterDocument, FrontmatterToken, HostOperation,
+};
+use maestro_extensions_wasm::io::NativeIo;
 use maestro_extensions_wasm::{
-    AbortSignal, CallbackEmitter, CallbackEmitterPort, CommandContextPort, CommandOptions,
-    CompactOptions, ContextPort, ContextUsage, CustomMessageInput, EventBus, EventBusPort,
-    EventListener, ExtensionAPI, ExtensionCommandContext, ExtensionFuture, ExtensionHandler,
-    ExtensionHost, ExtensionResult, ExtensionUIContext, FlagOptions, FlagValue, ForkOptions,
-    MessageRenderer, Model, ModelRegistry, NavigateTreeOptions, NewSessionCommandOptions,
+    AbortSignal, AuthStorage, AuthStorageBackend, AuthStorageData, BashOperations, BashToolOptions,
+    CallbackEmitter, CallbackEmitterPort, CommandContextPort, CommandOptions, CompactOptions,
+    ContextPort, ContextUsage, CustomMessageInput, EditToolOptions, EventBus, EventBusPort,
+    EventListener, ExecOptions, ExecResult, ExtensionAPI, ExtensionCommandContext, ExtensionFuture,
+    ExtensionHandler, ExtensionHost, ExtensionResult, ExtensionUIContext, FindToolOptions,
+    FlagOptions, FlagValue, ForkOptions, GrepToolOptions, LsToolOptions, MessageRenderer, Model,
+    ModelRegistry, NavigateTreeOptions, NewSessionCommandOptions, ProviderConfig, ReadToolOptions,
     ReadonlySessionManager, SendMessageOptions, SendUserMessageOptions, SessionChangeResult,
     ShortcutOptions, SlashCommandInfo, Subscription, SubscriptionPort, SwitchSessionOptions,
-    ThinkingLevel, ToolDefinition, ToolInfo, UserContent,
+    ThinkingLevel, Tool, ToolDef, ToolDefinition, ToolInfo, ToolName, ToolsOptions, UserContent,
+    WriteToolOptions,
 };
 use serde_json::{Value, json};
 use std::{
@@ -40,7 +48,75 @@ struct Host {
 }
 /// API adapter sharing the recording bus owner.
 struct ApiHost(Rc<Host>);
+/// The refusal of every host capability the tests never reach.
+const UNUSED: &str = "unused capability";
+/// Implements fallible host methods the tests never reach as refusals.
+macro_rules! unused {
+    ($($name:ident($($argument:ty),*) -> $value:ty;)*) => {
+        $(fn $name(&self, $(_: $argument),*) -> ExtensionResult<$value> {
+            Err(UNUSED.into())
+        })*
+    };
+}
 impl ExtensionHost for ApiHost {
+    unused! {
+        native_format_size(f64) -> String;
+        contribute_load_time(Value) -> ();
+        native_frontmatter(&str) -> FrontmatterDocument;
+        native_yaml(&str) -> Vec<FrontmatterToken>;
+        native_helper(&str, &str) -> String;
+        create_auth_storage(Option<&str>) -> AuthStorage;
+        auth_storage_from_backend(Rc<dyn AuthStorageBackend>) -> AuthStorage;
+        auth_storage_in_memory(AuthStorageData) -> AuthStorage;
+        create_model_registry(AuthStorage, Option<&str>) -> ModelRegistry;
+        in_memory_model_registry(AuthStorage) -> ModelRegistry;
+        create_local_bash_operations(Option<String>) -> BashOperations;
+        create_bash_tool(String, BashToolOptions) -> Tool;
+        create_bash_tool_definition(String, BashToolOptions) -> ToolDefinition;
+        create_read_tool(String, ReadToolOptions) -> Tool;
+        create_read_tool_definition(String, ReadToolOptions) -> ToolDefinition;
+        create_write_tool(String, WriteToolOptions) -> Tool;
+        create_write_tool_definition(String, WriteToolOptions) -> ToolDefinition;
+        create_edit_tool(String, EditToolOptions) -> Tool;
+        create_edit_tool_definition(String, EditToolOptions) -> ToolDefinition;
+        create_ls_tool(String, LsToolOptions) -> Tool;
+        create_ls_tool_definition(String, LsToolOptions) -> ToolDefinition;
+        create_find_tool(String, FindToolOptions) -> Tool;
+        create_find_tool_definition(String, FindToolOptions) -> ToolDefinition;
+        create_grep_tool(String, GrepToolOptions) -> Tool;
+        create_grep_tool_definition(String, GrepToolOptions) -> ToolDefinition;
+        create_tool(&str, String, ToolsOptions) -> Tool;
+        create_tool_definition(&str, String, ToolsOptions) -> ToolDef;
+        create_coding_tools(String, ToolsOptions) -> Vec<Tool>;
+        create_coding_tool_definitions(String, ToolsOptions) -> Vec<ToolDef>;
+        create_read_only_tools(String, ToolsOptions) -> Vec<Tool>;
+        create_read_only_tool_definitions(String, ToolsOptions) -> Vec<ToolDef>;
+        create_all_tools(String, ToolsOptions) -> IndexMap<ToolName, Tool>;
+        create_all_tool_definitions(String, ToolsOptions) -> IndexMap<ToolName, ToolDef>;
+        register_provider(&str, ProviderConfig) -> ();
+        unregister_provider(&str) -> ();
+    }
+    fn call_host_operation(&self, _operation: HostOperation) -> ExtensionFuture<'_, Value> {
+        Box::pin(async { Err(UNUSED.into()) })
+    }
+    fn exec<'a>(
+        &'a self,
+        _command: &'a str,
+        _args: &'a [String],
+        _options: Option<ExecOptions>,
+    ) -> ExtensionFuture<'a, ExecResult> {
+        Box::pin(async { Err(UNUSED.into()) })
+    }
+    fn with_file_mutation_queue(
+        &self,
+        _file_path: String,
+        _operation: Box<dyn FnOnce() -> ExtensionFuture<'static, ()>>,
+    ) -> ExtensionFuture<'static, ()> {
+        Box::pin(async { Err(UNUSED.into()) })
+    }
+    fn native_io(&self) -> Rc<dyn NativeIo> {
+        panic!("{UNUSED}")
+    }
     fn on(&self, _event: &str, _handler: ExtensionHandler) -> ExtensionResult<()> {
         Err("unused capability".into())
     }

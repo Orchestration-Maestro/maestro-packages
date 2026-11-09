@@ -8,7 +8,7 @@ is a separate reference.
 
 ## Repository-specific
 
-- Community extensions only: capability and default-on packages live in the core repository; this repository ships optional, community-published packages.
+- This repository holds community extensions and Maestro's examples, in every language. Capability and default-on packages live in the core repository; the extensions here are optional, community-published packages.
 - Every issue is labelled `packages` and opens with "Repository: maestro-packages".
 - Issue tracker: see `docs/agents/issue-tracker.md`.
 - Triage labels: see `docs/agents/triage-labels.md`.

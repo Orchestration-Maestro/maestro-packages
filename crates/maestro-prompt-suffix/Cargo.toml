@@ -11,7 +11,7 @@ name = "maestro_prompt_suffix"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-maestro-extensions-wasm = { git = "https://github.com/Orchestration-Maestro/maestro" }
+maestro-extensions-wasm.workspace = true
 
 [lints]
 workspace = true

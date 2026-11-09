@@ -39,6 +39,8 @@ fn assess_tool() -> ToolDefinition {
             execution_mode: Presence::Missing,
         },
         prepare_arguments: None,
+        render_call: None,
+        render_result: None,
         execute: Rc::new(|_, params, _, _, _| {
             Box::pin(async move {
                 let params: AssessParams =
@@ -48,7 +50,7 @@ fn assess_tool() -> ToolDefinition {
                 let details = serde_json::to_string(&report).map_err(|error| error.to_string())?;
                 Ok(AgentToolResult {
                     content: vec![UserBlock::Text(TextContent::new(human_summary(&report)))],
-                    details: Presence::Present(details),
+                    details: Presence::Present(details.into()),
                     terminate: Presence::Missing,
                 })
             })
@@ -70,6 +72,8 @@ fn evidence_tool() -> ToolDefinition {
             execution_mode: Presence::Missing,
         },
         prepare_arguments: None,
+        render_call: None,
+        render_result: None,
         execute: Rc::new(|_, params, _, _, _| {
             Box::pin(async move {
                 let params: EvidenceParams =
@@ -82,7 +86,7 @@ fn evidence_tool() -> ToolDefinition {
                         params.run_id,
                         ledger.len()
                     )))],
-                    details: Presence::Present(ledger),
+                    details: Presence::Present(ledger.into()),
                     terminate: Presence::Missing,
                 })
             })
@@ -143,6 +147,8 @@ fn workspace_tool() -> ToolDefinition {
             execution_mode: Presence::Missing,
         },
         prepare_arguments: None,
+        render_call: None,
+        render_result: None,
         execute: Rc::new(|_, params, _, _, _| {
             Box::pin(async move {
                 let text = tools::run_workspace(&params)
@@ -171,6 +177,8 @@ fn doctor_tool() -> ToolDefinition {
             execution_mode: Presence::Missing,
         },
         prepare_arguments: None,
+        render_call: None,
+        render_result: None,
         execute: Rc::new(|_, _, _, _, _| {
             Box::pin(async move {
                 let text =
@@ -199,6 +207,8 @@ fn route_tool() -> ToolDefinition {
             execution_mode: Presence::Missing,
         },
         prepare_arguments: None,
+        render_call: None,
+        render_result: None,
         execute: Rc::new(|_, params, _, _, _| {
             Box::pin(async move {
                 let text =
@@ -227,6 +237,8 @@ fn report_page_tool() -> ToolDefinition {
             execution_mode: Presence::Missing,
         },
         prepare_arguments: None,
+        render_call: None,
+        render_result: None,
         execute: Rc::new(|_, params, _, _, _| {
             Box::pin(async move {
                 let html = tools::run_report_page(&params)
@@ -255,6 +267,8 @@ fn evidence_page_tool() -> ToolDefinition {
             execution_mode: Presence::Missing,
         },
         prepare_arguments: None,
+        render_call: None,
+        render_result: None,
         execute: Rc::new(|_, params, _, _, _| {
             Box::pin(async move {
                 let html = tools::run_evidence_page(&params)
@@ -283,6 +297,8 @@ fn validate_tool() -> ToolDefinition {
             execution_mode: Presence::Missing,
         },
         prepare_arguments: None,
+        render_call: None,
+        render_result: None,
         execute: Rc::new(|_, params, _, _, _| {
             Box::pin(async move {
                 let text = tools::run_validate(&params)
@@ -311,6 +327,8 @@ fn disclose_tool() -> ToolDefinition {
             execution_mode: Presence::Missing,
         },
         prepare_arguments: None,
+        render_call: None,
+        render_result: None,
         execute: Rc::new(|_, params, _, _, _| {
             Box::pin(async move {
                 let text = tools::run_disclose(&params)
