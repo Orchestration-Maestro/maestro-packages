@@ -18,3 +18,9 @@ All are development dependencies of the examples crate; the crate itself has
 no production code. `wasmtime` and `wasmtime-wasi` reach the lock through
 Maestro's host crates at the git commit Maestro pins, which is why
 `.github/ci.toml` allows the `bytecodealliance/wasmtime` source.
+
+The crate also lists Maestro's executable package, `maestro`, as a git development
+dependency at the same pin. The package has no library target, so Cargo ignores the
+dependency when it builds, and it still locks the package at the commit that
+`just prepare-tests` installs the executable from. Cargo prints one warning for it on
+each invocation.
