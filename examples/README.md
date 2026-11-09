@@ -1,4 +1,15 @@
-# Non-Rust guest toolchains
+# Examples
+
+This folder holds Maestro's examples, in every language. Each folder below
+has its own index page.
+
+| Path | Purpose |
+| --- | --- |
+| [extensions/](extensions/) | Extensions that register tools, commands, event handlers and interface components, built as WebAssembly components. |
+| [python/](python/) | An extension written in Python and compiled to a component. |
+| [typescript/](typescript/) | An extension written in TypeScript and compiled to a component. |
+
+## Non-Rust guest toolchains
 
 Tracking: [#41](https://github.com/Orchestration-Maestro/maestro-packages/issues/41).
 
@@ -10,7 +21,7 @@ Tracking: [#41](https://github.com/Orchestration-Maestro/maestro-packages/issues
 
 No Rust guest SDK or altered WIT is shipped.
 
-## World inspected
+### World inspected
 
 Repository: <https://github.com/Orchestration-Maestro/maestro>
 
@@ -35,7 +46,7 @@ Generating declarations alone does not qualify an extension against this world.
 The TypeScript example ran against a host built from a later revision,
 `c9db49dc50b938c8804c9af29f21d7780691c49d`, whose WIT directory is byte-identical.
 
-## Matching host
+### Matching host
 
 The released Python compiler's runtime failure was reproduced with Maestro built
 from the exact revision above, not an older executable with missing imports.
@@ -62,7 +73,7 @@ before artifact retrieval. The executable reports `0.1.0`; its SHA-256 is:
 
 An earlier interrupted build had no valid receipt and was not accepted.
 
-## Verification environment
+### Verification environment
 
 The earlier diagnostics compiled on the remote build host through the approved build
 wrapper on 2026-10-28. Observed versions: jco 1.39.0, componentize-py 0.25.1 and

@@ -6,11 +6,35 @@ experimental = ["setup-scripts"]
 [scripts.setup.author-component]
 command = "target/test-setup/development nextest-setup author-component"
 
+[[profile.default.scripts]]
+filter = "package(=maestro-extension-examples)"
+setup = "author-component"
+
 [scripts.setup.cargo-checks]
 command = "target/test-setup/development nextest-setup cargo-checks"
+
+[[profile.default.scripts]]
+filter = "package(=maestro-extension-examples) & test(/^host::extension_guide::/)"
+setup = "cargo-checks"
 
 [scripts.setup.native-fixture]
 command = "target/test-setup/development nextest-setup native-fixture"
 
+[[profile.default.scripts]]
+filter = "package(=maestro-extension-examples)"
+setup = "native-fixture"
+
 [scripts.setup.executable]
 command = "target/test-setup/development nextest-setup executable"
+
+[[profile.default.scripts]]
+filter = "package(=maestro-extension-examples) & test(/^executable::/)"
+setup = "executable"
+
+# The file-trigger examples watch one shared kind of file event, so they run one at a time.
+[test-groups.file-trigger]
+max-threads = 1
+
+[[profile.default.overrides]]
+filter = "package(=maestro-extension-examples) & test(file_trigger_)"
+test-group = "file-trigger"
