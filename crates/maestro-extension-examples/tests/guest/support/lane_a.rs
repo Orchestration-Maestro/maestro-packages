@@ -2,9 +2,17 @@
 //! dialogs from a script, and a reader for styled text.
 use maestro_extensions_wasmtime::test_support::maestro_extensions::{
     EventError, ExtensionRunner, ExtensionUIContext, Local, WorkingIndicatorOptions,
+    footer_data_provider::{ExtensionStatuses, ReadonlyFooterDataProvider},
     types::{
-        ExtensionUIContextPort, ExtensionUIDialogOptions, ExtensionUIFuture, NotificationType,
+        EditorFactory, EditorFactoryOutcome, ExtensionComponent, ExtensionKeybindings,
+        ExtensionUIContextPort, ExtensionUIDialogOptions, ExtensionUIFuture, FooterFactory,
+        NotificationType,
     },
+};
+use maestro_tui::{
+    TUI, TerminalImage,
+    test_support::{manual_runtime::ManualRuntime, recording_terminal::RecordingTerminal},
+    tui::{LocalFuture, LogContext, RenderCallback, RenderTimer, TuiRuntime},
 };
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
@@ -24,6 +32,89 @@ pub struct Ui {
     selections: RefCell<VecDeque<Option<String>>>,
     /// Answers to confirmation dialogs, consumed in order.
     confirmations: RefCell<VecDeque<bool>>,
+    /// The terminal the installed components draw on, when the test supplied one.
+    screen: Option<Screen>,
+    /// The editor the extension installed.
+    editor: RefCell<Option<EditorFactoryOutcome>>,
+    /// The footer factory the extension installed.
+    footer: RefCell<Option<FooterFactory>>,
+}
+
+/// A started terminal on a manual runtime whose scheduled work the test runs.
+#[derive(Clone)]
+pub struct Screen {
+    /// The terminal factories receive.
+    pub tui: TUI,
+    /// The runtime whose scheduled work `settle` runs.
+    pub runtime: ManualRuntime,
+    /// Wakes a waiter whenever the terminal schedules a redraw.
+    pub redraws: Rc<Notify>,
+}
+
+/// The manual runtime, announcing each redraw it is asked to schedule.
+struct Announcing {
+    /// The runtime that keeps the scheduled work.
+    inner: Rc<dyn TuiRuntime>,
+    /// Wakes the test.
+    redraws: Rc<Notify>,
+}
+
+impl TuiRuntime for Announcing {
+    fn now(&self) -> std::time::Duration {
+        self.inner.now()
+    }
+
+    fn schedule(
+        &self,
+        delay: std::time::Duration,
+        callback: RenderCallback,
+    ) -> Box<dyn RenderTimer> {
+        self.redraws.notify_one();
+        self.inner.schedule(delay, callback)
+    }
+
+    fn spawn_local(&self, future: LocalFuture) {
+        self.inner.spawn_local(future);
+    }
+
+    fn log_context(&self) -> LogContext {
+        self.inner.log_context()
+    }
+}
+
+/// Consumes a redraw announcement that arrived before anyone waited for it.
+pub fn drain(redraws: &Notify) {
+    let mut waiting = std::pin::pin!(redraws.notified());
+    let _ = waiting
+        .as_mut()
+        .poll(&mut std::task::Context::from_waker(std::task::Waker::noop()));
+}
+
+impl Screen {
+    /// Starts an 80 by 24 terminal.
+    pub fn new() -> Self {
+        let terminal = RecordingTerminal::new(80, 24);
+        let runtime = ManualRuntime::new();
+        let redraws = Rc::new(Notify::new());
+        let announcing = Announcing {
+            inner: runtime.handle(),
+            redraws: redraws.clone(),
+        };
+        let tui = TUI::new(
+            terminal.handle(),
+            Rc::new(announcing),
+            TerminalImage::default(),
+            Some(false),
+        );
+        tui.start().unwrap();
+        runtime.settle().unwrap();
+        drain(&redraws);
+        Self {
+            tui,
+            runtime,
+            redraws,
+        }
+    }
 }
 
 impl Ui {
@@ -32,6 +123,34 @@ impl Ui {
         let ui = Rc::new(Self::default());
         runner.set_ui_context(Some(ExtensionUIContext::new(ui.clone())));
         ui
+    }
+
+    /// Installs a recording UI whose editors and footers draw on a started terminal.
+    pub fn install_with_screen(runner: &ExtensionRunner<Local>) -> Rc<Self> {
+        let ui = Rc::new(Self {
+            screen: Some(Screen::new()),
+            ..Self::default()
+        });
+        runner.set_ui_context(Some(ExtensionUIContext::new(ui.clone())));
+        ui
+    }
+
+    /// The terminal the installed components draw on.
+    pub fn screen(&self) -> &Screen {
+        self.screen.as_ref().expect("a UI installed with a screen")
+    }
+
+    /// The editor the extension installed, once it did.
+    pub fn editor(&self) -> EditorFactoryOutcome {
+        self.editor.borrow().clone().expect("an installed editor")
+    }
+
+    /// Builds the footer the extension installed over `provider`.
+    pub fn build_footer(&self, provider: Rc<dyn ReadonlyFooterDataProvider>) -> ExtensionComponent {
+        let factory = self.footer.borrow().clone().expect("an installed footer");
+        factory
+            .call((self.screen().tui.clone(), self.theme(), provider))
+            .unwrap()
     }
 
     /// Makes the next `method` request fail with `message`.
@@ -141,6 +260,65 @@ impl ExtensionUIContextPort for Ui {
 
     fn set_title(&self, title: String) -> Result<(), EventError> {
         self.record("setTitle", json!([title]))
+    }
+
+    fn set_footer(&self, factory: Option<FooterFactory>) -> Result<(), EventError> {
+        let installed = factory.is_some();
+        self.footer.replace(factory);
+        self.record("setFooter", json!([installed]))
+    }
+
+    fn set_editor_component(&self, factory: Option<EditorFactory>) -> Result<(), EventError> {
+        let installed = factory.is_some();
+        let keybindings = ExtensionKeybindings {
+            manager: maestro_tui::KeybindingsManager::new(
+                maestro_tui::TUI_KEYBINDINGS.clone(),
+                Vec::new(),
+            ),
+            reload: None,
+        };
+        let built = match (factory, &self.screen) {
+            (Some(factory), Some(screen)) => {
+                let theme = maestro_theme::get_editor_theme(self.theme());
+                Some(factory.call((screen.tui.clone(), theme, keybindings))?)
+            }
+            _ => None,
+        };
+        self.editor.replace(built);
+        self.record("setEditorComponent", json!([installed]))
+    }
+}
+
+/// Footer metadata a test controls: the branch, and the callbacks to run when it changes.
+#[derive(Default)]
+pub struct Metadata {
+    /// The branch the footer shows.
+    pub branch: RefCell<Option<String>>,
+    /// The branch-change callbacks the footer registered.
+    pub listeners: Rc<RefCell<Vec<Rc<dyn Fn()>>>>,
+}
+
+impl ReadonlyFooterDataProvider for Metadata {
+    fn get_git_branch(&self) -> Option<String> {
+        self.branch.borrow().clone()
+    }
+
+    fn get_extension_statuses(&self) -> ExtensionStatuses {
+        ExtensionStatuses::default()
+    }
+
+    fn get_available_provider_count(&self) -> f64 {
+        0.0
+    }
+
+    fn on_branch_change(&self, callback: Rc<dyn Fn()>) -> Box<dyn Fn()> {
+        self.listeners.borrow_mut().push(callback.clone());
+        let listeners = self.listeners.clone();
+        Box::new(move || {
+            listeners
+                .borrow_mut()
+                .retain(|registered| !Rc::ptr_eq(registered, &callback));
+        })
     }
 }
 
@@ -275,4 +453,145 @@ pub async fn load_native(
         runner,
         errors: loaded.errors,
     }
+}
+
+/// Supports no language, so rendering never classifies code.
+struct Plain;
+
+impl maestro_theme::SyntaxHighlighter for Plain {
+    fn supports_language(&self, _: &str) -> bool {
+        false
+    }
+
+    fn highlight(
+        &self,
+        _: &str,
+        _: &str,
+    ) -> Result<Vec<maestro_theme::SyntaxSpan>, Box<dyn std::error::Error + Send + Sync>> {
+        Ok(Vec::new())
+    }
+}
+
+/// The dark theme tools render with.
+fn dark() -> maestro_theme::LiveTheme {
+    maestro_theme::LiveTheme::from_theme(
+        maestro_theme::test_support::palette::palette("dark").unwrap(),
+    )
+}
+
+/// The registered tool `name`, which must exist.
+fn registered(
+    runner: &ExtensionRunner<Local>,
+    name: &str,
+) -> maestro_extensions_wasmtime::test_support::maestro_extensions::RegisteredTool<Local> {
+    runner
+        .get_all_registered_tools()
+        .into_iter()
+        .find(|tool| tool.metadata().definition.name == name)
+        .unwrap_or_else(|| panic!("no tool named {name}"))
+}
+
+/// A row's render context: completed arguments, the expansion and whether the call is partial.
+fn row_context<'a>(
+    args: &'a Value,
+    rows: &'a maestro_extensions_wasmtime::test_support::maestro_extensions::ToolRendererState,
+    expanded: bool,
+    partial: bool,
+) -> maestro_extensions_wasmtime::test_support::maestro_extensions::ToolRenderContext<
+    'a,
+    maestro_extensions_wasmtime::test_support::maestro_extensions::ToolRendererState,
+> {
+    use maestro_extensions_wasmtime::test_support::maestro_extensions::{
+        ToolRenderContext, ToolRenderEnvironment, ToolRenderPhase,
+    };
+    let environment = Rc::new(ToolRenderEnvironment {
+        runtime: ManualRuntime::new().handle(),
+        readme_path: String::new(),
+        live_theme: maestro_theme::LiveTheme::default(),
+        highlighter: Rc::new(Plain),
+        terminal_image: TerminalImage::default(),
+    });
+    ToolRenderContext {
+        args: Some(args),
+        tool_call_id: "call".into(),
+        invalidate: Rc::new(|| {}),
+        environment,
+        last_component: None,
+        state: Rc::new(RefCell::new(rows.clone())),
+        renderer_state: Some(rows),
+        cwd: "/work".into(),
+        phase: ToolRenderPhase {
+            execution_started: true,
+            args_complete: true,
+            is_partial: partial,
+        },
+        expanded,
+        show_images: false,
+        is_error: false,
+    }
+}
+
+/// The unstyled rows, without their trailing padding, the registered tool `name` draws for a
+/// call with `args`.
+pub fn render_call(runner: &ExtensionRunner<Local>, name: &str, args: &Value) -> Vec<String> {
+    use maestro_tui::tui::Component;
+    let rows =
+        maestro_extensions_wasmtime::test_support::maestro_extensions::ToolRendererState::default();
+    let context = row_context(args, &rows, false, false);
+    registered(runner, name)
+        .renderer_binding()
+        .unwrap()
+        .render_call
+        .unwrap()(Some(args), &dark(), &context)
+    .unwrap()
+    .try_render(200)
+    .unwrap()
+    .iter()
+    .map(|row| plain(row).trim_end().to_owned())
+    .collect()
+}
+
+/// The unstyled rows the registered tool `name` draws for a result in the given state.
+pub fn render_result(
+    runner: &ExtensionRunner<Local>,
+    name: &str,
+    args: &Value,
+    result: &Value,
+    flags: [bool; 2],
+) -> Vec<String> {
+    use maestro_extensions_wasmtime::test_support::maestro_extensions::{
+        ToolRenderResultLike, ToolRenderResultOptions, ToolRendererState,
+    };
+    use maestro_tui::tui::Component;
+    let [expanded, partial] = flags;
+    let content: Vec<_> = serde_json::from_value(result["content"].clone()).unwrap();
+    let like = ToolRenderResultLike {
+        content: &content,
+        details: result.get("details"),
+        terminate: None,
+        is_error: Some(false),
+    };
+    let rows = ToolRendererState::default();
+    let context = row_context(args, &rows, expanded, partial);
+    registered(runner, name)
+        .renderer_binding()
+        .unwrap()
+        .render_result
+        .unwrap()
+        .prepare(like)
+        .unwrap()
+        .render(
+            ToolRenderResultOptions {
+                expanded,
+                is_partial: partial,
+            },
+            &dark(),
+            &context,
+        )
+        .unwrap()
+        .try_render(200)
+        .unwrap()
+        .iter()
+        .map(|row| plain(row).trim_end().to_owned())
+        .collect()
 }
