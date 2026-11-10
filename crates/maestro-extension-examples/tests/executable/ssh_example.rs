@@ -92,28 +92,14 @@ fn isolated(name: &str) -> bool {
     let root = maestro_test_directory::Scratch::new().unwrap();
     std::fs::create_dir(root.path().join("remote")).unwrap();
     let ssh = root.path().join("ssh");
-    std::fs::write(
-        &ssh,
-        r"#!/usr/bin/python3
-import json, os, sys
-from pathlib import Path
-root = Path(__file__).parent
-with (root / 'calls.jsonl').open('a') as log:
-    log.write(json.dumps(sys.argv[1:]) + '\n')
-assert sys.argv[1] == '--', sys.argv
-if sys.argv[2] == 'user@broken':
-    sys.stderr.write('controlled connection failure')
-    sys.exit(37)
-if sys.argv[3].startswith('cat > ') and 'early-write.txt' in sys.argv[3]:
-    sys.stderr.write('controlled remote write rejection')
-    sys.exit(38)
-assert sys.argv[2] == 'user@controlled', sys.argv
-os.chdir(root / 'remote')
-os.execv('/bin/bash', ['bash', '-c', sys.argv[3]])
-",
+    std::fs::copy(env!("CARGO_BIN_EXE_ssh-stand-in"), &ssh).unwrap();
+    std::fs::set_permissions(ssh, std::fs::Permissions::from_mode(0o700)).unwrap();
+    maestro_test_process::install_family(
+        &root.path().join("pause"),
+        "chat",
+        r#"{"scenario":"pause"}"#,
     )
     .unwrap();
-    std::fs::set_permissions(ssh, std::fs::Permissions::from_mode(0o755)).unwrap();
     let environment = BTreeMap::from([
         (
             "PATH",
@@ -309,7 +295,7 @@ async fn shell_interruptions(operations: &dyn maestro_app::BashOperations<Local>
     let mut abort = |_: &[u8]| signal.abort();
     let error = operations
         .exec(
-            "printf ready; exec /bin/sleep 60",
+            "printf ready; exec pause",
             cwd,
             BashExecOptions {
                 on_data: &mut abort,
