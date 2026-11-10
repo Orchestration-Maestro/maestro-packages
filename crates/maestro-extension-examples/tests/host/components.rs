@@ -8,6 +8,12 @@ pub fn local<T>(test: impl Future<Output = T>) -> T {
     maestro_extensions_wasmtime::test_support::local(test).unwrap()
 }
 
+/// Copies the prepared component the setup variable `component` names to `artifact`.
+pub fn place(component: &str, artifact: &Path) {
+    std::fs::create_dir_all(artifact.parent().unwrap()).unwrap();
+    std::fs::copy(super::support::component(component).unwrap(), artifact).unwrap();
+}
+
 /// Loads every module path through the artifact factory, as an application's module loader does.
 pub fn loader() -> ModuleLoader<Local> {
     Rc::new(|path: &str| {

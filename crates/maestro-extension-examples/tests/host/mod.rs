@@ -17,6 +17,7 @@ mod auto_commit_on_exit_example;
 mod bash_spawn_hook_example;
 mod border_status_editor_example;
 mod custom_compaction_example;
+mod dynamic_resources_example;
 mod extension_guide;
 mod git_checkpoint_example;
 mod handoff_example;
