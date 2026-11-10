@@ -260,6 +260,11 @@ path = "../../examples/extensions/space_invaders.rs"
 crate-type = ["cdylib"]
 
 [[example]]
+name = "ssh"
+path = "../../examples/extensions/ssh.rs"
+crate-type = ["cdylib"]
+
+[[example]]
 name = "status_line"
 path = "../../examples/extensions/status_line.rs"
 crate-type = ["cdylib"]
@@ -343,6 +348,7 @@ crate-type = ["cdylib"]
 [dependencies]
 maestro-extensions-wasm.workspace = true
 maestro-listing.workspace = true
+maestro-text.workspace = true
 
 [dev-dependencies]
 chrono.workspace = true
@@ -380,6 +386,10 @@ tokio = { workspace = true, features = ["test-util"] }
 [[test]]
 name = "integration"
 path = "tests/integration.rs"
+
+[[bin]]
+name = "ssh-stand-in"
+path = "tests/ssh_stand_in.rs"
 
 [lints]
 workspace = true
