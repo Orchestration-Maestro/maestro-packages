@@ -3,7 +3,7 @@
 use maestro_extensions::{ExtensionRunner, Local, discover_and_load_extensions};
 use maestro_test_directory::Scratch;
 use serde_json::json;
-use std::{path::PathBuf, rc::Rc, sync::RwLock, time::Instant};
+use std::{path::PathBuf, rc::Rc, sync::RwLock};
 
 /// The guide's manifest is the fixture project's manifest, byte for byte.
 #[test]
@@ -50,7 +50,6 @@ fn prepared_extension_guide_runs_without_a_build_toolchain() {
 /// The prepared guide component loads in a clean folder and invokes a live greeting tool.
 #[test]
 fn extension_guide_loads_and_invokes_from_a_clean_folder() {
-    let started = Instant::now();
     let (scratch, component) = project();
     let root = scratch.path();
     let extension = root.join(".maestro/extensions/hello");
@@ -89,5 +88,4 @@ fn extension_guide_loads_and_invokes_from_a_clean_folder() {
         );
         assert_eq!(result.details, Some(json!({"greeted":"Ada"})));
     });
-    eprintln!("native discovery and invocation: {:?}", started.elapsed());
 }
