@@ -3,3 +3,4 @@
 
 mod browser;
 mod serve;
+mod shipped_pack;

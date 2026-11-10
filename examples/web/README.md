@@ -26,16 +26,18 @@ directory with `miniserve`. Each extra argument goes to `miniserve` as given. Mi
 
 | File | Role |
 |---|---|
-| `chat.rs` | Starts the example in the page's `app` element and builds the page operands |
+| `chat.rs` | Starts the example in the page's `app` element and builds the page operands, reading Maestro's brand pack with `BrandPack::shipped()` |
 | `chat/app.rs` | Wires the stores, the chat screen, the header and session restore |
 | `chat/title.rs` | Derives, shows and edits the session title |
 | `chat/custom_messages.rs` | Adds the example's own notification message type |
 | `chat/index.html` | The page that loads the module |
-| `assets/brand/brand.json` | Maestro's shipped brand pack, copied until `maestro-theme` exposes it |
 
 `crates/maestro-web-example` builds `chat.rs` as a `cdylib` example and runs the
 browser tests. The example reaches Maestro only through the public API of
-`maestro-web`, `maestro-app` and `maestro-theme`, at the pinned revision.
+`maestro-web`, `maestro-app` and `maestro-theme`, at the pinned revision. It holds no
+copy of Maestro's code or data: the brand pack comes from `maestro_theme::BrandPack::shipped()`,
+and the native test `shipped_pack::example_and_browser_tests_carry_no_brand_pack_copy` fails if a
+`brand.json` appears under `examples` or the crate's tests.
 
 ## What it shows
 

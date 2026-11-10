@@ -88,7 +88,8 @@ execute `just browser-build`, which builds the `chat` example for
 `wasm32-unknown-unknown` and binds it. A startup that no longer compiles fails the run.
 
 The program holds the exports and only the browser helpers they read. It reaches
-`maestro-web` through its public API. A helper that needs a private item exposes a gap
+`maestro-web` through its public API and reads the brand pack with
+`BrandPack::shipped()`; the repository holds no copy of the pack. A helper that needs a private item exposes a gap
 in that API; report the gap.
 
 ## The Maestro pin

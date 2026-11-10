@@ -31,7 +31,7 @@ pub(crate) fn view() -> Rc<DomView> {
         document: document(),
         i18n: Rc::new(I18n::new(Rc::new(crate::support::Host::default())).unwrap()),
         highlighter: Rc::new(maestro_theme::SyntectHighlighter::new().unwrap()),
-        pack: Rc::new(crate::brand::pack("brand.json").unwrap()),
+        pack: Rc::new(maestro_theme::BrandPack::shipped().unwrap()),
         mode: maestro_theme::BrandMode::Dark,
         tool_renderers: Rc::default(),
     })
