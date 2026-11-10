@@ -178,3 +178,101 @@ pub fn failures(runner: &ExtensionRunner<Local>) -> Rc<RefCell<Vec<String>>> {
     std::mem::forget(remove);
     seen
 }
+
+/// A harness whose session reports `cwd`, with the code cache the run compiled.
+pub fn harness_in(cwd: &str) -> maestro_extensions_wasmtime::test_support::Harness {
+    use maestro_extensions_wasmtime::test_support::{Harness, HarnessOptions};
+    let options = HarnessOptions {
+        agent_dir: maestro_test_process::run_agent_directory().unwrap_or_default(),
+        ..HarnessOptions::default()
+    };
+    Harness::new(cwd, options).unwrap()
+}
+
+/// Runs a test body on a local task set whose runtime has the timer and process drivers that
+/// components waiting on the clock or on child processes need.
+pub fn local_io<T>(test: impl Future<Output = T>) -> T {
+    maestro_test_process::executor::block_on(test).unwrap()
+}
+
+/// Runs a test body on a local task set it can hand to the application's native effects.
+pub fn local_native<F: Future>(test: impl FnOnce(Rc<tokio::task::LocalSet>) -> F) -> F::Output {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    let local = Rc::new(tokio::task::LocalSet::new());
+    local.block_on(&runtime, test(local.clone()))
+}
+
+/// Loads the component `variable` names into `harness` with the application's native effects
+/// (file watches, child processes, HTTP), which the harness's own loader does not supply.
+pub async fn load_native(
+    harness: &maestro_extensions_wasmtime::test_support::Harness,
+    variable: &str,
+    local: &Rc<tokio::task::LocalSet>,
+) -> maestro_extensions_wasmtime::test_support::Loaded {
+    use maestro_extensions_wasmtime::test_support::{
+        maestro_extensions::{
+            ExtensionCommandContextActions, ExtensionExecution, ExtensionWidgets, LiveTheme,
+            ModuleLoader, load_extensions_with_runtime,
+            runner::ExtensionRunnerSession,
+            test_support::{ToolkitWidgets, diagnostics},
+            types::ProviderActions,
+        },
+        unconfigured_command_operations, unconfigured_context_actions,
+    };
+    let io = maestro_app::extension_native_io::extension_native_io(local);
+    let widgets: Rc<dyn ExtensionWidgets> =
+        Rc::new(ToolkitWidgets::new(LiveTheme::default()).unwrap());
+    let agent_dir = maestro_test_process::run_agent_directory().unwrap_or_default();
+    let loader: ModuleLoader<Local> = Rc::new(move |path: &str| {
+        let factory = maestro_extensions_wasmtime::artifact_factory_with_io(
+            path.to_owned(),
+            widgets.clone(),
+            maestro_extensions_wasmtime::Installation {
+                version: env!("CARGO_PKG_VERSION").into(),
+                agent_dir: agent_dir.clone(),
+            },
+            io.clone(),
+            None,
+        );
+        Box::pin(std::future::ready(Ok(Some(factory))))
+    });
+    let loaded = load_extensions_with_runtime(
+        vec![super::support::component(variable)],
+        &harness.cwd,
+        &harness.bus,
+        &loader,
+        harness.runtime.clone(),
+    )
+    .await
+    .unwrap();
+    let errors: Vec<_> = loaded.errors.iter().map(|error| &error.error).collect();
+    assert!(errors.is_empty(), "{errors:?}");
+    let runner = Rc::new(ExtensionRunner::<Local>::new(
+        Rc::new(std::sync::RwLock::new(loaded.extensions)),
+        loaded.runtime,
+        ExtensionRunnerSession {
+            cwd: harness.cwd.clone(),
+            session_manager: harness.session_manager.clone(),
+            model_registry: harness.model_registry.clone(),
+        },
+        Rc::new(diagnostics::write_stderr),
+        LiveTheme::default(),
+    ));
+    runner
+        .bind_core(
+            Local::unbound_actions(),
+            unconfigured_context_actions(),
+            ProviderActions::default(),
+        )
+        .unwrap();
+    runner.bind_command_context(Some(ExtensionCommandContextActions::new(
+        unconfigured_command_operations(),
+    )));
+    maestro_extensions_wasmtime::test_support::Loaded {
+        runner,
+        errors: loaded.errors,
+    }
+}
