@@ -4,8 +4,8 @@ Issue: [#102](https://github.com/Orchestration-Maestro/maestro-packages/issues/1
 
 ## Contract
 
-No `.py`, `.js`, `.ts` or `.sh` file is tracked, and a check fails when one is
-added. The tooling that those files held runs in Rust, in Maestro's existing
+No JavaScript, TypeScript, Python or shell file is tracked, and a check fails when
+one is added. The tooling that those files held runs in Rust, in Maestro's existing
 development tooling and in one workspace member.
 
 ## Tooling
@@ -13,8 +13,9 @@ development tooling and in one workspace member.
 - The lint-inheritance guard becomes the `maestro-packages-conventions` crate.
   Its single job: check repository rules that cargo and Clippy do not check.
   It depends on `toml`, pinned at `=1.1.6`, the version Maestro's tooling locks.
-- The same crate fails on any tracked `.py`, `.js`, `.ts` or `.sh` file. It reads
-  `git ls-files`, so a staged file counts.
+- The same crate fails on any tracked file with a JavaScript, TypeScript, Python, shell
+  or PowerShell extension (`js mjs cjs jsx ts mts cts tsx py pyi pyw sh bash zsh ps1`).
+  It reads `git ls-files`, so a staged file counts.
 - `just _check` runs the crate's real-workspace test.
 - The pre-commit helper becomes `development pre-commit` from `maestro-tooling` at
   the pinned Maestro commit. `just pre-commit` installs the tool into
@@ -42,3 +43,5 @@ with them.
 - `real_workspace::this_workspace_inherits_lints_and_tracks_only_rust` passes.
 - Each fixture test in the crate fails against a stub of `check_workspace` and
   passes against the real one.
+- `check_workspace` returns `Violation` values, so tests match the kind of failure
+  and never its text.

@@ -28,7 +28,7 @@ point into it by relative path, and Maestro publishes the directory as it is.
 examples/
   README.md              index of every folder
   extensions/            extension sources, each with a usage page
-  sdk/                   SDK examples, the Python RPC client, the interactive RPC client demo
+  sdk/                   SDK examples, the interactive RPC client demo
   rpc_extension_ui.rs    terminal RPC client
   web/                   browser chat example
 ```

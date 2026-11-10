@@ -1,6 +1,6 @@
 //! Languages the repository does not track.
 
-use maestro_packages_conventions::check_workspace;
+use maestro_packages_conventions::{Violation, check_workspace};
 
 use crate::support::Workspace;
 
@@ -13,16 +13,35 @@ fn tracked_python_javascript_typescript_and_shell_files_are_reported() {
         "examples/extension.ts",
         "crates/inner/run.sh",
         "UPPER.PY",
+        "lib/module.mjs",
+        "lib/module.cjs",
+        "ui/component.jsx",
+        "ui/component.tsx",
+        "src/module.mts",
+        "src/module.cts",
+        "types/stubs.pyi",
+        "win/tool.pyw",
+        "bin/run.bash",
+        "bin/run.zsh",
+        "setup.ps1",
     ];
     for script in scripts {
         workspace.track(script, "\n");
     }
 
-    let error = check_workspace(workspace.path()).unwrap_err();
+    let violations = check_workspace(workspace.path()).unwrap_err();
 
-    for script in scripts {
-        assert!(error.contains(script), "{script} missing from {error}");
-    }
+    let mut reported: Vec<&str> = violations
+        .iter()
+        .map(|violation| match violation {
+            Violation::TrackedScript(path) => path.as_str(),
+            other => panic!("unexpected violation {other:?}"),
+        })
+        .collect();
+    reported.sort_unstable();
+    let mut expected = scripts.to_vec();
+    expected.sort_unstable();
+    assert_eq!(reported, expected);
 }
 
 #[test]
@@ -33,14 +52,14 @@ fn rust_and_data_files_are_accepted() {
         "README.md",
         "package.json",
         "config.yaml",
-        "stubs.pyi",
-        "component.tsx",
+        "notes.txt",
+        "types.d.rs",
         "Justfile",
     ] {
         workspace.track(file, "\n");
     }
 
-    assert_eq!(check_workspace(workspace.path()), Ok(()));
+    check_workspace(workspace.path()).unwrap();
 }
 
 #[test]
@@ -50,7 +69,7 @@ fn untracked_and_ignored_scripts_are_not_reported() {
     workspace.write("ignored/build.sh", "\n");
     workspace.write("scratch.py", "\n");
 
-    assert_eq!(check_workspace(workspace.path()), Ok(()));
+    check_workspace(workspace.path()).unwrap();
 }
 
 #[test]
@@ -62,7 +81,10 @@ fn a_directory_outside_a_repository_is_an_error() {
     )
     .unwrap();
 
-    let error = check_workspace(scratch.path()).unwrap_err();
+    let violations = check_workspace(scratch.path()).unwrap_err();
 
-    assert!(error.contains("tracked sources"), "{error}");
+    assert!(
+        matches!(&violations[..], [Violation::Unreadable { path, .. }] if path == scratch.path()),
+        "{violations:?}"
+    );
 }

@@ -7,20 +7,27 @@ use std::path::Path;
 mod lints;
 /// Tracked files that are not Rust sources.
 mod tracked_sources;
+/// The failures the checks report.
+mod violation;
+
+pub use violation::Violation;
 
 /// Run every repository check on the workspace at `root` and report all failures together.
 ///
 /// # Errors
-/// Returns one message per failed check: a member that does not inherit the workspace lints,
-/// a tracked `.py`, `.js`, `.ts` or `.sh` file, or a manifest or repository that cannot be read.
-pub fn check_workspace(root: &Path) -> Result<(), String> {
-    let failures: Vec<String> = [lints::check(root), tracked_sources::check(root)]
-        .into_iter()
-        .filter_map(Result::err)
-        .collect();
-    if failures.is_empty() {
+/// Returns every [`Violation`] found: a member that does not inherit the workspace lints, a
+/// tracked file in a language other than Rust, or a manifest or repository that cannot be read.
+pub fn check_workspace(root: &Path) -> Result<(), Vec<Violation>> {
+    let mut violations = Vec::new();
+    for outcome in [lints::check(root), tracked_sources::check(root)] {
+        match outcome {
+            Ok(found) => violations.extend(found),
+            Err(stopped) => violations.push(stopped),
+        }
+    }
+    if violations.is_empty() {
         Ok(())
     } else {
-        Err(failures.join("\n"))
+        Err(violations)
     }
 }

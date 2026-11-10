@@ -6,6 +6,8 @@ use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 
+use crate::violation::Violation;
+
 /// The root manifest of the workspace.
 #[derive(Deserialize)]
 struct Root {
@@ -37,61 +39,68 @@ struct Lints {
     workspace: bool,
 }
 
-/// Fail unless every member of the workspace at `root` inherits the workspace lints.
-pub(crate) fn check(root: &Path) -> Result<(), String> {
-    let members: Workspace = read::<Root>(&root.join("Cargo.toml"))?.workspace;
-    let mut failures = Vec::new();
-    for manifest in manifests(root, &members.members)? {
+/// Report each member of the workspace at `root` that does not inherit the workspace lints.
+pub(crate) fn check(root: &Path) -> Result<Vec<Violation>, Violation> {
+    let workspace = read::<Root>(&root.join("Cargo.toml"))?.workspace;
+    let mut violations = Vec::new();
+    for manifest in manifests(root, &workspace.members)? {
         if !read::<Member>(&manifest)?.lints.workspace {
             let relative = manifest.strip_prefix(root).unwrap_or(&manifest);
-            failures.push(relative.display().to_string());
+            violations.push(Violation::MemberWithoutWorkspaceLints(
+                relative.to_path_buf(),
+            ));
         }
     }
-    if failures.is_empty() {
-        Ok(())
-    } else {
-        Err(format!(
-            "workspace lints: members must set `[lints] workspace = true`: {}",
-            failures.join(", ")
-        ))
-    }
+    Ok(violations)
 }
 
 /// Parse the manifest at `path`.
-fn read<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T, String> {
-    let text = fs::read_to_string(path).map_err(|error| format!("{}: {error}", path.display()))?;
-    toml::from_str(&text).map_err(|error| format!("{}: {error}", path.display()))
+fn read<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T, Violation> {
+    let text = fs::read_to_string(path).map_err(|source| unreadable(path, source))?;
+    toml::from_str(&text).map_err(|source| Violation::Malformed {
+        path: path.to_path_buf(),
+        source,
+    })
+}
+
+/// The failure for a path that could not be read.
+fn unreadable(path: &Path, source: std::io::Error) -> Violation {
+    Violation::Unreadable {
+        path: path.to_path_buf(),
+        source,
+    }
 }
 
 /// The member manifests, in name order, that the `members` patterns name.
-fn manifests(root: &Path, patterns: &[String]) -> Result<Vec<PathBuf>, String> {
+fn manifests(root: &Path, patterns: &[String]) -> Result<Vec<PathBuf>, Violation> {
     let mut manifests = Vec::new();
     for pattern in patterns {
-        if let Some(parent) = pattern.strip_suffix("/*") {
-            manifests.extend(children(root, parent)?);
-        } else if has_wildcard(pattern) {
-            return Err(unsupported(pattern));
+        let (path, is_directory_glob) = pattern
+            .strip_suffix("/*")
+            .map_or((pattern.as_str(), false), |parent| (parent, true));
+        if has_wildcard(path) {
+            return Err(Violation::UnsupportedMemberPattern(pattern.clone()));
+        }
+        if is_directory_glob {
+            manifests.extend(children(root, path)?);
         } else {
-            manifests.push(root.join(pattern).join("Cargo.toml"));
+            manifests.push(root.join(path).join("Cargo.toml"));
         }
     }
     Ok(manifests)
 }
 
 /// The manifests of the directories directly below `parent`, in name order.
-fn children(root: &Path, parent: &str) -> Result<Vec<PathBuf>, String> {
-    if has_wildcard(parent) {
-        return Err(unsupported(parent));
-    }
+fn children(root: &Path, parent: &str) -> Result<Vec<PathBuf>, Violation> {
     let directory = root.join(parent);
     let entries = match fs::read_dir(&directory) {
         Ok(entries) => entries,
         Err(error) if error.kind() == ErrorKind::NotFound => return Ok(Vec::new()),
-        Err(error) => return Err(format!("{}: {error}", directory.display())),
+        Err(source) => return Err(unreadable(&directory, source)),
     };
     let mut manifests = Vec::new();
     for entry in entries {
-        let entry = entry.map_err(|error| format!("{}: {error}", directory.display()))?;
+        let entry = entry.map_err(|source| unreadable(&directory, source))?;
         let manifest = entry.path().join("Cargo.toml");
         if manifest.is_file() {
             manifests.push(manifest);
@@ -104,9 +113,4 @@ fn children(root: &Path, parent: &str) -> Result<Vec<PathBuf>, String> {
 /// Whether `pattern` holds a glob character this check does not expand.
 fn has_wildcard(pattern: &str) -> bool {
     pattern.contains(['*', '?', '['])
-}
-
-/// The failure for a member pattern other than a path or a directory followed by `/*`.
-fn unsupported(pattern: &str) -> String {
-    format!("workspace lints: member pattern `{pattern}` is not a path or `<directory>/*`")
 }
