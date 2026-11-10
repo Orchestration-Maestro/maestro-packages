@@ -1,84 +1,18 @@
-# Non-Rust guest toolchains
+# Examples
 
-Tracking: [#41](https://github.com/Orchestration-Maestro/maestro-packages/issues/41).
+Every example here is Rust.
 
-- [TypeScript](typescript/README.md): jco 1.40.0 builds a component from the unchanged
-  extension contract, and Maestro's host installs and runs it. This is a working extension.
-- [Python](python/README.md): componentize-py 0.25.1 with a one-hunk patch builds
-  a working extension. The released compiler builds a component that traps at its
-  first async callback in the matching host.
+## Extensions
 
-No Rust guest SDK or altered WIT is shipped.
+Maestro's own extension examples show the `hello` tool, the `input` hook and user
+messages sent from an extension:
+
+- [`hello`](https://github.com/Orchestration-Maestro/maestro/blob/5ac4b8926090b5fcf41e33433b8456720bd3569e/examples/extensions/hello.rs) registers a greeting tool.
+- [`input_transform`](https://github.com/Orchestration-Maestro/maestro/blob/5ac4b8926090b5fcf41e33433b8456720bd3569e/examples/extensions/input_transform.rs) rewrites typed input and passes input from other extensions through unchanged.
+- [`send_user_message`](https://github.com/Orchestration-Maestro/maestro/blob/5ac4b8926090b5fcf41e33433b8456720bd3569e/examples/extensions/send_user_message.rs) sends ordinary, steering and follow-up messages.
 
 ## Browser example
 
 - [Browser chat](web/README.md): a complete chat built only from the published web
   components. `just browser-chat-example` serves it, and `just browser-test` runs its
   seven browser tests in Chromium.
-
-## World inspected
-
-Repository: <https://github.com/Orchestration-Maestro/maestro>
-
-Revision: `d3f7aa6a9906d23350f4b28a88a41e0fde8195a0`
-
-World file: `crates/maestro-extensions-wasm/wit/world.wit`
-
-World: `maestro:extension/extension@0.1.0`, importing `host` and exporting `guest`.
-Use the complete `wit/` directory, including `standard/`, unchanged.
-
-SHA-256 of `world.wit`:
-
-```text
-1a9704e411ee0bcc01cf19e9003c3560bb82c50f12927d5d41c8aefd1f6b7893
-```
-
-All 12 files in the WIT directory matched between the inspected checkout and
-build host. The guest guide at `docs/extensions/guest.md` in that revision
-requires callback registration, async event/tool invocation and callback release.
-Generating declarations alone does not qualify an extension against this world.
-
-The TypeScript example ran against a host built from a later revision,
-`c9db49dc50b938c8804c9af29f21d7780691c49d`, whose WIT directory is byte-identical.
-
-## Matching host
-
-The released Python compiler's runtime failure was reproduced with Maestro built
-from the exact revision above, not an older executable with missing imports.
-The accepted remote build receipt records:
-
-```json
-{
-  "id": "08997e498993-1793194765783818372",
-  "digest": "7858313715aac49ecb4a81c2b5c5ae2ad66f196934426fd71c27e9ecdc0574de",
-  "argv": ["mise", "exec", "--", "cargo", "build", "--release", "--locked", "-p", "maestro"],
-  "exit": 0,
-  "started_at": "2026-10-28T13:39:26Z",
-  "rustc": "rustc 1.98.0 (88d9e12ae 2026-08-18)",
-  "cargo": "cargo 1.98.0 (797e8a9bc 2026-08-05)"
-}
-```
-
-The request, receipt, local input snapshot and remote snapshot digests matched
-before artifact retrieval. The executable reports `0.1.0`; its SHA-256 is:
-
-```text
-59fe05ea4fdbefb99c6b8e749286887c23aace22142b9d0ea6941696c0f3e77f
-```
-
-An earlier interrupted build had no valid receipt and was not accepted.
-
-## Verification environment
-
-The earlier diagnostics compiled on the remote build host through the approved build
-wrapper on 2026-10-28. Observed versions: jco 1.39.0, componentize-py 0.25.1 and
-wasm-tools 1.262.0 (`e22db44da`, 2026-10-13). The provisioned Node.js version is
-24.20.0. The TypeScript example was built and run on 2026-10-29 with jco 1.40.0, which
-the build host now provides. The Python example was built and run on 2026-10-30
-(OD-627). The wasi-sdk compiler reports `clang version 23.1.0-wasi-sdk`, installed
-under the wasi-sdk 34.0 distribution; the TypeScript example does not invoke it, and
-the Python recipe uses it as the linker.
-
-Build-machine commands in the language reports use the tool CLIs directly.
-Workspace verification used the approved remote wrapper and its artifact
-output directory. All source WIT files remained read-only.

@@ -28,13 +28,12 @@ point into it by relative path, and Maestro publishes the directory as it is.
 examples/
   README.md              index of every folder
   extensions/            extension sources, each with a usage page
-  sdk/                   SDK examples, the Python RPC client, the interactive RPC client demo
+  sdk/                   SDK examples, the interactive RPC client demo
   rpc_extension_ui.rs    terminal RPC client
   web/                   browser chat example
-  python/  typescript/   extensions in other languages
 ```
 
-`python/`, `typescript/` and `web/` are here today. The other folders arrive with
+`web/` is here today. The other folders arrive with
 their family crates.
 
 ## Crates
@@ -44,10 +43,8 @@ their family crates.
 | `maestro-extension-examples` | extension examples, as WebAssembly components |
 | `maestro-sdk-examples` | SDK examples, the terminal RPC client and the RPC client demo |
 | `maestro-web-example` | the browser chat example |
-| `maestro-python-example`, `maestro-typescript-example` | the other-language extensions |
 
-The first two crates arrive with their family crates. The browser crate and the
-two other-language crates exist today.
+The first two crates arrive with their family crates. The browser crate exists today.
 
 ## Browser example
 
@@ -113,8 +110,8 @@ Move the pin in one change:
 1. Set the new commit as the `rev` of every Maestro entry in the root
    `Cargo.toml`.
 2. Set the same commit as the install `--rev` in `test_prepare` in
-   `.github/ci.toml`, and in the `prepare-tests` recipe in `justfile` once
-   it exists.
+   `.github/ci.toml`, in the `pre-commit` recipe in `justfile`, and in the
+   `prepare-tests` recipe once it exists.
 3. Update the lock with `cargo update -p maestro-test-directory`, then align
    every shared package with Maestro's lock at that commit, using
    `cargo update -p <package>@<version> --precise <version>`.
