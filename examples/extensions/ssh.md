@@ -24,14 +24,15 @@ can expose private data, and writes, edits and shell commands can change or dele
 remote files. Cancellation and bash deadlines terminate the local SSH process;
 they cannot guarantee that work already accepted remotely stops. No connection
 pool or remote rollback is provided. The controlled `ssh_` runs use disposable
-files and a checked child process instead of a live server, with no provider,
-credentials or paid service.
+files and a stand-in `ssh` program in a checked child instead of a live server,
+with no provider, credentials or paid service.
 
 ## Controlled runs
 
+Prepare the host programs once, then run the page's tests:
+
 ```sh
-CARGO_BUILD_JOBS=3 ~/.local/bin/capped mise exec -- cargo nextest run --locked \
-  -p maestro-extensions-wasm --lib -- ssh_maps_windows
-CARGO_BUILD_JOBS=3 ~/.local/bin/capped mise exec -- cargo nextest run --locked \
-  -p maestro --test integration -- ssh_
+just prepare-tests
+TEST_PREPARE_OUTPUT=target/test-setup cargo nextest run --locked \
+  -p maestro-extension-examples -E 'test(ssh_example)'
 ```
