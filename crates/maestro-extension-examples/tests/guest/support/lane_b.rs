@@ -11,7 +11,7 @@ use maestro_extensions_wasmtime::test_support::maestro_extensions::{
 use maestro_extensions_wasmtime::test_support::maestro_extensions::{
     EventError, ExtensionContextActions, ExtensionExecution, ExtensionRunner, ExtensionUIContext,
     LiveTheme, Local, Presence, ProviderConfig, ProviderModelConfig, SessionManager, SharedHandle,
-    runner::RunnerEmitEvent,
+    execution::RunnerEmitEvent,
     types::{
         EditorFactory, EditorFactoryOutcome, ExtensionActions, ExtensionUIContextPort,
         ExtensionUIDialogOptions, ExtensionUIFuture, ExtensionWidgetOptions, FooterFactory,

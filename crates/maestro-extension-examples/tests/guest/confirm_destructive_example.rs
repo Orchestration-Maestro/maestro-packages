@@ -229,7 +229,7 @@ fn fork_cases() -> Vec<Case> {
 /// the failure the host reported.
 async fn deliver<V>(cases: Vec<Case>)
 where
-    V: maestro_extensions::runner::RunnerEmitEvent + serde::de::DeserializeOwned,
+    V: maestro_extensions::execution::RunnerEmitEvent + serde::de::DeserializeOwned,
     V::Result: serde::Serialize,
 {
     let harness = harness();

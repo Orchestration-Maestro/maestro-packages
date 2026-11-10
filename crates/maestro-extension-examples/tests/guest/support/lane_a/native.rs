@@ -4,8 +4,9 @@ use maestro_extensions_wasmtime::test_support::{
     Loaded,
     maestro_extensions::{
         ExtensionCommandContextActions, ExtensionExecution, ExtensionRunner, ExtensionWidgets,
-        LiveTheme, Local, ModuleLoader, load_extensions_with_runtime,
-        runner::ExtensionRunnerSession,
+        LiveTheme, Local, ModuleLoader,
+        execution::ExtensionRunnerSession,
+        load_extensions_with_runtime,
         test_support::{ToolkitWidgets, diagnostics},
         types::ProviderActions,
     },

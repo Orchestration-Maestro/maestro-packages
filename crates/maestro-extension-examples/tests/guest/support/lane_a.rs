@@ -2,7 +2,7 @@
 //! dialogs from a script, and a reader for styled text.
 use maestro_extensions_wasmtime::test_support::maestro_extensions::{
     EventError, ExtensionRunner, ExtensionUIContext, Local, WorkingIndicatorOptions,
-    footer_data_provider::{ExtensionStatuses, ReadonlyFooterDataProvider},
+    footer::{ExtensionStatuses, ReadonlyFooterDataProvider},
     types::{
         CustomClose, CustomComponentFactory, CustomFactoryOutcome, CustomUIOptions, EditorFactory,
         EditorFactoryOutcome, ExtensionComponent, ExtensionKeybindings, ExtensionUIContextPort,

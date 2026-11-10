@@ -96,7 +96,7 @@ impl ExtensionUIContextPort for Ui {
         self.views.set(self.views.get() + 1);
         let closed = Rc::new(Cell::new(false));
         let done = closed.clone();
-        let keys = maestro_extensions::widgets::ExtensionKeybindings {
+        let keys = maestro_extensions::presentation::ExtensionKeybindings {
             manager: maestro_tui::KeybindingsManager::new(Vec::new(), Vec::new()),
             reload: None,
         };
@@ -148,7 +148,7 @@ fn check_frame(rows: &[String]) {
 }
 
 /// Installs a non-network descriptor and literal key/headers in the original catalog.
-fn configure(session: &maestro_extensions::runner::ExtensionRunnerSession, api: &str) {
+fn configure(session: &maestro_extensions::execution::ExtensionRunnerSession, api: &str) {
     let config = serde_json::from_value(json!({
         "api":api,"baseUrl":"https://example.invalid","apiKey":"controlled-key","headers":{"x-summary":"literal"},
         "models":[{"id":"gpt-5.2","name":"Controlled summary","reasoning":true,"input":["text"],
@@ -242,7 +242,7 @@ async fn run(close: Option<&'static str>) {
 
 /// Loads the shipped component against the existing production host.
 async fn load(
-    session: maestro_extensions::runner::ExtensionRunnerSession,
+    session: maestro_extensions::execution::ExtensionRunnerSession,
     output: Output,
 ) -> (
     ExtensionRunner<Local>,

@@ -73,7 +73,7 @@ pub type Pending<'a> = std::pin::Pin<
         dyn std::future::Future<
                 Output = Result<
                     Option<maestro_tui::AutocompleteSuggestions>,
-                    maestro_tui::autocomplete::CompletionError,
+                    maestro_tui::candidates::CompletionError,
                 >,
             > + 'a,
     >,

@@ -1,8 +1,8 @@
 //! A started terminal on a manual runtime, announcing each redraw it is asked to schedule.
 use maestro_tui::{
     TUI, TerminalImage,
+    interface::{LocalFuture, LogContext, RenderCallback, RenderTimer, TuiRuntime},
     test_support::{manual_runtime::ManualRuntime, recording_terminal::RecordingTerminal},
-    tui::{LocalFuture, LogContext, RenderCallback, RenderTimer, TuiRuntime},
 };
 use std::rc::Rc;
 use tokio::sync::Notify;

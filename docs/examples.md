@@ -241,6 +241,12 @@ UI the test installs. Nothing in it fakes the extension host. The recorded
 corpora sit beside the tests as `<name>_expected.json`, byte for byte as
 recorded.
 
+Some behaviour has no form on the public harness yet: native effects, injected
+clocks and random sources, provider transport, and failures injected at a chosen
+registration. Those cases have no `guest` test, and
+[Orchestration-Maestro/maestro#4448](https://github.com/Orchestration-Maestro/maestro/issues/4448)
+lists each missing seam with the examples that wait on it.
+
 ### Add an extension example
 
 1. Add `examples/extensions/<name>.rs` with an opening `//!` description, and

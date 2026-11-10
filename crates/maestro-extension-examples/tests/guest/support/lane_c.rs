@@ -1,7 +1,7 @@
 //! Recording UI, scripted dialog answers, error capture and typed event delivery for the
 //! guest tests that script a user interface.
-use maestro_extensions::runner::RunnerEmitEvent;
-use maestro_extensions::widgets::ExtensionKeybindings;
+use maestro_extensions::execution::RunnerEmitEvent;
+use maestro_extensions::presentation::ExtensionKeybindings;
 use maestro_extensions::{
     EventError, ExtensionActions, ExtensionContextActions, ExtensionExecution, ExtensionRunner,
     ExtensionUIContext, Local, ToolCallEvent, ToolRenderContext, ToolRenderEnvironment,
