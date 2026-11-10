@@ -241,9 +241,15 @@ UI the test installs. Nothing in it fakes the extension host. The recorded
 corpora sit beside the tests as `<name>_expected.json`, byte for byte as
 recorded.
 
+The `guest` tests share one set of helpers in `tests/guest/support/`: the
+recording terminal UI, the failures a runner reports for callbacks that return
+no error, the paused-clock runtimes and the rows a renderer draws. A test that
+waits on the extension waits on a signal a helper gives, such as the next
+redraw or the next recorded request. It never sleeps or polls.
+
 Some behaviour has no form on the public harness yet: native effects, injected
-clocks and random sources, provider transport, and failures injected at a chosen
-registration. Those cases have no `guest` test, and
+clocks and random sources, a signal for the moment a guest arms its next timer
+wait, provider transport, and failures injected at a chosen registration. Those cases have no `guest` test, and
 [Orchestration-Maestro/maestro#4448](https://github.com/Orchestration-Maestro/maestro/issues/4448)
 lists each missing seam with the examples that wait on it.
 
