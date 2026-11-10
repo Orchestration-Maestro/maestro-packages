@@ -1,6 +1,5 @@
 //! The shipped question tool's call and result rows, rendered through its registered renderers.
-use super::lane_b::{Instance, render_call, render_result};
-use super::support::local;
+use super::support::{Shown, Instance, local, render_call, render_result};
 use serde_json::{Value, json};
 
 /// The variable that names the built question component.
@@ -59,7 +58,7 @@ fn question_renders_results() {
         ] {
             let result = json!({"content":[],"details":details});
             assert_eq!(
-                render_result(runner, "question", &result, false, 200),
+                render_result(runner, "question", &Shown::new(&Value::Null, &result)),
                 [expected]
             );
         }
@@ -77,12 +76,12 @@ fn question_results_fall_back_to_the_first_text_block() {
             if let Some(details) = details {
                 result["details"] = details;
             }
-            render_result(runner, "question", &result, false, 200)
+            render_result(runner, "question", &Shown::new(&Value::Null, &result))
         };
         assert_eq!(text(None), ["fallback"]);
         for details in [Value::Null, json!(false), json!(0), json!("")] {
             assert_eq!(text(Some(details.clone())), ["fallback"], "{details}");
         }
-        assert!(render_result(runner, "question", &json!({"content":[]}), false, 200).is_empty());
+        assert!(render_result(runner, "question", &Shown::new(&Value::Null, &json!({"content":[]}))).is_empty());
     });
 }

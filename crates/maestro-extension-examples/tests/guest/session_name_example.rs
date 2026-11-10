@@ -1,6 +1,5 @@
 //! The shipped session-name command loaded into the production engine.
-use super::lane_c::{Dialogs, bind};
-use super::support::{harness, load, local};
+use super::support::{TERMINAL, Recorder, bind, harness, load, local};
 use serde_json::{Value, json};
 use std::{cell::RefCell, rc::Rc};
 
@@ -49,7 +48,7 @@ struct Instance {
     /// The loaded runner.
     loaded: maestro_extensions_wasmtime::test_support::Loaded,
     /// The UI and operation log.
-    ui: Rc<Dialogs>,
+    ui: Rc<Recorder>,
     /// The session name the host reports.
     current: Rc<RefCell<Option<String>>>,
 }
@@ -59,18 +58,18 @@ impl Instance {
     async fn new() -> Self {
         let harness = harness();
         let loaded = load(&harness, COMPONENT).await;
-        let ui = Dialogs::install(&loaded.runner);
+        let ui = Recorder::install_on(&loaded.runner, TERMINAL);
         let current = Rc::new(RefCell::new(None));
         bind(&loaded.runner, |actions, _| {
             let (log, name) = (ui.clone(), current.clone());
             actions.set_session_name = Rc::new(move |value| {
-                log.request("set", json!(value))?;
+                log.record("set", json!(value))?;
                 *name.borrow_mut() = Some(value);
                 Ok(())
             });
             let (log, name) = (ui.clone(), current.clone());
             actions.get_session_name = Rc::new(move || {
-                log.request("get", Value::Null)?;
+                log.record("get", Value::Null)?;
                 Ok(name.borrow().clone())
             });
         });
@@ -85,11 +84,11 @@ impl Instance {
     /// Runs one recorded case and checks its calls, in order, and its failure.
     async fn check(&self, case: &Value) {
         let input = &case["input"];
-        self.ui.clear_refusal();
+        self.ui.disarm();
         *self.current.borrow_mut() = input["current"].as_str().map(str::to_owned);
         let refusal = case["expected"]["error"].as_str();
         if let (Some(operation), Some(error)) = (input["reject"].as_str(), refusal) {
-            self.ui.refuse_method(operation, error);
+            self.ui.reject(operation, error);
         }
         let command = self
             .loaded

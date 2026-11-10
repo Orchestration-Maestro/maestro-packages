@@ -2,8 +2,7 @@
 //!
 //! Status text is compared without the theme's styling, and a refused theme lookup, which the
 //! public UI cannot express, is replayed as an accepted one whose first request must match.
-use super::lane_a::{Ui, event, failures, plain};
-use super::support::{harness, load, local};
+use super::support::{Failures, Recorder, event, harness, load, local, plain_text};
 use maestro_extensions_wasmtime::test_support::maestro_extensions::SessionStartEvent;
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
@@ -20,12 +19,12 @@ fn corpus() -> BTreeMap<String, Vec<Value>> {
 fn requests(recorded: &[Value]) -> Vec<Value> {
     recorded
         .iter()
-        .filter(|request| request["method"] != "theme")
+        .filter(|request| request[0] != "theme")
         .map(|request| {
             let mut request = request.clone();
-            if request["method"] == "setStatus" {
-                let text = plain(request["operands"][1].as_str().unwrap());
-                request["operands"][1] = json!(text);
+            if request[0] == "setStatus" {
+                let text = plain_text(request[1][1].as_str().unwrap());
+                request[1][1] = json!(text);
             }
             request
         })
@@ -39,8 +38,8 @@ fn replay(group: &str) {
         let loaded = load(&harness, COMPONENT).await;
         let runner = &loaded.runner;
         assert!(runner.has_handlers("session_start"));
-        let ui = Ui::install(runner);
-        let reported = failures(runner);
+        let ui = Recorder::install(runner);
+        let reported = Failures::collect(runner);
         for step in &corpus()[group] {
             let rejected = step["reject"].as_str();
             if let Some(method) = rejected.filter(|method| *method != "theme") {
@@ -49,7 +48,7 @@ fn replay(group: &str) {
             let error = if let Some(document) = step.get("event") {
                 let mut start: SessionStartEvent = event(document.clone());
                 runner.emit(&mut start).await.unwrap();
-                reported.borrow_mut().pop()
+                reported.take().pop()
             } else {
                 let command = runner.get_command("working-indicator").unwrap().command;
                 (command.handler)(
@@ -61,7 +60,13 @@ fn replay(group: &str) {
                 .map(|error| error.to_string())
             };
             let seen = requests(&ui.take());
-            let expected = requests(step["requests"].as_array().unwrap());
+            let recorded: Vec<Value> = step["requests"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|request| json!([request["method"], request["operands"]]))
+                .collect();
+            let expected = requests(&recorded);
             if rejected == Some("theme") {
                 assert_eq!(seen[..1], expected[..1], "{step}");
                 continue;

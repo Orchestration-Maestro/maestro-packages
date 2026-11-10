@@ -1,6 +1,5 @@
 //! The shipped widget-placement factory loaded into the production engine.
-use super::lane_c::{Dialogs, Failures, emit};
-use super::support::{harness, load, local};
+use super::support::{TERMINAL, Failures, Recorder, verdict, harness, load, local};
 use maestro_extensions::SessionStartEvent;
 use maestro_extensions::{ExtensionRunner, Local};
 use serde_json::{Value, json};
@@ -37,13 +36,13 @@ fn expected_for(calls: &Value, owner: u64) -> Vec<Value> {
 }
 
 /// Arms the refusals and the rebinding one recorded step asks for.
-fn arm(runner: &Rc<ExtensionRunner<Local>>, uis: &[Rc<Dialogs>; 2], input: &Value) {
+fn arm(runner: &Rc<ExtensionRunner<Local>>, uis: &[Rc<Recorder>; 2], input: &Value) {
     if input["rebindAfterAbove"] == true {
         let (runner, next) = (runner.clone(), uis[1].clone());
         uis[0].after_first_request(move || next.connect(&runner, true));
     }
     if let Some(index) = input["rejectAt"].as_u64() {
-        uis[0].refuse_at(
+        uis[0].reject_at(
             usize::try_from(index).unwrap(),
             input["error"].as_str().unwrap(),
         );
@@ -51,7 +50,7 @@ fn arm(runner: &Rc<ExtensionRunner<Local>>, uis: &[Rc<Dialogs>; 2], input: &Valu
 }
 
 /// Checks the requests each UI received against the recorded calls of its owner.
-fn assert_requests(uis: &[Rc<Dialogs>; 2], calls: &Value, name: &Value) {
+fn assert_requests(uis: &[Rc<Recorder>; 2], calls: &Value, name: &Value) {
     for (owner, ui) in (0..).zip(uis) {
         assert_eq!(
             ui.take(),
@@ -68,7 +67,7 @@ fn run(names: &[&str]) {
         let loaded = load(&harness, COMPONENT).await;
         let runner = &loaded.runner;
         let failures = Failures::collect(runner);
-        let uis = [Dialogs::install(runner), Dialogs::install(runner)];
+        let uis = [Recorder::install_on(runner, TERMINAL), Recorder::install_on(runner, TERMINAL)];
         let corpus = corpus();
         let cases: Vec<&Value> = corpus["cases"]
             .as_array()
@@ -83,7 +82,7 @@ fn run(names: &[&str]) {
                 uis[0].connect(runner, input["hasUI"].as_bool().unwrap());
                 arm(runner, &uis, input);
                 let event = json!({"type": "session_start", "reason": "startup"});
-                let verdict = emit::<SessionStartEvent>(runner, &event).await;
+                let verdict = verdict::<SessionStartEvent>(runner, &event).await;
                 assert_eq!(verdict, Ok(Value::Null), "{name}");
                 assert_requests(&uis, &expected["calls"], name);
                 let reported = failures.take();
@@ -102,7 +101,7 @@ fn widget_placement_registers_only_session_start() {
     local(async {
         let harness = harness();
         let loaded = load(&harness, COMPONENT).await;
-        let ui = Dialogs::install(&loaded.runner);
+        let ui = Recorder::install_on(&loaded.runner, TERMINAL);
         for name in corpus()["registrations"].as_array().unwrap() {
             assert!(loaded.runner.has_handlers(name.as_str().unwrap()));
         }

@@ -3,8 +3,7 @@
 //! Running the search itself needs a controlled `rg` process; the executable tests of this tool
 //! start the application's native process owner against one, so these tests cover the
 //! registration and the displays.
-use super::lane_a::{render_call, render_result};
-use super::support::{harness, load, local, only_tool_metadata};
+use super::support::{Shown, harness, load, local, only_tool_metadata, render_call, render_result};
 use serde_json::{Value, json};
 
 /// The variable that names the built search component.
@@ -44,11 +43,20 @@ fn truncated_tool_renders_calls_and_results() {
         let loaded = load(&harness, COMPONENT).await;
         let runner = &loaded.runner;
         assert_eq!(
-            render_call(runner, "rg", &call_args()),
+            render_call(runner, "rg", &call_args(), 200),
             ["rg \"needle\" in src --glob *.rs"]
         );
-        let shown = |result: &Value, flags: [bool; 2]| {
-            render_result(runner, "rg", &call_args(), result, flags)
+        let shown = |result: &Value, [expanded, partial]: [bool; 2]| {
+            let args = call_args();
+            render_result(
+                runner,
+                "rg",
+                &Shown {
+                    expanded,
+                    partial,
+                    ..Shown::new(&args, result)
+                },
+            )
         };
         let empty = json!({"content": []});
         assert_eq!(shown(&empty, [false, true]), ["Searching..."]);

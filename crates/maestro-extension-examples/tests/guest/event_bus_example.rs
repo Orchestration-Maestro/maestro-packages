@@ -1,6 +1,5 @@
 //! The shipped event-bus factory loaded into the production engine.
-use super::lane_c::{Dialogs, emit};
-use super::support::{harness, load, local};
+use super::support::{TERMINAL, Recorder, verdict, harness, load, local};
 use maestro_extensions::Local;
 use maestro_extensions_wasmtime::test_support::{
     Harness, Loaded,
@@ -27,7 +26,7 @@ struct Session {
     /// The loaded runner.
     loaded: Loaded,
     /// The notifications the listener showed.
-    ui: Rc<Dialogs>,
+    ui: Rc<Recorder>,
     /// Every emission any party put on the recorded channels, in order.
     emissions: Rc<RefCell<Vec<Value>>>,
     /// Keeps the recording listeners subscribed.
@@ -55,7 +54,7 @@ impl Session {
             })
             .collect();
         let loaded = load(&harness, COMPONENT).await;
-        let ui = Dialogs::install(&loaded.runner);
+        let ui = Recorder::install_on(&loaded.runner, TERMINAL);
         Self {
             harness,
             loaded,
@@ -68,7 +67,7 @@ impl Session {
     /// Delivers a session start to both callbacks, as the application does.
     async fn start(&self) {
         let event = json!({"type": "session_start", "reason": "new"});
-        emit::<SessionStartEvent>(&self.loaded.runner, &event)
+        verdict::<SessionStartEvent>(&self.loaded.runner, &event)
             .await
             .unwrap();
     }

@@ -2,8 +2,7 @@
 //!
 //! A refused tool registration cannot be injected into the engine's registry, so the two
 //! recorded rows that need it are not replayed.
-use super::lane_a::{Ui, event, failures};
-use super::support::{harness, load, local, result_value};
+use super::support::{Failures, Recorder, event, harness, load, local, result_value};
 use maestro_extensions_wasmtime::test_support::{
     Harness, Loaded,
     maestro_extensions::{
@@ -50,9 +49,9 @@ struct Instance {
     /// The runner over the loaded component.
     loaded: Loaded,
     /// The notifications the component showed.
-    ui: Rc<Ui>,
+    ui: Rc<Recorder>,
     /// The callback failures the runner reported.
-    failures: Rc<RefCell<Vec<String>>>,
+    failures: Failures,
     /// The names of the tools the last step had already seen.
     known: RefCell<Vec<String>>,
 }
@@ -62,8 +61,8 @@ impl Instance {
     async fn new() -> Self {
         let harness = harness();
         let loaded = load(&harness, COMPONENT).await;
-        let ui = Ui::install(&loaded.runner);
-        let failures = failures(&loaded.runner);
+        let ui = Recorder::install(&loaded.runner);
+        let failures = Failures::collect(&loaded.runner);
         Self {
             harness,
             loaded,
@@ -102,8 +101,8 @@ impl Instance {
             }}));
         }
         for request in self.ui.take() {
-            let kind = request["operands"][1].as_str().unwrap().to_lowercase();
-            effects.push(json!({"notify": {"message": request["operands"][0], "kind": kind}}));
+            let kind = request[1][1].as_str().unwrap().to_lowercase();
+            effects.push(json!({"notify": {"message": request[1][0], "kind": kind}}));
         }
         *self.known.borrow_mut() = self.visible();
         effects
@@ -129,7 +128,7 @@ impl Instance {
                 let mut start: SessionStartEvent =
                     event(json!({"type": "session_start", "reason": "new"}));
                 runner.emit(&mut start).await.unwrap();
-                (Value::Null, self.failures.borrow_mut().pop())
+                (Value::Null, self.failures.take().pop())
             }
             _ => (self.execute(step).await, None),
         }

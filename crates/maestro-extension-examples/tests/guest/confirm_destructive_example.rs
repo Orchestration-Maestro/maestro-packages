@@ -1,6 +1,5 @@
 //! The shipped session confirmations loaded into the production engine.
-use super::lane_c::{Dialogs, Failures, emit};
-use super::support::{harness, load, local};
+use super::support::{TERMINAL, Failures, Recorder, verdict, harness, load, local};
 use maestro_extensions::{
     ExtensionRunner, Local, SessionBeforeForkEvent, SessionBeforeSwitchEvent, SessionManager,
 };
@@ -235,7 +234,7 @@ where
     let harness = harness();
     let loaded = load(&harness, COMPONENT).await;
     let runner: &Rc<ExtensionRunner<Local>> = &loaded.runner;
-    let ui = Dialogs::install(runner);
+    let ui = Recorder::install_on(runner, TERMINAL);
     let failures = Failures::collect(runner);
     for row in cases {
         let mut history = SessionManager::in_memory(Some("/work")).unwrap();
@@ -244,11 +243,11 @@ where
         }
         *harness.session_manager.borrow_mut() = history;
         ui.connect(runner, row.has_ui);
-        ui.answer(row.decision.clone());
+        ui.reply(row.decision.clone());
         if let Some(method) = row.refuse {
-            ui.refuse_method(method, "UI refused");
+            ui.reject(method, "UI refused");
         }
-        let verdict = emit::<V>(runner, &row.event).await;
+        let verdict = verdict::<V>(runner, &row.event).await;
         let name = row.event.to_string();
         assert_eq!(
             ui.take(),

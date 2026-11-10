@@ -1,6 +1,5 @@
 //! The shipped system-prompt status component loaded into the production engine.
-use super::lane_b::{Bindings, Failures, Instance, Recorder, emit};
-use super::support::local;
+use super::support::{Bindings, Failures, Instance, Recorder, emit, local};
 use maestro_extensions_wasmtime::test_support::maestro_extensions::{
     AgentStartEvent, SessionShutdownEvent,
 };

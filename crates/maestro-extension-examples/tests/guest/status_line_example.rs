@@ -1,6 +1,5 @@
 //! The shipped turn status hooks loaded into the production engine.
-use super::lane_a::{Ui, event, failures, plain};
-use super::support::{harness, load, local};
+use super::support::{Failures, Recorder, event, harness, load, local, plain_text};
 use maestro_extensions_wasmtime::test_support::{Harness, Loaded, maestro_extensions::*};
 use serde_json::json;
 use std::rc::Rc;
@@ -15,9 +14,9 @@ struct Instance {
     /// The runner over the loaded component.
     loaded: Loaded,
     /// The requests the component made.
-    ui: Rc<Ui>,
+    ui: Rc<Recorder>,
     /// The callback failures the runner reported.
-    failures: Rc<std::cell::RefCell<Vec<String>>>,
+    failures: Failures,
 }
 
 impl Instance {
@@ -25,8 +24,8 @@ impl Instance {
     async fn new() -> Self {
         let harness = harness();
         let loaded = load(&harness, COMPONENT).await;
-        let ui = Ui::install(&loaded.runner);
-        let failures = failures(&loaded.runner);
+        let ui = Recorder::install(&loaded.runner);
+        let failures = Failures::collect(&loaded.runner);
         Self {
             harness,
             loaded,
@@ -60,9 +59,9 @@ impl Instance {
             .take()
             .iter()
             .map(|request| {
-                assert_eq!(request["method"], "setStatus");
-                assert_eq!(request["operands"][0], "status-demo");
-                plain(request["operands"][1].as_str().unwrap())
+                assert_eq!(request[0], "setStatus");
+                assert_eq!(request[1][0], "status-demo");
+                plain_text(request[1][1].as_str().unwrap())
             })
             .collect()
     }
@@ -76,7 +75,7 @@ fn status_line_component_sets_ready_on_every_session_start() {
         for _ in 0..2 {
             assert_eq!(instance.deliver("session_start").await, ["Ready"]);
         }
-        assert!(instance.failures.borrow().is_empty());
+        assert!(instance.failures.seen().is_empty());
         drop(instance.harness);
     });
 }
@@ -90,7 +89,7 @@ fn status_line_component_counts_turns_across_sessions() {
         assert_eq!(instance.deliver(start).await, ["● Turn 1..."]);
         assert_eq!(instance.deliver(session).await, ["Ready"]);
         assert_eq!(instance.deliver(start).await, ["● Turn 2..."]);
-        assert!(instance.failures.borrow().is_empty());
+        assert!(instance.failures.seen().is_empty());
         let fresh = Instance::new().await;
         assert_eq!(fresh.deliver(start).await, ["● Turn 1..."]);
     });
@@ -103,7 +102,7 @@ fn status_line_component_preserves_count_after_host_rejection() {
         let instance = Instance::new().await;
         instance.ui.reject("setStatus", "host refused");
         assert_eq!(instance.deliver("turn_start").await, ["● Turn 1..."]);
-        assert_eq!(*instance.failures.borrow(), ["host refused"]);
+        assert_eq!(instance.failures.seen(), ["host refused"]);
         assert_eq!(instance.deliver("turn_start").await, ["● Turn 2..."]);
     });
 }

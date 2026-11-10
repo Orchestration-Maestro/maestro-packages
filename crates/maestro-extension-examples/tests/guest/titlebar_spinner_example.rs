@@ -1,6 +1,5 @@
 //! The shipped title animation loaded into the production engine, driven by the real clock.
-use super::lane_a::{Ui, event, failures, harness_in, local_io};
-use super::support::load;
+use super::support::{Failures, Recorder, driven, event, harness_in, load};
 use maestro_extensions_wasmtime::test_support::{
     Harness, Loaded,
     maestro_extensions::{AgentEndEvent, AgentStartEvent, SessionShutdownEvent},
@@ -23,11 +22,11 @@ struct Titlebar {
     /// The runner over the loaded component.
     loaded: Loaded,
     /// The title requests.
-    ui: Rc<Ui>,
+    ui: Rc<Recorder>,
     /// The session name the host reports.
     name: Rc<RefCell<Option<String>>>,
     /// The callback failures the runner reported.
-    failures: Rc<RefCell<Vec<String>>>,
+    failures: Failures,
     /// How many title requests the test has consumed.
     read: Cell<usize>,
 }
@@ -41,8 +40,8 @@ impl Titlebar {
         let reported = name.clone();
         harness.runtime.actions.write().unwrap().get_session_name =
             Rc::new(move || Ok(reported.borrow().clone()));
-        let ui = Ui::install(&loaded.runner);
-        let failures = failures(&loaded.runner);
+        let ui = Recorder::install(&loaded.runner);
+        let failures = Failures::collect(&loaded.runner);
         Self {
             harness,
             loaded,
@@ -89,8 +88,8 @@ impl Titlebar {
     /// The text of the title request recorded at `index`.
     fn title(&self, index: usize) -> String {
         let request = &self.ui.seen()[index];
-        assert_eq!(request["method"], "setTitle");
-        request["operands"][0].as_str().unwrap().to_owned()
+        assert_eq!(request[0], "setTitle");
+        request[1][0].as_str().unwrap().to_owned()
     }
 
     /// The newest title the component set.
@@ -102,7 +101,7 @@ impl Titlebar {
 /// All ten authored frames, wraparound and the live session name on every frame.
 #[test]
 fn titlebar_spinner_cadence_and_live_title() {
-    local_io(async {
+    driven(async {
         let bar = Titlebar::new("/work/project/").await;
         bar.rename(Some("named 雪"));
         bar.deliver("agent_start").await;
@@ -125,14 +124,14 @@ fn titlebar_spinner_cadence_and_live_title() {
         }
         bar.deliver("agent_end").await;
         assert_eq!(bar.latest(), "Maestro - project");
-        assert!(bar.failures.borrow().is_empty());
+        assert!(bar.failures.seen().is_empty());
     });
 }
 
 /// Restart, end and shutdown stop the animation and restore the current base title.
 #[test]
 fn titlebar_spinner_lifecycle_cancels_pending_waits() {
-    local_io(async {
+    driven(async {
         let bar = Titlebar::new("/work/project/").await;
         for ending in ["agent_start", "agent_end", "session_shutdown"] {
             bar.deliver("agent_start").await;
@@ -149,14 +148,14 @@ fn titlebar_spinner_lifecycle_cancels_pending_waits() {
             }
             bar.read.set(bar.ui.seen().len());
         }
-        assert!(bar.failures.borrow().is_empty());
+        assert!(bar.failures.seen().is_empty());
     });
 }
 
 /// The title names the host's basename of the working directory, keeping a literal backslash.
 #[test]
 fn titlebar_spinner_uses_host_basename() {
-    local_io(async {
+    driven(async {
         let bar = Titlebar::new(r"/work/a\b").await;
         bar.deliver("agent_end").await;
         assert_eq!(bar.next().await, r"Maestro - a\b");
@@ -167,7 +166,7 @@ fn titlebar_spinner_uses_host_basename() {
 /// refused title or name lookup is reported and starts no animation.
 #[test]
 fn titlebar_spinner_base_titles_and_rejections() {
-    local_io(async {
+    driven(async {
         for (cwd, expected) in [
             ("/", "Maestro - "),
             ("", "Maestro - "),
@@ -180,7 +179,7 @@ fn titlebar_spinner_base_titles_and_rejections() {
         let bar = Titlebar::new("/a/b").await;
         bar.ui.reject("setTitle", "title refused");
         bar.deliver("agent_start").await;
-        assert_eq!(*bar.failures.borrow(), ["title refused"]);
+        assert_eq!(bar.failures.seen(), ["title refused"]);
         assert_eq!(bar.ui.seen().len(), 1, "no animation after a refused title");
         bar.harness
             .runtime
@@ -189,7 +188,7 @@ fn titlebar_spinner_base_titles_and_rejections() {
             .unwrap()
             .get_session_name = Rc::new(|| Err("name refused".into()));
         bar.deliver("agent_start").await;
-        assert_eq!(*bar.failures.borrow(), ["title refused", "name refused"]);
+        assert_eq!(bar.failures.seen(), ["title refused", "name refused"]);
         bar.deliver("session_shutdown").await;
     });
 }
@@ -197,7 +196,7 @@ fn titlebar_spinner_base_titles_and_rejections() {
 /// The built component registers its three lifecycle hooks and runs a whole lifecycle.
 #[test]
 fn titlebar_spinner_component_runs_lifecycle() {
-    local_io(async {
+    driven(async {
         let bar = Titlebar::new("/work/project").await;
         for name in ["agent_start", "agent_end", "session_shutdown"] {
             assert!(bar.loaded.runner.has_handlers(name), "{name}");
@@ -206,6 +205,6 @@ fn titlebar_spinner_component_runs_lifecycle() {
             bar.deliver(name).await;
         }
         assert_eq!(bar.latest(), "Maestro - project");
-        assert!(bar.failures.borrow().is_empty());
+        assert!(bar.failures.seen().is_empty());
     });
 }

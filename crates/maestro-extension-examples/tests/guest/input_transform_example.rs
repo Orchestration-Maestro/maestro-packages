@@ -1,6 +1,5 @@
 //! The shipped input hook loaded into the production engine.
-use super::lane_a::{Ui, failures};
-use super::support::{harness, load, local};
+use super::support::{Failures, Recorder, harness, load, local};
 use maestro_extensions_wasmtime::test_support::maestro_extensions::{InputSource, Presence};
 use serde_json::{Value, json};
 
@@ -23,8 +22,8 @@ fn inputs(rows: &[(InputSource, &str)], rejecting: Option<&str>) -> Vec<Outcome>
         let harness = harness();
         let loaded = load(&harness, COMPONENT).await;
         assert!(loaded.runner.has_handlers("input"));
-        let ui = Ui::install(&loaded.runner);
-        let reported = failures(&loaded.runner);
+        let ui = Recorder::install(&loaded.runner);
+        let reported = Failures::collect(&loaded.runner);
         let mut outcomes = Vec::new();
         for (source, text) in rows {
             if let Some(message) = rejecting {
@@ -42,9 +41,9 @@ fn inputs(rows: &[(InputSource, &str)], rejecting: Option<&str>) -> Vec<Outcome>
                 notifications: ui
                     .take()
                     .iter()
-                    .map(|request| request["operands"].clone())
+                    .map(|request| request[1].clone())
                     .collect(),
-                failures: std::mem::take(&mut reported.borrow_mut()),
+                failures: reported.take(),
             });
         }
         outcomes

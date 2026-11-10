@@ -2,11 +2,13 @@
 //!
 //! The recorded frames were drawn with tagged stand-ins for colors and clipping, so each frame
 //! is compared after the tags are removed, at the 20 columns the recording used.
-use super::lane_a::{Ui, render_call, render_result};
-use super::support::{call_tool, harness, load, local};
+use super::support::{Shown, plain_text, Recorder, TERMINAL, call_tool, harness, load, local, render_call, render_result};
 use serde_json::{Value, json};
 
 /// The variable that names the built questionnaire component.
+/// The width the questionnaire is drawn at.
+const CUSTOM_WIDTH: usize = 20;
+
 const COMPONENT: &str = "MAESTRO_QUESTIONNAIRE_COMPONENT";
 
 /// The recorded rows these tests consume.
@@ -110,7 +112,7 @@ fn as_recorded(frame: &[String]) -> Vec<String> {
     let mut rows = Vec::new();
     let mut editing = 0;
     for row in frame {
-        let row = ended(&super::lane_a::plain(row));
+        let row = ended(&plain_text(row));
         match (editing, border(&row)) {
             (0, false) if row == " Your answer:" => editing = 1,
             (1, true) => {
@@ -134,10 +136,15 @@ async fn replay(row: &Value) {
     let harness = harness();
     let loaded = load(&harness, COMPONENT).await;
     let ui = row["ui"].as_bool().unwrap().then(|| {
-        let ui = Ui::install_with_screen(&loaded.runner);
-        for input in row["inputs"].as_array().unwrap() {
-            ui.press(press(input.as_str().unwrap()));
-        }
+        let ui = Recorder::install_on(&loaded.runner, TERMINAL);
+        ui.frame_width(CUSTOM_WIDTH);
+        let keys: Vec<&str> = row["inputs"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|input| press(input.as_str().unwrap()))
+            .collect();
+        ui.script(&keys);
         ui
     });
     let name = &row["name"];
@@ -252,14 +259,18 @@ fn questionnaire_renderers_show_call_and_answer_summaries() {
         let runner = &loaded.runner;
         for row in corpus()["rows"].as_array().unwrap() {
             let args = json!({"questions": row["questions"]});
-            let call = render_call(runner, "questionnaire", &args);
+            let call = render_call(runner, "questionnaire", &args, 200);
             assert_eq!(
                 call.join("\n"),
                 untagged(row["call"].as_str().unwrap()),
                 "{}",
                 row["name"]
             );
-            let result = render_result(runner, "questionnaire", &args, &row["result"], [false; 2]);
+            let result = render_result(
+                runner,
+                "questionnaire",
+                &Shown::new(&args, &row["result"]),
+            );
             assert_eq!(
                 result.join("\n"),
                 untagged(row["rendered"].as_str().unwrap()),
@@ -268,7 +279,11 @@ fn questionnaire_renderers_show_call_and_answer_summaries() {
             );
         }
         let fallback = json!({"content": [{"type": "text", "text": "fallback"}]});
-        let shown = render_result(runner, "questionnaire", &json!({}), &fallback, [false; 2]);
+        let shown = render_result(
+            runner,
+            "questionnaire",
+            &Shown::new(&json!({}), &fallback),
+        );
         assert_eq!(shown, ["fallback"]);
     });
 }

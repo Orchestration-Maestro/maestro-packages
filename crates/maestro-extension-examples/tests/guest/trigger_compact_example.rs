@@ -1,6 +1,5 @@
 //! The shipped compaction-trigger example loaded into the production engine.
-use super::lane_c::{Dialogs, Failures, bind, emit, fail_with};
-use super::support::{harness, load, local};
+use super::support::{Failures, Recorder, bind, verdict, fail_with, harness, load, local};
 use maestro_extensions_wasmtime::test_support::{
     Harness, Loaded,
     maestro_extensions::{CompactionResult, ContextUsage, TurnEndEvent},
@@ -40,7 +39,7 @@ struct Admitted {
 /// Serves the context usage and the compaction admission of one activation.
 fn serve(
     loaded: &Loaded,
-    ui: &Rc<Dialogs>,
+    ui: &Rc<Recorder>,
     usage: &Rc<RefCell<Option<ContextUsage>>>,
     admitted: &Rc<RefCell<Vec<Admitted>>>,
     refusal: &Rc<RefCell<Option<String>>>,
@@ -52,7 +51,7 @@ fn serve(
         context.compact = Rc::new(move |options| {
             fail_with(&refuse)?;
             let options = options.unwrap_or_default();
-            log.request(
+            log.record(
                 "compact",
                 json!({
                     "instructions": options.custom_instructions,
@@ -88,7 +87,7 @@ struct Replay {
     /// The factory activations, in start order.
     activations: Vec<Activation>,
     /// The notifications and admissions every activation records, in order.
-    ui: Rc<Dialogs>,
+    ui: Rc<Recorder>,
     /// The failure the next admission returns.
     refusal: Rc<RefCell<Option<String>>>,
 }
@@ -96,7 +95,7 @@ struct Replay {
 impl Replay {
     /// Starts `count` activations that share one effect log.
     async fn start(count: usize, ui_available: bool) -> Self {
-        let ui = Rc::new(Dialogs::default());
+        let ui = Recorder::detached(None);
         let refusal = Rc::new(RefCell::new(None::<String>));
         let mut activations = Vec::new();
         for _ in 0..count {
@@ -139,7 +138,7 @@ impl Replay {
             "usage":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"totalTokens":0,
                 "cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},
             "stopReason":"stop","timestamp":0},"toolResults":[]});
-        emit::<TurnEndEvent>(&active.loaded.runner, &event).await?;
+        verdict::<TurnEndEvent>(&active.loaded.runner, &event).await?;
         active
             .failures
             .take()
@@ -178,7 +177,7 @@ impl Replay {
                 let message = step["message"].as_str().unwrap();
                 match step["method"].as_str().unwrap() {
                     "compact" => *self.refusal.borrow_mut() = Some(message.to_owned()),
-                    method => self.ui.refuse_method(method, message),
+                    method => self.ui.reject(method, message),
                 }
                 Ok(())
             }

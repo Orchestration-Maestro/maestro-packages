@@ -1,6 +1,5 @@
 //! The shipped protected-paths hook loaded into the production engine.
-use super::lane_c::{Dialogs, tool_call};
-use super::support::{harness, load, local};
+use super::support::{TERMINAL, Recorder, harness, load, local, tool_call};
 use serde_json::{Value, json};
 
 /// The variable that names the built protected-paths component.
@@ -41,7 +40,7 @@ fn protected_paths_matches_authored_paths() {
     local(async {
         let harness = harness();
         let loaded = load(&harness, COMPONENT).await;
-        let ui = Dialogs::install(&loaded.runner);
+        let ui = Recorder::install_on(&loaded.runner, TERMINAL);
         let corpus = corpus();
         let rows = corpus["rows"].as_array().unwrap();
         assert_eq!(rows.len(), 87, "recorded tool calls");
@@ -61,7 +60,7 @@ fn protected_paths_keeps_host_errors_catchable() {
     local(async {
         let harness = harness();
         let loaded = load(&harness, COMPONENT).await;
-        let ui = Dialogs::install(&loaded.runner);
+        let ui = Recorder::install_on(&loaded.runner, TERMINAL);
         let corpus = corpus();
         let probes: Vec<&Value> = corpus["host_errors"]
             .as_array()
@@ -71,7 +70,7 @@ fn protected_paths_keeps_host_errors_catchable() {
             .collect();
         assert_eq!(probes.len(), 3, "recorded notification probes");
         for probe in probes {
-            ui.refuse_method("notify", "controlled host failure");
+            ui.reject("notify", "controlled host failure");
             let event = json!({
                 "type": "tool_call",
                 "toolCallId": "controlled-call",

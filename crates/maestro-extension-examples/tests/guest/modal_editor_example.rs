@@ -1,6 +1,5 @@
 //! The shipped modal editor loaded into the production engine.
-use super::lane_c::{Dialogs, emit};
-use super::support::{harness, load, local};
+use super::support::{TERMINAL, Recorder, verdict, harness, load, local};
 use maestro_extensions::{SessionStartEvent, types::EditorFactoryOutcome};
 use serde_json::{Value, json};
 use std::{cell::Cell, rc::Rc};
@@ -20,17 +19,17 @@ struct Started {
     /// How many times the application's interrupt callback ran.
     interrupts: Rc<Cell<u32>>,
     /// The UI that received the editor.
-    ui: Rc<Dialogs>,
+    ui: Rc<Recorder>,
 }
 
 /// Starts the example and delivers one session start.
 async fn started() -> Started {
     let harness = harness();
     let loaded = load(&harness, COMPONENT).await;
-    let ui = Dialogs::install(&loaded.runner);
+    let ui = Recorder::install_on(&loaded.runner, TERMINAL);
     let event = json!({"type": "session_start", "reason": "new"});
     assert_eq!(
-        emit::<SessionStartEvent>(&loaded.runner, &event).await,
+        verdict::<SessionStartEvent>(&loaded.runner, &event).await,
         Ok(Value::Null)
     );
     let editor = ui.editor().expect("the session start installed an editor");

@@ -1,5 +1,5 @@
-//! Loading a component with the application's native effects, which the harness's loader does
-//! not supply.
+//! Loading a component with the application's native effects (file watches, child processes,
+//! HTTP), which the harness's loader does not supply.
 use maestro_extensions_wasmtime::test_support::{
     Loaded,
     maestro_extensions::{
@@ -53,7 +53,7 @@ pub async fn load_native(
     local: &Rc<tokio::task::LocalSet>,
 ) -> Loaded {
     let extensions = load_extensions_with_runtime(
-        vec![super::super::support::component(variable)],
+        vec![super::component(variable)],
         &harness.cwd,
         &harness.bus,
         &loader(local),

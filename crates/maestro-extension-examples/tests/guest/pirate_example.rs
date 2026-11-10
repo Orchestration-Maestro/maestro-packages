@@ -1,7 +1,7 @@
 //! The shipped prompt-mode toggle loaded into the production engine.
 //!
 //! Notification severities are the host's own spellings, so the source's `info` is `Info`.
-use super::support::{Notifications, before_agent_start, component, harness, load, local};
+use super::support::{Recorder, before_agent_start, component, harness, load, local};
 use maestro_extensions_wasmtime::test_support::{Harness, Loaded};
 use serde_json::{Value, json};
 use std::rc::Rc;
@@ -21,7 +21,7 @@ struct Instance {
     /// The runner over the loaded component.
     loaded: Loaded,
     /// The notifications the component showed.
-    ui: Rc<Notifications>,
+    ui: Rc<Recorder>,
 }
 
 impl Instance {
@@ -29,7 +29,7 @@ impl Instance {
     async fn new() -> Self {
         let harness = harness();
         let loaded = load(&harness, COMPONENT).await;
-        let ui = Notifications::install(&loaded.runner);
+        let ui = Recorder::install(&loaded.runner);
         Self {
             harness,
             loaded,
@@ -40,14 +40,23 @@ impl Instance {
     /// Runs the command with `input` and returns what the UI recorded and the command's error.
     async fn command(&self, input: &Value) -> (Value, Option<String>) {
         let command = self.loaded.runner.get_command("pirate").unwrap().command;
-        self.ui.reject_next(input["rejection"].as_str());
+        match input["rejection"].as_str() {
+            Some(rejection) => self.ui.reject("notify", rejection),
+            None => self.ui.disarm(),
+        }
         let outcome = (command.handler)(
             input["args"].as_str().unwrap().into(),
             self.loaded.runner.create_command_context(),
         )
         .await;
         (
-            json!(self.ui.take()),
+            json!(
+                self.ui
+                    .take()
+                    .iter()
+                    .map(|call| json!({"message": call[1][0], "kind": call[1][1]}))
+                    .collect::<Vec<_>>()
+            ),
             outcome.err().map(|error| error.to_string()),
         )
     }

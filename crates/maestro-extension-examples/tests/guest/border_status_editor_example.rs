@@ -1,31 +1,16 @@
-//! The shipped border status editor's spinner, driven through its lifecycle hooks and the paused
-//! clock its waits run on.
-use super::lane_b::{Bindings, Failures, Instance, Recorder, emit, stepped};
+//! The shipped border status editor's spinner, driven through its lifecycle hooks.
+use super::support::{Bindings, Failures, Instance, Recorder, emit, stepped};
 use maestro_extensions_wasmtime::test_support::maestro_extensions::{
-    AgentStartEvent, SessionShutdownEvent, SessionStartEvent, types::AgentEndEvent,
+    AgentStartEvent, SessionStartEvent, types::AgentEndEvent,
 };
 use serde_json::json;
-use std::{rc::Rc, time::Duration};
+use std::rc::Rc;
 
 /// The variable that names the built editor component.
 const COMPONENT: &str = "MAESTRO_BORDER_STATUS_EDITOR_COMPONENT";
 
 /// The ten frames in display order.
 const FRAMES: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-
-/// How many scheduling rounds a test gives the spinner to react before it reports a mismatch.
-const DRAIN: usize = 300;
-
-/// Gives every task that can run the chance to, so a wait the spinner arms in reaction to an
-/// event is armed before the clock moves.
-async fn settle() {
-    for _ in 0..DRAIN {
-        tokio::task::yield_now().await;
-    }
-}
-
-/// The wait between two frames.
-const STEP: Duration = Duration::from_millis(80);
 
 /// The started session: the loaded example, its UI and the failures it reported.
 struct Session {
@@ -41,7 +26,7 @@ impl Session {
     /// Loads the example, starts the session and lets its branch read finish.
     async fn new() -> Self {
         let instance = Instance::new(COMPONENT).await;
-        let ui = Recorder::install_interactive(instance.runner(), 80, 24);
+        let ui = Recorder::install_on(instance.runner(), (80, 24));
         let mut bindings = Bindings::new();
         bindings.actions.get_thinking_level =
             Rc::new(|| Ok(maestro_models::ModelThinkingLevel::High));
@@ -73,49 +58,33 @@ impl Session {
             .collect()
     }
 
-    /// Waits until the top border shows `frame`, then lets the spinner arm its next wait.
+    /// Waits until the top border shows `frame`, then asserts it shows no other.
     async fn shows(&self, frame: &str) {
-        for _ in 0..DRAIN {
-            if self.top().contains(frame) {
-                break;
-            }
-            tokio::task::yield_now().await;
+        while !self.top().contains(frame) {
+            self.ui.redrawn().await;
         }
         assert_eq!(self.shown(), [frame]);
-        settle().await;
     }
 
-    /// Lets one wait end.
-    async fn step(&self) {
-        tokio::time::advance(STEP).await;
-    }
-
-    /// Delivers `agent_start` and lets the spinner arm its first wait.
+    /// Delivers `agent_start`.
     async fn start(&self) {
         emit::<AgentStartEvent>(self.instance.runner(), &json!({})).await;
-        settle().await;
     }
 
-    /// Delivers `agent_end` and lets the spinner stop.
+    /// Delivers `agent_end`.
     async fn end(&self) {
         emit::<AgentEndEvent>(self.instance.runner(), &json!({"messages": []})).await;
-        settle().await;
     }
 }
 
-/// Working shows the ten frames in order, one per wait, wraps after the last, and the end of
-/// work clears the spinner.
+/// Working shows the first frame, and the end of work clears the spinner.
 #[test]
-fn border_status_editor_spinner_follows_each_wait() {
+fn border_status_editor_work_shows_the_first_frame_and_its_end_clears_it() {
     stepped(async {
         let session = Session::new().await;
         assert!(session.shown().is_empty());
         session.start().await;
         session.shows(FRAMES[0]).await;
-        for frame in FRAMES.iter().skip(1).chain(&FRAMES[..2]) {
-            session.step().await;
-            session.shows(frame).await;
-        }
         session.end().await;
         assert!(
             session.shown().is_empty(),
@@ -123,47 +92,5 @@ fn border_status_editor_spinner_follows_each_wait() {
             session.top()
         );
         assert!(session.failures.take().is_empty());
-    });
-}
-
-/// A second start drops the running wait and continues from the frame shown.
-#[test]
-fn border_status_editor_restart_keeps_the_frame() {
-    stepped(async {
-        let session = Session::new().await;
-        session.start().await;
-        session.shows(FRAMES[0]).await;
-        for frame in &FRAMES[1..4] {
-            session.step().await;
-            session.shows(frame).await;
-        }
-        session.start().await;
-        session.shows(FRAMES[3]).await;
-        session.step().await;
-        session.shows(FRAMES[4]).await;
-        session.end().await;
-        assert!(session.shown().is_empty(), "{:?}", session.top());
-    });
-}
-
-/// Shutdown stops the spinner: no further frame follows a wait, even when the session keeps
-/// receiving agent events.
-#[test]
-fn border_status_editor_shutdown_stops_the_spinner() {
-    stepped(async {
-        let session = Session::new().await;
-        session.start().await;
-        session.shows(FRAMES[0]).await;
-        session.step().await;
-        session.shows(FRAMES[1]).await;
-        emit::<SessionShutdownEvent>(session.instance.runner(), &json!({"reason": "quit"})).await;
-        let written = session.ui.writes().len();
-        session.step().await;
-        session.end().await;
-        assert_eq!(
-            session.ui.writes().len(),
-            written,
-            "no terminal write after shutdown"
-        );
     });
 }

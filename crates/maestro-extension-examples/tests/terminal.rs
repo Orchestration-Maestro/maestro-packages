@@ -1,4 +1,4 @@
-//! A started terminal on a manual runtime, announcing each redraw it is asked to schedule.
+//! A started terminal on a manual runtime that announces each redraw it is asked to schedule.
 use maestro_tui::{
     TUI, TerminalImage,
     interface::{LocalFuture, LogContext, RenderCallback, RenderTimer, TuiRuntime},
@@ -9,12 +9,14 @@ use tokio::sync::Notify;
 
 /// A started terminal on a manual runtime whose scheduled work the test runs.
 #[derive(Clone)]
-pub struct Screen {
-    /// The terminal factories receive.
+pub struct Stage {
+    /// The frame writer that factories receive.
     pub tui: TUI,
+    /// The terminal under the frame writer; it records what the writer draws.
+    pub terminal: RecordingTerminal,
     /// The runtime whose scheduled work `settle` runs.
     pub runtime: ManualRuntime,
-    /// Wakes a waiter whenever the terminal schedules a redraw.
+    /// Wakes a waiter whenever the frame writer schedules a redraw.
     pub redraws: Rc<Notify>,
 }
 
@@ -57,10 +59,10 @@ pub fn drain(redraws: &Notify) {
         .poll(&mut std::task::Context::from_waker(std::task::Waker::noop()));
 }
 
-impl Screen {
-    /// Starts an 80 by 24 terminal.
-    pub fn new() -> Self {
-        let terminal = RecordingTerminal::new(80, 24);
+impl Stage {
+    /// Starts a terminal of `columns` by `rows`.
+    pub fn new(columns: usize, rows: usize) -> Self {
+        let terminal = RecordingTerminal::new(columns, rows);
         let runtime = ManualRuntime::new();
         let redraws = Rc::new(Notify::new());
         let announcing = Announcing {
@@ -78,8 +80,14 @@ impl Screen {
         drain(&redraws);
         Self {
             tui,
+            terminal,
             runtime,
             redraws,
         }
+    }
+
+    /// Runs the work the frame writer scheduled.
+    pub fn settle(&self) {
+        self.runtime.settle().unwrap();
     }
 }

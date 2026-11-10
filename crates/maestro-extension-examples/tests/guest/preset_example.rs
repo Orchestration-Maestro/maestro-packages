@@ -4,11 +4,7 @@
 //! user's own agent directory, which a test must not write, so the recorded global presets are
 //! supplied as the first entries of the project file; a project entry replaces an earlier one in
 //! place, exactly as it replaces a global one.
-use super::lane_b::{
-    Bindings, Failures, Instance, Log, Recorder, driven, emit, plain, register_model,
-    replace_branch,
-};
-use super::support::before_agent_start;
+use super::support::{Bindings, Failures, Instance, Log, Recorder, before_agent_start, driven, emit, plain_rows, register_model, replace_branch};
 use maestro_extensions_wasmtime::test_support::maestro_extensions::{
     SessionStartEvent, SessionTreeEvent, TurnStartEvent, types::FlagValue,
 };
@@ -166,7 +162,7 @@ impl Session {
         let instance = Instance::in_directory(COMPONENT, directory.path().to_str().unwrap()).await;
         register_model(&instance.harness, "configured", "custom-model");
         let ui = if interactive {
-            Recorder::install_interactive(instance.runner(), 100, 30)
+            Recorder::install_on(instance.runner(), (100, 30))
         } else {
             Recorder::install(instance.runner())
         };
@@ -271,7 +267,7 @@ fn status_text(calls: &[Value]) -> Option<String> {
         .rev()
         .find(|call| call[0] == "setStatus")
         .and_then(|call| call[1][1].as_str())
-        .map(|text| plain(&[text.to_owned()]).remove(0))
+        .map(|text| plain_rows(&[text.to_owned()]).remove(0))
 }
 
 /// The branch restores the newest saved name and its instructions, without applying settings.

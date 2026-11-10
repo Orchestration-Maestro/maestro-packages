@@ -1,6 +1,5 @@
 //! The shipped status command and message renderer loaded into the production engine.
-use super::lane_b::{Bindings, Instance, render_message};
-use super::support::local;
+use super::support::{Bindings, Instance, local, render_message};
 use serde_json::{Value, json};
 
 /// The variable that names the built renderer component.

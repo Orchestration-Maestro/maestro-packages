@@ -1,6 +1,5 @@
 //! The shipped model-status factory loaded into the production engine.
-use super::lane_c::{Dialogs, Failures, emit};
-use super::support::{harness, load, local};
+use super::support::{TERMINAL, Failures, Recorder, verdict, harness, load, local};
 use maestro_extensions::ModelSelectEvent;
 use serde_json::{Value, json};
 
@@ -54,7 +53,7 @@ fn model_status_registers_only_selection_hook() {
     local(async {
         let harness = harness();
         let loaded = load(&harness, COMPONENT).await;
-        let ui = Dialogs::install(&loaded.runner);
+        let ui = Recorder::install_on(&loaded.runner, TERMINAL);
         assert_eq!(corpus()["registrations"], json!(["model_select"]));
         assert!(loaded.runner.has_handlers("model_select"));
         assert!(loaded.runner.get_all_registered_tools().is_empty());
@@ -71,12 +70,12 @@ fn model_status_selection_preserves_literal_identifiers() {
     local(async {
         let harness = harness();
         let loaded = load(&harness, COMPONENT).await;
-        let ui = Dialogs::install(&loaded.runner);
+        let ui = Recorder::install_on(&loaded.runner, TERMINAL);
         let failures = Failures::collect(&loaded.runner);
         let successes = rows(false);
         assert_eq!(successes.len(), 14, "recorded successes");
         for row in successes {
-            let verdict = emit::<ModelSelectEvent>(&loaded.runner, &row["event"]).await;
+            let verdict = verdict::<ModelSelectEvent>(&loaded.runner, &row["event"]).await;
             let name = &row["name"];
             assert_eq!(verdict, Ok(Value::Null), "{name}");
             assert_eq!(ui.take(), reached(&row), "{name}: requests");
@@ -92,19 +91,19 @@ fn model_status_host_rejections_stop_later_effects() {
     local(async {
         let harness = harness();
         let loaded = load(&harness, COMPONENT).await;
-        let ui = Dialogs::install(&loaded.runner);
+        let ui = Recorder::install_on(&loaded.runner, TERMINAL);
         let failures = Failures::collect(&loaded.runner);
         for row in rows(true) {
             let error = row["outcome"]["error"].as_str().unwrap();
-            ui.refuse_at(0, row["reject"].as_str().unwrap());
-            let verdict = emit::<ModelSelectEvent>(&loaded.runner, &row["event"]).await;
+            ui.reject_at(0, row["reject"].as_str().unwrap());
+            let verdict = verdict::<ModelSelectEvent>(&loaded.runner, &row["event"]).await;
             let name = &row["name"];
             assert_eq!(verdict, Ok(Value::Null), "{name}");
             assert_eq!(failures.take(), [error], "{name}: failure");
             assert_eq!(ui.take(), reached(&row), "{name}: requests");
         }
         let control = &rows(false)[0];
-        emit::<ModelSelectEvent>(&loaded.runner, &control["event"])
+        verdict::<ModelSelectEvent>(&loaded.runner, &control["event"])
             .await
             .unwrap();
         assert_eq!(ui.take(), reached(control), "the control still completes");

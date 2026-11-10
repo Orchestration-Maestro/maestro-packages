@@ -4,8 +4,7 @@
 //! session, whose own identities map back to those names when labels are compared. A refused
 //! entry read or label read, and the injected clock, have no public form on the session or the
 //! guest clock, so those cases check what a real session shows.
-use super::lane_a::{Ui, failures};
-use super::support::{harness, load, local};
+use super::support::{Failures, Recorder, harness, load, local};
 use maestro_extensions_wasmtime::test_support::{Harness, Loaded};
 use maestro_models::UserContent;
 use maestro_session::{Presence, SessionManager, session_manager::CompactionOptions};
@@ -45,11 +44,11 @@ struct Case {
     /// The runner over the component.
     loaded: Loaded,
     /// The notifications the commands showed.
-    ui: Rc<Ui>,
+    ui: Rc<Recorder>,
     /// Each label write as the recorded name and the label, absent when cleared.
     sets: Rc<RefCell<Vec<Value>>>,
     /// The callback failures the runner reported.
-    failures: Rc<RefCell<Vec<String>>>,
+    failures: Failures,
     /// The recorded names of the real entry identities.
     names: Rc<RefCell<BTreeMap<String, String>>>,
 }
@@ -59,8 +58,8 @@ impl Case {
     async fn new(row: &Value) -> Self {
         let harness = harness();
         let loaded = load(&harness, COMPONENT).await;
-        let ui = Ui::install(&loaded.runner);
-        let reported = failures(&loaded.runner);
+        let ui = Recorder::install(&loaded.runner);
+        let reported = Failures::collect(&loaded.runner);
         let names = Rc::new(RefCell::new(BTreeMap::new()));
         let sets = Rc::new(RefCell::new(Vec::new()));
         let ids = build_entries(&mut harness.session_manager.borrow_mut(), row, &names);
@@ -222,7 +221,7 @@ async fn replay(row: &Value) {
         .ui
         .take()
         .iter()
-        .map(|request| json!({"message": request["operands"][0], "kind": request["operands"][1].as_str().map(str::to_lowercase)}))
+        .map(|request| json!({"message": request[1][0], "kind": request[1][1].as_str().map(str::to_lowercase)}))
         .collect();
     let recorded: Vec<Value> = expected["notifications"]
         .as_array()
@@ -242,7 +241,7 @@ async fn replay(row: &Value) {
         expected["error"].as_str(),
         "{name}: error"
     );
-    assert!(case.failures.borrow().is_empty(), "{name}");
+    assert!(case.failures.seen().is_empty(), "{name}");
     let _ = (&case.harness, &case.names);
 }
 
@@ -385,7 +384,7 @@ fn bookmark_component_reads_host_clock() {
             let millis: u128 = label.strip_prefix("bookmark-").unwrap().parse().unwrap();
             assert!((before..=after).contains(&millis), "{label}");
             assert_eq!(
-                case.ui.take()[0]["operands"][0],
+                case.ui.take()[0][1][0],
                 format!("Bookmarked as: {label}")
             );
         }

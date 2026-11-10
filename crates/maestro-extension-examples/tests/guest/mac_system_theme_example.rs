@@ -1,6 +1,5 @@
 //! The shipped appearance follower's lifecycle, loaded into the production engine.
-use super::lane_c::{Dialogs, emit};
-use super::support::{harness, load, local};
+use super::support::{TERMINAL, Recorder, verdict, harness, load, local};
 use maestro_extensions::SessionShutdownEvent;
 use serde_json::{Value, json};
 
@@ -14,7 +13,7 @@ fn mac_system_theme_registers_lifecycle_handlers() {
     local(async {
         let harness = harness();
         let loaded = load(&harness, COMPONENT).await;
-        let ui = Dialogs::install(&loaded.runner);
+        let ui = Recorder::install_on(&loaded.runner, TERMINAL);
         for event in ["session_start", "session_shutdown"] {
             assert!(loaded.runner.has_handlers(event), "{event}");
         }
@@ -33,11 +32,11 @@ fn mac_system_theme_shutdown_without_a_wait_is_a_no_op() {
     local(async {
         let harness = harness();
         let loaded = load(&harness, COMPONENT).await;
-        let ui = Dialogs::install(&loaded.runner);
+        let ui = Recorder::install_on(&loaded.runner, TERMINAL);
         let event = json!({"type": "session_shutdown", "reason": "quit"});
         for _ in 0..2 {
             assert_eq!(
-                emit::<SessionShutdownEvent>(&loaded.runner, &event).await,
+                verdict::<SessionShutdownEvent>(&loaded.runner, &event).await,
                 Ok(Value::Null)
             );
         }

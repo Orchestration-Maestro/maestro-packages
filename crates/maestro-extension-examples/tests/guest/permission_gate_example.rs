@@ -1,6 +1,5 @@
 //! The shipped permission hook loaded into the production engine.
-use super::lane_c::{Dialogs, tool_call};
-use super::support::{harness, load, local};
+use super::support::{TERMINAL, Recorder, harness, load, local, tool_call};
 use maestro_extensions::{ExtensionRunner, Local};
 use serde_json::{Value, json};
 use std::rc::Rc;
@@ -101,9 +100,9 @@ fn cases() -> Vec<Case> {
 }
 
 /// Delivers one case and checks the prompt, the verdict and what the hook asked of the UI.
-async fn check(ui: &Rc<Dialogs>, runner: &Rc<ExtensionRunner<Local>>, row: &Case) {
+async fn check(ui: &Rc<Recorder>, runner: &Rc<ExtensionRunner<Local>>, row: &Case) {
     ui.connect(runner, row.has_ui);
-    ui.answer(row.choice.clone());
+    ui.reply(row.choice.clone());
     let verdict = tool_call(runner, &row.event).await;
     let requests = ui.take();
     let context = format!("{}; UI {}; choice {}", row.event, row.has_ui, row.choice);
@@ -133,7 +132,7 @@ fn permission_gate_hook_preserves_patterns_and_decisions() {
     local(async {
         let harness = harness();
         let loaded = load(&harness, COMPONENT).await;
-        let ui = Dialogs::install(&loaded.runner);
+        let ui = Recorder::install_on(&loaded.runner, TERMINAL);
         for row in cases() {
             check(&ui, &loaded.runner, &row).await;
         }
@@ -146,8 +145,8 @@ fn permission_gate_selector_failure_reaches_the_caller() {
     local(async {
         let harness = harness();
         let loaded = load(&harness, COMPONENT).await;
-        let ui = Dialogs::install(&loaded.runner);
-        ui.refuse_method("select", "selector unavailable");
+        let ui = Recorder::install_on(&loaded.runner, TERMINAL);
+        ui.reject("select", "selector unavailable");
         let event = case("bash", "sudo whoami", true, Value::Null).event;
         assert_eq!(
             tool_call(&loaded.runner, &event).await,

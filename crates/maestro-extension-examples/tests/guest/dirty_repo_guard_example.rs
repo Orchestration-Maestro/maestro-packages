@@ -1,5 +1,5 @@
 //! The shipped dirty-repository guard loaded into the production engine, over a real repository.
-use super::lane_b::{Failures, Instance, Recorder, driven, emit};
+use super::support::{Failures, Instance, Recorder, driven, emit};
 use maestro_extensions_wasmtime::test_support::maestro_extensions::{
     Presence, SessionBeforeForkEvent, SessionBeforeSwitchEvent,
 };

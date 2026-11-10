@@ -1,6 +1,5 @@
 //! The shipped question tool's interactive view, driven through the terminal input it reads.
-use super::lane_b::{Instance, Recorder, driven};
-use super::support::call_tool;
+use super::support::{Instance, Recorder, call_tool, driven};
 use serde_json::{Value, json};
 use std::{collections::HashMap, rc::Rc};
 
@@ -49,7 +48,7 @@ struct Asking {
 impl Asking {
     /// Starts the tool on `instance` and waits for its view.
     async fn start(instance: &Instance, params: Value) -> Self {
-        let ui = Recorder::install_interactive(instance.runner(), 80, 24);
+        let ui = Recorder::install_on(instance.runner(), (80, 24));
         let runner = instance.runner().clone();
         let call =
             tokio::task::spawn_local(async move { call_tool(&runner, "question", params).await });

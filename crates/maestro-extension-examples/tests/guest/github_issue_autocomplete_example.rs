@@ -3,8 +3,7 @@
 //! Listing and filtering the issues needs a controlled `gh` program, which the public harness
 //! cannot place on the child's search path, so these tests cover how the session resolves the
 //! repository and whether it installs the completion.
-use super::lane_a::{Ui, event, failures, harness_in, local_io};
-use super::support::load;
+use super::support::{Failures, Recorder, driven, event, harness_in, load};
 use maestro_extensions_wasmtime::test_support::maestro_extensions::SessionStartEvent;
 use maestro_test_directory::Scratch;
 use serde_json::{Value, json};
@@ -42,24 +41,24 @@ async fn start(root: &Scratch) -> Vec<Value> {
     let harness = harness_in(root.path().to_str().unwrap());
     let loaded = load(&harness, COMPONENT).await;
     assert!(loaded.runner.has_handlers("session_start"));
-    let ui = Ui::install(&loaded.runner);
-    let reported = failures(&loaded.runner);
+    let ui = Recorder::install(&loaded.runner);
+    let reported = Failures::collect(&loaded.runner);
     let mut start: SessionStartEvent = event(json!({"type": "session_start", "reason": "startup"}));
     loaded.runner.emit(&mut start).await.unwrap();
-    assert_eq!(*reported.borrow(), Vec::<String>::new());
+    assert_eq!(reported.seen(), Vec::<String>::new());
     ui.take()
 }
 
 /// Whether the requests hold the notification `error`, the only request when it is there.
 fn failed_with(requests: &[Value], error: &str) -> bool {
-    requests.len() == 1 && requests[0]["operands"] == json!([error, "Error"])
+    requests.len() == 1 && requests[0][1] == json!([error, "Error"])
 }
 
 /// A directory that is not a repository, and remotes none of which name a GitHub repository,
 /// are reported once and install nothing.
 #[test]
 fn github_issue_autocomplete_resolves_remotes_and_reports_failures() {
-    local_io(async {
+    driven(async {
         let not_git = Scratch::new().unwrap();
         let requests = start(&not_git).await;
         assert!(
@@ -91,7 +90,7 @@ fn github_issue_autocomplete_resolves_remotes_and_reports_failures() {
 /// accepted spellings and wherever it sits in the list.
 #[test]
 fn github_issue_autocomplete_installs_for_github_remotes() {
-    local_io(async {
+    driven(async {
         let accepted = [
             vec![("origin", "git@github.com:owner/repo.git")],
             vec![("origin", "https://github.com/owner/repo.git")],
@@ -105,12 +104,12 @@ fn github_issue_autocomplete_installs_for_github_remotes() {
             let requests = start(&repository(&remotes)).await;
             let installed = requests
                 .iter()
-                .filter(|request| request["method"] == "addAutocompleteProvider")
+                .filter(|request| request[0] == "addAutocompleteProvider")
                 .count();
             assert_eq!(installed, 1, "{remotes:?}: {requests:?}");
             assert!(
-                !requests.iter().any(|request| request["method"] == "notify"
-                    && request["operands"][0]
+                !requests.iter().any(|request| request[0] == "notify"
+                    && request[1][0]
                         .as_str()
                         .is_some_and(|text| text.contains("cwd is not"))),
                 "{remotes:?}: {requests:?}"

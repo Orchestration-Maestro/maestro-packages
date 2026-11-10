@@ -1,6 +1,5 @@
 //! The shipped hidden-thinking-label component loaded into the production engine.
-use super::lane_b::{Failures, Instance, Recorder, emit};
-use super::support::local;
+use super::support::{Failures, Instance, Recorder, emit, local};
 use maestro_extensions_wasmtime::test_support::maestro_extensions::SessionStartEvent;
 use serde::Deserialize;
 use serde_json::{Value, json};

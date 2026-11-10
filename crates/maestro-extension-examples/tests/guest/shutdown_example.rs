@@ -1,6 +1,5 @@
 //! The shipped shutdown component loaded into the production engine.
-use super::lane_b::{Bindings, Instance, run_tool};
-use super::support::{call_tool, local};
+use super::support::{Bindings, Instance, call_tool, local, run_tool};
 use maestro_extensions_wasmtime::test_support::maestro_extensions::{
     Cancellation, ExtensionRunner, Local,
 };

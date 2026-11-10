@@ -1,6 +1,5 @@
 //! The shipped custom header loaded into the production engine.
-use super::lane_c::{Dialogs, dark, emit, screen};
-use super::support::{harness, load, local};
+use super::support::{Recorder, TERMINAL, dark, harness, load, local, verdict};
 use maestro_extensions::SessionStartEvent;
 use serde_json::{Value, json};
 
@@ -8,9 +7,9 @@ use serde_json::{Value, json};
 const COMPONENT: &str = "MAESTRO_CUSTOM_HEADER_COMPONENT";
 
 /// Renders the installed header at `width`, with styling removed.
-fn rows(ui: &Dialogs, width: u16) -> Vec<String> {
+fn rows(ui: &Recorder, width: u16) -> Vec<String> {
     let factory = ui.header().expect("the extension installed a header");
-    let built = factory.call((screen(), dark())).unwrap();
+    let built = factory.call((ui.stage().tui.clone(), dark())).unwrap();
     built
         .component
         .try_render(width.into())
@@ -55,11 +54,11 @@ fn custom_header_renders_host_version() {
     local(async {
         let harness = harness();
         let loaded = load(&harness, COMPONENT).await;
-        let ui = Dialogs::install(&loaded.runner);
+        let ui = Recorder::install_on(&loaded.runner, TERMINAL);
         for reason in ["startup", "reload", "new", "resume", "fork"] {
             let event = json!({"type":"session_start","reason":reason});
             assert_eq!(
-                emit::<SessionStartEvent>(&loaded.runner, &event).await,
+                verdict::<SessionStartEvent>(&loaded.runner, &event).await,
                 Ok(Value::Null)
             );
             assert_eq!(ui.take(), [json!(["setHeader", [true]])], "{reason}");
@@ -77,9 +76,9 @@ fn custom_header_restores_builtin_header() {
     local(async {
         let harness = harness();
         let loaded = load(&harness, COMPONENT).await;
-        let ui = Dialogs::install(&loaded.runner);
+        let ui = Recorder::install_on(&loaded.runner, TERMINAL);
         let event = json!({"type":"session_start","reason":"new"});
-        emit::<SessionStartEvent>(&loaded.runner, &event)
+        verdict::<SessionStartEvent>(&loaded.runner, &event)
             .await
             .unwrap();
         ui.take();
@@ -109,11 +108,11 @@ fn custom_header_skips_headless_startup() {
     local(async {
         let harness = harness();
         let loaded = load(&harness, COMPONENT).await;
-        let ui = Dialogs::install(&loaded.runner);
+        let ui = Recorder::install_on(&loaded.runner, TERMINAL);
         ui.connect(&loaded.runner, false);
         let event = json!({"type":"session_start","reason":"new"});
         assert_eq!(
-            emit::<SessionStartEvent>(&loaded.runner, &event).await,
+            verdict::<SessionStartEvent>(&loaded.runner, &event).await,
             Ok(Value::Null)
         );
         assert!(ui.take().is_empty());

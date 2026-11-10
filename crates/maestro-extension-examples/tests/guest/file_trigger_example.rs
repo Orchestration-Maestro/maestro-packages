@@ -3,8 +3,7 @@
 //! The component watches one fixed path, so each test owns it exclusively: the nextest group
 //! runs these tests one at a time and the lock keeps other file-trigger tests out.
 #![cfg(target_os = "linux")]
-use super::lane_a::{Ui, event, failures, load_native, local_native};
-use super::support::harness;
+use super::support::{Failures, Recorder, event, harness, load_native, local_native};
 use maestro_extensions_wasmtime::test_support::maestro_extensions::SessionStartEvent;
 use serde_json::{Value, json};
 use std::{cell::Cell, io::Write, path::Path, rc::Rc};
@@ -60,7 +59,7 @@ struct Watching {
         >,
     >,
     /// The notifications the component showed.
-    ui: Rc<Ui>,
+    ui: Rc<Recorder>,
     /// Every message the component sent, with its options, or a refusal marker.
     sent: mpsc::UnboundedReceiver<Value>,
     /// Whether the host refuses the next messages.
@@ -84,7 +83,7 @@ impl Watching {
             sender.send(document).unwrap();
             Ok(())
         });
-        let ui = Ui::install(&loaded.runner);
+        let ui = Recorder::install(&loaded.runner);
         Self {
             harness,
             runner: loaded.runner,
@@ -132,11 +131,11 @@ fn file_trigger_delivers_nonempty_contents_and_releases_watches() {
     local_native(|local| async move {
         let mut trigger = Trigger::new();
         let mut watching = Watching::new(&local).await;
-        let reported = failures(&watching.runner);
+        let reported = Failures::collect(&watching.runner);
         watching.start().await;
-        assert_eq!(*reported.borrow(), Vec::<String>::new());
+        assert_eq!(reported.seen(), Vec::<String>::new());
         assert_eq!(
-            watching.ui.take()[0]["operands"],
+            watching.ui.take()[0][1],
             json!(["Watching /tmp/agent-trigger.txt", "Info"])
         );
         trigger.write(" \u{feff}\nRun the tests Ω\n\u{feff} ".as_bytes());
@@ -155,7 +154,7 @@ fn file_trigger_delivers_nonempty_contents_and_releases_watches() {
         );
         trigger.write("\u{85}second\u{85}".as_bytes());
         assert_eq!(watching.next().await, message("\u{85}second\u{85}"));
-        assert!(reported.borrow().is_empty());
+        assert!(reported.seen().is_empty());
         drop(watching.harness);
     });
 }

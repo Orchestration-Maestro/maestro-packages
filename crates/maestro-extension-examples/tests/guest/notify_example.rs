@@ -3,8 +3,7 @@
 //! The terminal protocol and the Windows toast depend on the guest's environment, which the
 //! public harness does not set, so the tests check what the host can see: the hook registers on
 //! agent completion and every delivery ends without a failure.
-use super::lane_a::{event, failures};
-use super::support::{harness, load, local};
+use super::support::{Failures, event, harness, load, local};
 use maestro_extensions_wasmtime::test_support::maestro_extensions::AgentEndEvent;
 use serde_json::json;
 
@@ -20,11 +19,11 @@ fn notify_component_selects_terminal_protocol() {
         let runner = &loaded.runner;
         assert!(runner.has_handlers("agent_end"));
         assert!(!runner.has_handlers("session_start"));
-        let reported = failures(runner);
+        let reported = Failures::collect(runner);
         for _ in 0..2 {
             let mut end: AgentEndEvent = event(json!({"type": "agent_end", "messages": []}));
             runner.emit(&mut end).await.unwrap();
         }
-        assert_eq!(*reported.borrow(), Vec::<String>::new());
+        assert_eq!(reported.seen(), Vec::<String>::new());
     });
 }

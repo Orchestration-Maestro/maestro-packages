@@ -1,6 +1,5 @@
 //! The shipped checkpoint hooks loaded into the production engine over disposable repositories.
-use super::lane_a::{Ui, event, failures, harness_in, local_io};
-use super::support::load;
+use super::support::{Failures, Recorder, driven, event, harness_in, load};
 use maestro_extensions_wasmtime::test_support::{
     Harness, Loaded,
     maestro_extensions::{AgentEndEvent, SessionBeforeForkEvent, TurnStartEvent},
@@ -9,7 +8,7 @@ use maestro_models::UserContent;
 use maestro_session::{Presence, session_manager::CompactionOptions};
 use maestro_test_directory::Scratch;
 use serde_json::{Value, json};
-use std::{cell::RefCell, process::Command, rc::Rc};
+use std::{process::Command, rc::Rc};
 
 /// The variable that names the built checkpoint component.
 const COMPONENT: &str = "MAESTRO_GIT_CHECKPOINT_COMPONENT";
@@ -40,9 +39,9 @@ struct Checkpointing {
     /// The runner over the component.
     loaded: Loaded,
     /// The selector and notification requests.
-    ui: Rc<Ui>,
+    ui: Rc<Recorder>,
     /// The callback failures the runner reported.
-    failures: Rc<RefCell<Vec<String>>>,
+    failures: Failures,
 }
 
 impl Checkpointing {
@@ -65,8 +64,8 @@ impl Checkpointing {
     async fn over(root: Scratch) -> Self {
         let harness = harness_in(root.path().to_str().unwrap());
         let loaded = load(&harness, COMPONENT).await;
-        let ui = Ui::install(&loaded.runner);
-        let failures = failures(&loaded.runner);
+        let ui = Recorder::install(&loaded.runner);
+        let failures = Failures::collect(&loaded.runner);
         Self {
             root,
             harness,
@@ -104,7 +103,7 @@ impl Checkpointing {
 
     /// Requests a fork at `id` answering the selector with `choice`; returns the UI requests.
     async fn fork(&self, id: &str, choice: Option<&str>) -> Vec<Value> {
-        self.ui.answer_select(choice);
+        self.ui.answer(json!(choice));
         let mut fork: SessionBeforeForkEvent =
             event(json!({"type": "session_before_fork", "entryId": id, "position": "at"}));
         self.loaded.runner.emit(&mut fork).await.unwrap();
@@ -168,7 +167,7 @@ fn entry_kinds() -> Vec<(&'static str, Append)> {
 /// the end of the agent run forgets them all.
 #[test]
 fn git_checkpoint_factory_preserves_commands_whitespace_and_entry_kinds() {
-    local_io(async {
+    driven(async {
         let checkpointing = Checkpointing::new().await;
         let mut last = String::new();
         for (kind, make) in entry_kinds() {
@@ -183,7 +182,7 @@ fn git_checkpoint_factory_preserves_commands_whitespace_and_entry_kinds() {
             let shown = checkpointing.fork(&id, Some(YES)).await;
             assert_eq!(shown.len(), 2, "{kind}: {shown:?}");
             assert_eq!(
-                shown[1]["operands"],
+                shown[1][1],
                 json!(["Code restored to checkpoint", "Info"])
             );
             assert_eq!(
@@ -196,14 +195,14 @@ fn git_checkpoint_factory_preserves_commands_whitespace_and_entry_kinds() {
         let mut ended: AgentEndEvent = event(json!({"type": "agent_end", "messages": []}));
         checkpointing.loaded.runner.emit(&mut ended).await.unwrap();
         assert!(checkpointing.fork(&last, Some(YES)).await.is_empty());
-        assert!(checkpointing.failures.borrow().is_empty());
+        assert!(checkpointing.failures.seen().is_empty());
     });
 }
 
 /// A checkpoint that cannot be applied reports Git's refusal and never announces a restore.
 #[test]
 fn git_checkpoint_factory_rejects_failed_restores() {
-    local_io(async {
+    driven(async {
         let checkpointing = Checkpointing::new().await;
         let id =
             checkpointing.append(|s| s.append_custom_entry("state", Presence::Missing).unwrap());
@@ -213,8 +212,8 @@ fn git_checkpoint_factory_rejects_failed_restores() {
         checkpointing.write("edited since\n");
         let shown = checkpointing.fork(&id, Some(YES)).await;
         assert_eq!(shown.len(), 1, "no success notification: {shown:?}");
-        assert_eq!(shown[0]["method"], "select");
-        let failures = checkpointing.failures.borrow();
+        assert_eq!(shown[0][0], "select");
+        let failures = checkpointing.failures.seen();
         assert_eq!(failures.len(), 1, "{failures:?}");
         assert!(
             failures[0].starts_with("Could not restore checkpoint (exit code 1, killed: false): "),
@@ -227,7 +226,7 @@ fn git_checkpoint_factory_rejects_failed_restores() {
 /// A refused selector or notification ends the callback with the host's failure.
 #[test]
 fn git_checkpoint_factory_propagates_host_failures() {
-    local_io(async {
+    driven(async {
         let checkpointing = Checkpointing::new().await;
         let id =
             checkpointing.append(|s| s.append_custom_entry("state", Presence::Missing).unwrap());
@@ -248,7 +247,7 @@ fn git_checkpoint_factory_propagates_host_failures() {
             "applied before the notice failed"
         );
         assert_eq!(
-            *checkpointing.failures.borrow(),
+            checkpointing.failures.seen(),
             ["selector unavailable", "notification unavailable"]
         );
     });

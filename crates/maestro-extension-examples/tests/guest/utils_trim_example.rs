@@ -1,6 +1,5 @@
 //! The shared trimming helper's boundaries, observed through the shipped input hook that calls it.
-use super::lane_a::Ui;
-use super::support::{harness, load, local};
+use super::support::{Recorder, harness, load, local};
 use maestro_extensions_wasmtime::test_support::maestro_extensions::{InputSource, Presence};
 use serde_json::json;
 
@@ -14,7 +13,7 @@ fn trim_uses_host_boundaries() {
     local(async {
         let harness = harness();
         let loaded = load(&harness, COMPONENT).await;
-        let ui = Ui::install(&loaded.runner);
+        let ui = Recorder::install(&loaded.runner);
         for (text, trimmed) in [
             ("", ""),
             (" \t\u{feff}\n", ""),
@@ -34,7 +33,7 @@ fn trim_uses_host_boundaries() {
                 .unwrap();
             let expected = if trimmed.is_empty() {
                 assert_eq!(
-                    ui.take()[0]["operands"],
+                    ui.take()[0][1],
                     json!(["Usage: ?quick <question>", "Warning"])
                 );
                 json!({"action": "handled"})

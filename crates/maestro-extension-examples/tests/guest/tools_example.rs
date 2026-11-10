@@ -1,6 +1,5 @@
 //! The shipped tool selector loaded into the production engine.
-use super::lane_c::{Dialogs, bind, emit, fail_with};
-use super::support::{harness, load, local};
+use super::support::{plain_text, TERMINAL, Recorder, bind, verdict, fail_with, harness, load, local};
 use maestro_extensions::{Presence, SessionManager, SessionStartEvent, SessionTreeEvent};
 use maestro_extensions_wasmtime::test_support::{Harness, Loaded};
 use serde_json::{Value, json};
@@ -22,7 +21,7 @@ struct Instance {
     /// The loaded runner.
     loaded: Loaded,
     /// The UI, which also logs the active-tool updates and the persisted entries.
-    ui: Rc<Dialogs>,
+    ui: Rc<Recorder>,
     /// The tools the application reports.
     inventory: Rc<RefCell<Vec<Value>>>,
     /// The failure the inventory read returns.
@@ -34,7 +33,7 @@ impl Instance {
     async fn new() -> Self {
         let harness = harness();
         let loaded = load(&harness, COMPONENT).await;
-        let ui = Dialogs::install(&loaded.runner);
+        let ui = Recorder::install_on(&loaded.runner, TERMINAL);
         let inventory = Rc::new(RefCell::new(vec![
             tool("read"),
             tool("bash"),
@@ -50,10 +49,10 @@ impl Instance {
             actions.get_active_tools = Rc::new(|| Ok(vec!["read".to_owned()]));
             let log = ui.clone();
             actions.set_active_tools =
-                Rc::new(move |names| log.request("setActiveTools", json!([names])));
+                Rc::new(move |names| log.record("setActiveTools", json!([names])));
             let log = ui.clone();
             actions.append_entry =
-                Rc::new(move |kind, data| log.request("entry", json!([kind, data])));
+                Rc::new(move |kind, data| log.record("entry", json!([kind, data])));
         });
         Self {
             harness,
@@ -82,12 +81,12 @@ impl Instance {
     async fn event(&self, name: &str) -> Vec<Value> {
         if name == "session_start" {
             let event = json!({"type": name, "reason": "resume"});
-            emit::<SessionStartEvent>(&self.loaded.runner, &event)
+            verdict::<SessionStartEvent>(&self.loaded.runner, &event)
                 .await
                 .unwrap();
         } else {
             let event = json!({"type": name, "newLeafId": "leaf", "oldLeafId": "old"});
-            emit::<SessionTreeEvent>(&self.loaded.runner, &event)
+            verdict::<SessionTreeEvent>(&self.loaded.runner, &event)
                 .await
                 .unwrap();
         }
@@ -184,6 +183,7 @@ fn tools_selector_applies_and_persists_each_change() {
 
 /// Each row of a frame that names one of the three tools ends with that tool's state.
 fn states(frame: &[String]) -> [String; 3] {
+    let frame: Vec<String> = frame.iter().map(|row| plain_text(row)).collect();
     assert_eq!(frame[0].trim(), "Tool Configuration");
     ["read", "bash", "extra"].map(|name| {
         let row = frame
@@ -232,7 +232,7 @@ fn tools_selector_propagates_host_rejections() {
             Some("inventory refused".to_owned())
         );
         *instance.refusal.borrow_mut() = None;
-        instance.ui.refuse_method("custom", "selector refused");
+        instance.ui.reject("custom", "selector refused");
         assert_eq!(
             instance.open(&[]).await,
             Some("selector refused".to_owned())

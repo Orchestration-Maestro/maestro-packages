@@ -1,6 +1,5 @@
 //! The shipped timed dialogs loaded into the production engine.
-use super::lane_c::{Dialogs, local_timed};
-use super::support::{harness, load, local};
+use super::support::{TERMINAL, Recorder, driven, harness, load, local};
 use serde_json::{Value, json};
 
 /// The variable that names the built timed-dialog component.
@@ -156,9 +155,9 @@ fn timed_confirm_commands_keep_timeouts_and_outcomes() {
     local(async {
         let harness = harness();
         let loaded = load(&harness, COMPONENT).await;
-        let ui = Dialogs::install(&loaded.runner);
+        let ui = Recorder::install_on(&loaded.runner, TERMINAL);
         for case in automatic_cases() {
-            ui.answer(case.answer.clone());
+            ui.reply(case.answer.clone());
             assert_eq!(run(&loaded, case.command).await, None);
             assert_eq!(
                 ui.take(),
@@ -173,7 +172,7 @@ fn timed_confirm_commands_keep_timeouts_and_outcomes() {
             ("timed-select", "select"),
             ("timed-signal", "confirm"),
         ] {
-            ui.refuse_method(method, "dialog refused");
+            ui.reject(method, "dialog refused");
             assert_eq!(
                 run(&loaded, command).await,
                 Some("dialog refused".to_owned())
@@ -186,12 +185,12 @@ fn timed_confirm_commands_keep_timeouts_and_outcomes() {
 /// The signal dialog tells approval and manual cancellation apart.
 #[test]
 fn timed_signal_distinguishes_approval_and_cancellation() {
-    local_timed(async {
+    driven(async {
         let harness = harness();
         let loaded = load(&harness, COMPONENT).await;
-        let ui = Dialogs::install(&loaded.runner);
+        let ui = Recorder::install_on(&loaded.runner, TERMINAL);
         for case in signal_cases() {
-            ui.answer(case.answer.clone());
+            ui.reply(case.answer.clone());
             assert_eq!(run(&loaded, case.command).await, None);
             assert_eq!(
                 ui.take(),

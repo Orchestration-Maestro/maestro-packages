@@ -1,8 +1,7 @@
 //! The shipped footer toggle loaded into the production engine over a started terminal.
 //!
 //! Footer rows are compared without the theme's styling, at the widths the terminal supplies.
-use super::lane_a::{Metadata, Ui, drain, local_io, plain};
-use super::support::{harness, load};
+use super::support::{Metadata, Recorder, TERMINAL, drain, driven, harness, load, plain_text};
 use maestro_extensions_wasmtime::test_support::{
     Harness, Loaded,
     maestro_extensions::{
@@ -50,7 +49,7 @@ struct Footer {
     /// The runner over the component.
     loaded: Loaded,
     /// The UI that holds the installed footer.
-    ui: Rc<Ui>,
+    ui: Rc<Recorder>,
     /// The branch the footer shows, and the callbacks it registered.
     metadata: Rc<Metadata>,
     /// The model identity the host reports; `None` reports no model.
@@ -62,7 +61,7 @@ impl Footer {
     async fn new() -> Self {
         let harness = harness();
         let loaded = load(&harness, COMPONENT).await;
-        let ui = Ui::install_with_screen(&loaded.runner);
+        let ui = Recorder::install_on(&loaded.runner, TERMINAL);
         let reported = Rc::new(RefCell::new(None::<String>));
         let read = reported.clone();
         loaded
@@ -119,14 +118,14 @@ fn rows(footer: &ExtensionComponent, width: usize) -> Vec<String> {
         .try_render(width)
         .unwrap()
         .iter()
-        .map(|row| plain(row))
+        .map(|row| plain_text(row))
         .collect()
 }
 
 /// The toggle installs one branch listener and removes it when restoring the host footer.
 #[test]
 fn custom_footer_component_toggles_and_disposes() {
-    local_io(async {
+    driven(async {
         let footer = Footer::new().await;
         let commands = footer.loaded.runner.get_registered_commands();
         assert_eq!(commands.len(), 1);
@@ -139,14 +138,14 @@ fn custom_footer_component_toggles_and_disposes() {
         for _ in 0..2 {
             footer.toggle().await;
             let seen = footer.ui.take();
-            assert_eq!(seen[0]["operands"], json!([true]));
+            assert_eq!(seen[0][1], json!([true]));
             assert_eq!(
-                seen[1]["operands"],
+                seen[1][1],
                 json!(["Custom footer enabled", "Info"])
             );
             let installed = footer.build();
             assert_eq!(footer.metadata.listeners.borrow().len(), 1);
-            let screen = footer.ui.screen();
+            let screen = footer.ui.stage();
             screen.runtime.settle().unwrap();
             drain(&screen.redraws);
             let notify = footer.metadata.listeners.borrow()[0].clone();
@@ -154,9 +153,9 @@ fn custom_footer_component_toggles_and_disposes() {
             screen.redraws.notified().await;
             footer.toggle().await;
             let seen = footer.ui.take();
-            assert_eq!(seen[0]["operands"], json!([false]));
+            assert_eq!(seen[0][1], json!([false]));
             assert_eq!(
-                seen[1]["operands"],
+                seen[1][1],
                 json!(["Default footer restored", "Info"])
             );
             (installed.dispose.unwrap()).call(()).unwrap();
@@ -168,7 +167,7 @@ fn custom_footer_component_toggles_and_disposes() {
 /// The retained footer rereads history, model and branch, and clips by cell width.
 #[test]
 fn custom_footer_component_renders_live_history_and_clips() {
-    local_io(async {
+    driven(async {
         let footer = Footer::new().await;
         footer.history(&[(400, 400, 0.1), (599, 600, 0.0254)]);
         *footer.model.borrow_mut() = Some("model-雪-x".into());
@@ -199,13 +198,13 @@ fn custom_footer_component_renders_live_history_and_clips() {
 /// An exact decimal tie rounds upward in the thousands label.
 #[test]
 fn custom_footer_component_rounds_token_ties_up() {
-    local_io(async { rounded(1250, 0, 0.0, "↑1.3k ↓0 $0.000").await });
+    driven(async { rounded(1250, 0, 0.0, "↑1.3k ↓0 $0.000").await });
 }
 
 /// An exact decimal tie rounds upward in the dollar label.
 #[test]
 fn custom_footer_component_rounds_cost_ties_up() {
-    local_io(async { rounded(0, 0, 0.0625, "↑0 ↓0 $0.063").await });
+    driven(async { rounded(0, 0, 0.0625, "↑0 ↓0 $0.063").await });
 }
 
 /// Renders one usage record at a width that clips to the left side, against a worked label.

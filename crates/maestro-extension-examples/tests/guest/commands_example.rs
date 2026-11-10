@@ -1,6 +1,5 @@
 //! The shipped command selector loaded into the production engine.
-use super::lane_a::{Ui, failures};
-use super::support::{harness, load, local};
+use super::support::{Failures, Recorder, harness, load, local};
 use maestro_extensions_wasmtime::test_support::maestro_extensions::{
     AutocompleteItem, SlashCommandInfo,
 };
@@ -69,7 +68,7 @@ fn inventory() -> Value {
 
 /// The selector request for `options`.
 fn select(options: &[&str]) -> (&'static str, Value) {
-    ("select", json!(["Available Commands", options]))
+    ("select", json!(["Available Commands", options, null, null]))
 }
 
 /// The complete grouped selector, independent of the inventory's order.
@@ -167,7 +166,7 @@ fn path_cases() -> Vec<Case> {
                 selector(),
                 (
                     "confirm",
-                    json!([name, format!("View source path?\n{path}")]),
+                    json!([name, format!("View source path?\n{path}"), null, null]),
                 ),
             ];
             if confirmed {
@@ -190,16 +189,16 @@ fn run(cases: &[Case]) {
         let harness = harness();
         let loaded = load(&harness, COMPONENT).await;
         let runner = &loaded.runner;
-        let ui = Ui::install(runner);
-        let reported = failures(runner);
+        let ui = Recorder::install(runner);
+        let reported = Failures::collect(runner);
         let command = runner.get_command("commands").unwrap().command;
         for case in cases {
             let supplied: Vec<SlashCommandInfo> =
                 serde_json::from_value(case.inventory.clone()).unwrap();
             harness.runtime.actions.write().unwrap().get_commands =
                 Rc::new(move || Ok(supplied.clone()));
-            ui.answer_select(case.answers.0);
-            ui.answer_confirm(case.answers.1.unwrap_or(false));
+            ui.answer(json!(case.answers.0));
+            ui.answer(json!(case.answers.1.unwrap_or(false)));
             (command.handler)(case.args.into(), runner.create_command_context())
                 .await
                 .unwrap();
@@ -208,8 +207,8 @@ fn run(cases: &[Case]) {
                 .into_iter()
                 .map(|request| {
                     (
-                        request["method"].as_str().unwrap().to_owned(),
-                        request["operands"].clone(),
+                        request[0].as_str().unwrap().to_owned(),
+                        request[1].clone(),
                     )
                 })
                 .collect();
@@ -220,7 +219,7 @@ fn run(cases: &[Case]) {
                 .collect();
             assert_eq!(seen, expected, "arguments {:?}", case.args);
         }
-        assert!(reported.borrow().is_empty());
+        assert!(reported.seen().is_empty());
     });
 }
 

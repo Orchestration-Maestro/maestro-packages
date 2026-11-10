@@ -1,6 +1,5 @@
 //! The shipped summary command's early exits, loaded into the production engine.
-use super::lane_c::Dialogs;
-use super::support::{harness, load, local};
+use super::support::{TERMINAL, Recorder, harness, load, local};
 use maestro_extensions_wasmtime::test_support::{
     Harness, Loaded, maestro_extensions::SessionManager,
 };
@@ -35,7 +34,7 @@ fn summarize_no_text_skips_catalog_and_completion() {
         for text in ["", "\u{feff}\u{a0} "] {
             let harness = harness();
             let loaded = load(&harness, COMPONENT).await;
-            let ui = Dialogs::install(&loaded.runner);
+            let ui = Recorder::install_on(&loaded.runner, TERMINAL);
             say(&harness, text);
             assert_eq!(summarize(&loaded).await, None);
             assert_eq!(
@@ -55,7 +54,7 @@ fn summarize_reports_a_missing_key() {
     local(async {
         let harness = harness();
         let loaded = load(&harness, COMPONENT).await;
-        let ui = Dialogs::install(&loaded.runner);
+        let ui = Recorder::install_on(&loaded.runner, TERMINAL);
         say(&harness, "hello");
         assert_eq!(summarize(&loaded).await, None);
         assert_eq!(

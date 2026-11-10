@@ -1,11 +1,5 @@
 //! The extension examples as built components on Maestro's production engine, through the public
 //! test harness.
-#[path = "support/lane_a.rs"]
-mod lane_a;
-#[path = "support/lane_b.rs"]
-mod lane_b;
-#[path = "support/lane_c.rs"]
-mod lane_c;
 mod support;
 
 mod bookmark_example;

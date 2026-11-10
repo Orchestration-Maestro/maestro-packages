@@ -1,7 +1,6 @@
 //! The shipped structured answer renderer loaded into the production engine.
-use super::lane_c::result_rows;
-use super::support::{harness, load, local};
-use serde_json::json;
+use super::support::{Shown, harness, load, local, render_result};
+use serde_json::{Value, json};
 
 /// The variable that names the built structured-answer component.
 const COMPONENT: &str = "MAESTRO_STRUCTURED_OUTPUT_COMPONENT";
@@ -38,12 +37,14 @@ fn structured_output_renders_complete_answers_and_fallbacks() {
                     "Headline\nSummary",
                 ),
             ] {
-                let rows = result_rows(
+                let result = json!({"content": content, "details": details});
+                let rows = render_result(
                     &loaded.runner,
                     "structured_output",
-                    (&content, details.as_ref()),
-                    expanded,
-                    200,
+                    &Shown {
+                        expanded,
+                        ..Shown::new(&Value::Null, &result)
+                    },
                 );
                 assert_eq!(
                     rows.join("\n").trim_end(),

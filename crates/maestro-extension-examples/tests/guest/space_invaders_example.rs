@@ -1,6 +1,6 @@
 //! The shipped Space Invaders command loaded into the production engine, driven through the
 //! terminal input its view reads.
-use super::lane_b::{Bindings, Failures, Instance, Log, Recorder, replace_branch, stepped};
+use super::support::{plain_rows, Bindings, Failures, Instance, Log, Recorder, replace_branch, stepped};
 use maestro_extensions_wasmtime::test_support::maestro_extensions::{ExtensionRunner, Local};
 use serde_json::{Value, json};
 use std::{cell::Cell, rc::Rc};
@@ -97,7 +97,7 @@ impl Game {
         &self,
         columns: usize,
     ) -> (Rc<Recorder>, tokio::task::JoinHandle<Result<(), String>>) {
-        let ui = Recorder::install_interactive(self.runner(), columns, 40);
+        let ui = Recorder::install_on(self.runner(), (columns, 40));
         let runner = self.runner().clone();
         let command = tokio::task::spawn_local(async move {
             let command = runner.get_command("invaders").unwrap().command;
@@ -146,11 +146,6 @@ fn space_invaders_component_runs_registered_command_and_restores_latest_save() {
         }
         assert_eq!(saved, [corpus["cases"][0]["start"].clone(), Value::Null]);
     });
-}
-
-/// The recorded rows without control sequences, as the view's rows are compared.
-fn plain_rows(rows: &[String]) -> Vec<String> {
-    super::lane_b::plain(rows)
 }
 
 /// Every styled row fits the supplied terminal, even when no game cell is visible.

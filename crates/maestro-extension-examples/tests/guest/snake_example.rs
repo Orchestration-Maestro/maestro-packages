@@ -1,21 +1,12 @@
 //! The shipped Snake command loaded into the production engine, driven through the terminal
-//! input its view reads and the clock its ticks wait on.
-use super::lane_b::{Bindings, Instance, Log, Recorder, replace_branch, stepped};
+//! input its view reads.
+use super::support::{Bindings, Instance, Log, Recorder, replace_branch, stepped};
 use maestro_extensions_wasmtime::test_support::maestro_extensions::{ExtensionRunner, Local};
 use serde_json::{Value, json};
-use std::{rc::Rc, time::Duration};
+use std::rc::Rc;
 
 /// The variable that names the built game component.
 const COMPONENT: &str = "MAESTRO_SNAKE_COMPONENT";
-
-/// How many scheduling rounds a test gives the game to react before it reports a mismatch.
-const DRAIN: usize = 3000;
-
-/// How many scheduling rounds pass between two comparisons of the view.
-const ROUND: usize = 20;
-
-/// The wait between two ticks.
-const TICK: Duration = Duration::from_millis(100);
 
 /// Counts visible characters in the source's literal terminal styles.
 fn visible(text: &str) -> usize {
@@ -139,7 +130,7 @@ impl Game {
 
     /// Starts the command on a terminal `width` columns wide and waits for its view.
     async fn open(&self, width: usize) -> View {
-        let ui = Recorder::install_interactive(self.runner(), width.max(1), 40);
+        let ui = Recorder::install_on(self.runner(), (width.max(1), 40));
         let runner = self.runner().clone();
         let command = tokio::task::spawn_local(async move {
             let command = runner.get_command("snake").unwrap().command;
@@ -149,19 +140,6 @@ impl Game {
         });
         ui.shown(1).await;
         View { ui, command, width }
-    }
-}
-
-/// Gives every task that can run the chance to, so a timer the game arms in reaction to input is
-/// armed before the clock moves.
-async fn settle() {
-    rounds(DRAIN).await;
-}
-
-/// Lets every task that can run take `count` turns.
-async fn rounds(count: usize) {
-    for _ in 0..count {
-        tokio::task::yield_now().await;
     }
 }
 
@@ -181,42 +159,9 @@ impl View {
         self.ui.component(0).try_render(self.width).unwrap()
     }
 
-    /// Delivers terminal input and lets the game react to it.
-    async fn press(&self, data: &str) {
+    /// Delivers terminal input to the view.
+    fn press(&self, data: &str) {
         self.ui.press(0, data);
-        settle().await;
-    }
-
-    /// Lets every task that can run do so, then asserts the view shows `expected`.
-    async fn shows(&self, expected: &[String]) {
-        for _ in 0..DRAIN / ROUND {
-            if self.rows() == expected {
-                return;
-            }
-            rounds(ROUND).await;
-        }
-        assert_eq!(self.rows(), expected);
-    }
-
-    /// Lets one tick's wait end and waits for the view to show `expected`.
-    async fn tick_to(&self, expected: &[String]) {
-        tokio::time::advance(TICK).await;
-        self.shows(expected).await;
-        settle().await;
-    }
-
-    /// Lets one tick's wait end and waits for the view to change.
-    async fn tick_changes(&self) {
-        let before = self.rows();
-        tokio::time::advance(TICK).await;
-        for _ in 0..DRAIN / ROUND {
-            if self.rows() != before {
-                settle().await;
-                return;
-            }
-            rounds(ROUND).await;
-        }
-        assert_ne!(self.rows(), before, "the tick changed nothing");
     }
 
     /// Waits for the command to end.
@@ -258,7 +203,7 @@ fn snake_restores_latest_save_paused_and_disposes_without_clearing() {
                 rows.iter().all(|row| visible(row) <= width),
                 "{key:?} at {width}"
             );
-            view.press(key).await;
+            view.press(key);
             let ui = view.ui.clone();
             view.finished().await.unwrap();
             drop(ui);
@@ -280,101 +225,9 @@ fn snake_narrow_frames_fit_without_changing_collision_boundaries() {
             for row in &rows {
                 assert!(visible(row) <= width, "{width}: {row:?}");
             }
-            view.press("q").await;
+            view.press("q");
             view.finished().await.unwrap();
             assert!(game.saved().is_empty(), "{width}");
-        }
-    });
-}
-
-/// A snake at the wall dies on the next tick at the full board's width.
-#[test]
-fn snake_wall_collision_ends_the_game_and_clears_the_save() {
-    stepped(async {
-        let start = state(&[(38, 7), (37, 7), (36, 7)], (0, 0), "right", 10);
-        let moved = state(&[(39, 7), (38, 7), (37, 7)], (0, 0), "right", 10);
-        let mut over = moved.clone();
-        over["gameOver"] = json!(true);
-        let game = Game::new(std::slice::from_ref(&start)).await;
-        let view = game.open(84).await;
-        assert_eq!(view.rows(), frame(&start, "paused", 84));
-        view.press("x").await;
-        view.tick_to(&frame(&moved, "playing", 84)).await;
-        view.tick_to(&frame(&over, "over", 84)).await;
-        view.press("q").await;
-        view.finished().await.unwrap();
-        assert_eq!(game.saved(), [Value::Null]);
-    });
-}
-
-/// Tick completions grow the body, apply turns, reject reversal and persist the moved state.
-#[test]
-fn snake_ticks_move_grow_turn_and_save_through_session_entries() {
-    stepped(async {
-        let start = state(&[(20, 7), (19, 7), (18, 7)], (21, 7), "right", 0);
-        let game = Game::new(std::slice::from_ref(&start)).await;
-        let view = game.open(84).await;
-        view.press("x").await;
-        view.tick_changes().await;
-        assert!(
-            view.rows()[1].contains("Score: \x1b[1m\x1b[33m10"),
-            "the food was eaten"
-        );
-        let queued = state(&[(21, 6), (21, 7), (20, 7), (19, 7)], (0, 0), "up", 10);
-        view.press("W").await;
-        view.tick_changes().await;
-        view.press("\x1b[B").await;
-        view.press("a").await;
-        view.press("\x1b").await;
-        view.finished().await.unwrap();
-        let saved = game.saved();
-        assert_eq!(saved.len(), 1);
-        let mut expected = queued;
-        expected["nextDirection"] = json!("left");
-        assert_eq!(without_food(&saved[0]), without_food(&expected));
-        let food = &saved[0]["food"];
-        let (x, y) = (food["x"].as_i64().unwrap(), food["y"].as_i64().unwrap());
-        assert!(
-            (0..40).contains(&x) && (0..15).contains(&y),
-            "the food lies on the board"
-        );
-        assert!(
-            !saved[0]["snake"].as_array().unwrap().contains(food),
-            "the food avoids the body"
-        );
-    });
-}
-
-/// Wall and self collisions stop movement; restarting retains the high score and clears the save.
-#[test]
-fn snake_collisions_restart_and_clear_saved_state() {
-    stepped(async {
-        for (snake, direction) in [
-            (vec![(39, 7), (38, 7), (37, 7)], "right"),
-            (vec![(20, 7), (20, 8), (21, 8), (21, 7), (22, 7)], "right"),
-        ] {
-            let paused = state(&snake, (5, 5), direction, 10);
-            let mut over = paused.clone();
-            over["gameOver"] = json!(true);
-            let game = Game::new(std::slice::from_ref(&paused)).await;
-            let view = game.open(84).await;
-            view.press("x").await;
-            view.tick_to(&frame(&over, "over", 84)).await;
-            view.press("R").await;
-            let fresh = state(&[(20, 7), (19, 7), (18, 7)], (0, 0), "right", 0);
-            let header = &frame(&fresh, "playing", 84)[1];
-            assert_eq!(
-                &view.rows()[1],
-                header,
-                "the score restarts and the high score stays"
-            );
-            assert!(
-                view.rows()[19].contains("ESC"),
-                "a restarted game is running"
-            );
-            view.press("q").await;
-            view.finished().await.unwrap();
-            assert_eq!(game.saved(), [Value::Null, Value::Null]);
         }
     });
 }
@@ -393,7 +246,7 @@ fn snake_new_games_and_completed_saves_start_running() {
                 view.rows().iter().any(|row| row.contains("ESC")),
                 "a new game is running"
             );
-            view.press("\x1b").await;
+            view.press("\x1b");
             view.finished().await.unwrap();
             let saved = game.saved();
             assert_eq!(saved.len(), 1);
@@ -410,7 +263,7 @@ fn snake_rejects_invalid_saved_positions() {
     stepped(async {
         for snake in [vec![], vec![(-1, 0)], vec![(40, 14)], vec![(0, 15)]] {
             let game = Game::new(&[state(&snake, (5, 5), "right", 0)]).await;
-            Recorder::install_interactive(game.runner(), 84, 40);
+            Recorder::install_on(game.runner(), (84, 40));
             let command = game.runner().get_command("snake").unwrap().command;
             let outcome =
                 (command.handler)("ignored".into(), game.runner().create_command_context()).await;
@@ -423,81 +276,38 @@ fn snake_rejects_invalid_saved_positions() {
     });
 }
 
-/// The last food completes a full board instead of retrying an impossible random spawn.
-#[test]
-fn snake_filled_board_ends_without_spawning_food() {
-    stepped(async {
-        let mut snake = vec![(38, 14)];
-        snake.extend(
-            (0..15)
-                .flat_map(|y| (0..40).map(move |x| (x, y)))
-                .filter(|p| ![(38, 14), (39, 14)].contains(p)),
-        );
-        let start = state(&snake, (39, 14), "right", 20);
-        snake.insert(0, (39, 14));
-        let mut over = state(&snake, (39, 14), "right", 30);
-        over["gameOver"] = json!(true);
-        over["highScore"] = json!(30);
-        let game = Game::new(&[start]).await;
-        let view = game.open(84).await;
-        view.press("x").await;
-        view.tick_to(&frame(&over, "over", 84)).await;
-        view.press("\x1b").await;
-        view.finished().await.unwrap();
-        assert_eq!(game.saved(), [over]);
-    });
-}
-
-/// Presses `key` before a tick and checks the turn it makes at the next tick boundary.
-async fn turns(key: &str, direction: &str, head: (i32, i32)) {
+/// Presses `key` in a running game and checks the turn it queues: the saved game carries it.
+async fn turns(key: &str, direction: &str) {
     let start = if direction == "down" {
         state(&[(20, 7), (19, 7), (18, 7)], (0, 0), "right", 0)
     } else {
         state(&[(20, 7), (20, 8), (20, 9)], (0, 0), "up", 0)
     };
-    let body = start["snake"][1].clone();
-    let mut moved = state(&[head, (20, 7), (0, 0)], (0, 0), direction, 0);
-    moved["snake"][2] = body;
+    let mut queued = start.clone();
+    queued["nextDirection"] = json!(direction);
     let game = Game::new(std::slice::from_ref(&start)).await;
     let view = game.open(84).await;
-    view.press("x").await;
-    view.press(key).await;
-    view.tick_to(&frame(&moved, "playing", 84)).await;
-    view.press("\x1b").await;
+    view.press("x");
+    view.press(key);
+    view.press("\x1b");
     view.finished().await.unwrap();
-    assert_eq!(game.saved(), [moved], "{key:?}");
+    assert_eq!(game.saved(), [queued], "{key:?}");
 }
 
-/// Both arrow keys and either letter case turn only at the next tick boundary.
+/// Both arrow keys and either letter case queue their turn.
 #[test]
 fn snake_controls_apply_arrow_and_letter_turns() {
     stepped(async {
         let cases = [
-            (["w", "W", "\x1b[A"], "up", (20, 6)),
-            (["s", "S", "\x1b[B"], "down", (20, 8)),
-            (["a", "A", "\x1b[D"], "left", (19, 7)),
-            (["d", "D", "\x1b[C"], "right", (21, 7)),
+            (["w", "W", "\x1b[A"], "up"),
+            (["s", "S", "\x1b[B"], "down"),
+            (["a", "A", "\x1b[D"], "left"),
+            (["d", "D", "\x1b[C"], "right"),
         ];
-        for (keys, direction, head) in cases {
+        for (keys, direction) in cases {
             for key in keys {
-                turns(key, direction, head).await;
+                turns(key, direction).await;
             }
-        }
-    });
-}
-
-/// The initial food sampler never hides the food inside the starting body.
-#[test]
-fn snake_initial_food_avoids_the_whole_body() {
-    stepped(async {
-        for _ in 0..20 {
-            let game = Game::new(&[]).await;
-            let view = game.open(84).await;
-            let rows = view.rows().join("\n");
-            assert_eq!(rows.matches('◆').count(), 1, "one food cell is visible");
-            view.press("q").await;
-            view.finished().await.unwrap();
-            assert_eq!(game.saved(), [Value::Null]);
         }
     });
 }

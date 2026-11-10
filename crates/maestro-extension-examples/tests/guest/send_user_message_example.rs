@@ -1,6 +1,5 @@
 //! The shipped user-message factory loaded into the production engine.
-use super::lane_c::{Dialogs, bind};
-use super::support::{harness, load, local};
+use super::support::{TERMINAL, Recorder, bind, harness, load, local};
 use maestro_extensions_wasmtime::test_support::{Harness, Loaded};
 use serde_json::{Value, json};
 use std::{cell::Cell, rc::Rc};
@@ -60,7 +59,7 @@ struct Instance {
     /// The loaded runner.
     loaded: Loaded,
     /// The UI and the log of host effects.
-    ui: Rc<Dialogs>,
+    ui: Rc<Recorder>,
     /// Whether the agent is idle.
     idle: Rc<Cell<bool>>,
     /// The refused operations.
@@ -72,14 +71,14 @@ impl Instance {
     async fn new() -> Self {
         let harness = harness();
         let loaded = load(&harness, COMPONENT).await;
-        let ui = Dialogs::install(&loaded.runner);
+        let ui = Recorder::install_on(&loaded.runner, TERMINAL);
         let idle = Rc::new(Cell::new(true));
         let refusals = Rc::new(Refusals::default());
         bind(&loaded.runner, |actions, context| {
             let (log, refused) = (ui.clone(), refusals.clone());
             actions.send_user_message = Rc::new(move |content, options| {
                 Refusals::fail(&refused.send, "delivery refused")?;
-                log.request("sendUserMessage", json!([content, options]))
+                log.record("sendUserMessage", json!([content, options]))
             });
             let (state, refused) = (idle.clone(), refusals.clone());
             context.is_idle = Rc::new(move || {
@@ -109,13 +108,13 @@ impl Instance {
     /// Runs one recorded case and checks every effect and the failure it records.
     async fn check(&self, case: &Value) {
         let (name, input) = (&case["name"], &case["input"]);
-        self.ui.clear_refusal();
+        self.ui.disarm();
         self.idle.set(input["idle"].as_bool().unwrap());
         let reject = input["reject"].as_str();
         self.refusals.idle.set(reject == Some("idle"));
         self.refusals.send.set(reject == Some("send"));
         if reject == Some("notify") {
-            self.ui.refuse_method("notify", "notification refused");
+            self.ui.reject("notify", "notification refused");
         }
         let command = self
             .loaded

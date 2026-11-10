@@ -4,8 +4,7 @@
 //! contain the recorded highlighted text. Frames advance on the real 60 ms clock and each one
 //! announces itself through the terminal's redraw, which the tests wait for. That the frames
 //! stop once the editor is released has no signal to wait for, so it is not asserted.
-use super::lane_a::{Ui, drain, event, failures, local_io};
-use super::support::{harness, load};
+use super::support::{Failures, Recorder, TERMINAL, drain, driven, event, harness, load};
 use maestro_extensions_wasmtime::test_support::{
     Harness, Loaded, maestro_extensions::SessionStartEvent,
 };
@@ -39,9 +38,9 @@ struct Rainbow {
     /// The runner over the component.
     loaded: Loaded,
     /// The UI holding the installed editor and the terminal.
-    ui: Rc<Ui>,
+    ui: Rc<Recorder>,
     /// The callback failures the runner reported.
-    failures: Rc<RefCell<Vec<String>>>,
+    failures: Failures,
 }
 
 impl Rainbow {
@@ -49,12 +48,12 @@ impl Rainbow {
     async fn new() -> Self {
         let harness = harness();
         let loaded = load(&harness, COMPONENT).await;
-        let ui = Ui::install_with_screen(&loaded.runner);
-        let failures = failures(&loaded.runner);
+        let ui = Recorder::install_on(&loaded.runner, TERMINAL);
+        let failures = Failures::collect(&loaded.runner);
         let mut start: SessionStartEvent =
             event(json!({"type": "session_start", "reason": "startup"}));
         loaded.runner.emit(&mut start).await.unwrap();
-        assert!(failures.borrow().is_empty());
+        assert!(failures.seen().is_empty());
         Self {
             harness,
             loaded,
@@ -65,19 +64,19 @@ impl Rainbow {
 
     /// Sets the editor's text and then gives it input, as typing does.
     fn type_text(&self, text: &str) {
-        let editor = self.ui.editor().editor();
+        let editor = self.ui.editor().unwrap().editor();
         editor.set_text(text);
         editor.handle_input(RIGHT);
     }
 
     /// The rows the editor renders 40 columns wide.
     fn rows(&self) -> Vec<String> {
-        self.ui.editor().editor().try_render(40).unwrap()
+        self.ui.editor().unwrap().editor().try_render(40).unwrap()
     }
 
     /// Waits for the animation's next frame and lets the terminal draw it.
     async fn next_frame(&self) {
-        let screen = self.ui.screen();
+        let screen = self.ui.stage();
         screen.redraws.notified().await;
         screen.runtime.settle().unwrap();
     }
@@ -85,7 +84,7 @@ impl Rainbow {
     /// Starts the animation on the recorded text and clears redraws made by typing it.
     fn start_animation(&self) {
         self.type_text(&typed());
-        let screen = self.ui.screen();
+        let screen = self.ui.stage();
         screen.runtime.settle().unwrap();
         drain(&screen.redraws);
     }
@@ -119,7 +118,7 @@ fn shows_frame(rows: &[String], frame: usize) -> bool {
 /// Each 60 ms frame moves the shine over ten characters, pauses ten frames, then wraps.
 #[test]
 fn rainbow_editor_shine_follows_reference_frames() {
-    local_io(async {
+    driven(async {
         let rainbow = Rainbow::new().await;
         assert!(rainbow.loaded.runner.has_handlers("session_start"));
         rainbow.start_animation();
@@ -128,7 +127,7 @@ fn rainbow_editor_shine_follows_reference_frames() {
             assert!(shows_frame(&rows, frame), "frame {frame}: {rows:?}");
             rainbow.next_frame().await;
         }
-        assert!(rainbow.failures.borrow().is_empty());
+        assert!(rainbow.failures.seen().is_empty());
         drop(rainbow.harness);
     });
 }
@@ -136,13 +135,13 @@ fn rainbow_editor_shine_follows_reference_frames() {
 /// Only input checks the text, matching the keyword in any ASCII case.
 #[test]
 fn rainbow_editor_input_starts_animation_on_keyword() {
-    local_io(async {
+    driven(async {
         for entry in corpus()["keyword"].as_array().unwrap() {
             let (text, animates) = (entry[0].as_str().unwrap(), entry[1].as_bool().unwrap());
             let rainbow = Rainbow::new().await;
-            let editor = rainbow.ui.editor().editor();
+            let editor = rainbow.ui.editor().unwrap().editor();
             editor.set_text(text);
-            let screen = rainbow.ui.screen();
+            let screen = rainbow.ui.stage();
             screen.runtime.settle().unwrap();
             drain(&screen.redraws);
             editor.handle_input(RIGHT);
@@ -152,7 +151,7 @@ fn rainbow_editor_input_starts_animation_on_keyword() {
             if animates {
                 rainbow.next_frame().await;
             }
-            assert!(rainbow.failures.borrow().is_empty());
+            assert!(rainbow.failures.seen().is_empty());
         }
     });
 }
@@ -160,7 +159,7 @@ fn rainbow_editor_input_starts_animation_on_keyword() {
 /// Losing the keyword stops the frames; typing it again resumes the cycle where it stopped.
 #[test]
 fn rainbow_editor_restarted_animation_keeps_its_frame() {
-    local_io(async {
+    driven(async {
         let rainbow = Rainbow::new().await;
         rainbow.start_animation();
         for _ in 0..3 {
@@ -179,9 +178,9 @@ fn rainbow_editor_restarted_animation_keeps_its_frame() {
 /// The wrapped editor still answers every editor operation as the application's editor does.
 #[test]
 fn rainbow_editor_keeps_custom_editor_operations() {
-    local_io(async {
+    driven(async {
         let rainbow = Rainbow::new().await;
-        let editor = rainbow.ui.editor().editor();
+        let editor = rainbow.ui.editor().unwrap().editor();
         editor.set_text("draft");
         assert_eq!(editor.get_text(), "draft");
         assert_eq!(editor.insert_text_at_cursor(" text"), Some(()));

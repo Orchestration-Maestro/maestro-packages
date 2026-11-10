@@ -1,9 +1,5 @@
 //! The shipped todo component loaded into the production engine.
-use super::lane_b::{
-    Failures, Instance, Recorder, driven, emit, render_call, render_result, replace_branch,
-    tool_result_message,
-};
-use super::support::call_tool;
+use super::support::{Shown, Failures, Instance, Recorder, call_tool, driven, emit, render_call, render_result, replace_branch, tool_result_message};
 use maestro_extensions_wasmtime::test_support::maestro_extensions::{
     ExtensionRunner, Local, SessionStartEvent, SessionTreeEvent,
 };
@@ -61,7 +57,14 @@ impl Todos {
 
     /// The result row for `result`.
     fn result_row(&self, result: &Value, expanded: bool) -> Vec<String> {
-        render_result(self.runner(), "todo", result, expanded, 200)
+        render_result(
+            self.runner(),
+            "todo",
+            &Shown {
+                expanded,
+                ..Shown::new(&Value::Null, result)
+            },
+        )
     }
 }
 
@@ -310,7 +313,7 @@ async fn open_list(
 fn todo_command_shows_interactive_lists() {
     driven(async {
         let todos = Todos::new().await;
-        let ui = Recorder::install_interactive(todos.runner(), 80, 24);
+        let ui = Recorder::install_on(todos.runner(), (80, 24));
         for (populated, close) in [(false, "\x1b"), (true, "\x03")] {
             if populated {
                 todos.tool(json!({"action":"add","text":"done"})).await;
@@ -342,7 +345,7 @@ fn todo_command_shows_interactive_lists() {
 fn todo_command_reports_a_refused_view() {
     driven(async {
         let todos = Todos::new().await;
-        let ui = Recorder::install_interactive(todos.runner(), 80, 24);
+        let ui = Recorder::install_on(todos.runner(), (80, 24));
         ui.reject("custom", "view refused");
         let command = todos.runner().get_command("todos").unwrap().command;
         let refused =
