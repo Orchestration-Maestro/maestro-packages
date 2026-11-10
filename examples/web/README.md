@@ -34,10 +34,9 @@ directory with `miniserve`. Each extra argument goes to `miniserve` as given. Mi
 
 `crates/maestro-web-example` builds `chat.rs` as a `cdylib` example and runs the
 browser tests. The example reaches Maestro only through the public API of
-`maestro-web`, `maestro-app` and `maestro-theme`, at the pinned revision. It holds no
-copy of Maestro's code or data: the brand pack comes from `maestro_theme::BrandPack::shipped()`,
-and the native test `shipped_pack::example_and_browser_tests_carry_no_brand_pack_copy` fails if a
-`brand.json` appears under `examples` or the crate's tests.
+`maestro-web`, `maestro-app` and `maestro-theme`, at the pinned revision. It
+carries no copy of Maestro's brand pack: the pack comes from
+`maestro_theme::BrandPack::shipped()`.
 
 ## What it shows
 
