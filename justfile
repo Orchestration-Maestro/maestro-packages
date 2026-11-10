@@ -19,14 +19,14 @@ check:
 # Shared checks for explicit Cargo package-selection arguments.
 [private]
 _check *selection:
-    python3 guard-lints.py
-    python3 -m unittest discover -s scripts -p 'test_*.py'
+    cargo test -p maestro-packages-conventions --locked --test integration -- --exact real_workspace::this_workspace_inherits_lints_and_tracks_only_rust
     cargo clippy "$@" --all-targets --locked -- -D warnings
     RUSTDOCFLAGS="-D warnings -D missing_docs" cargo doc "$@" --no-deps --locked
 
-# Capture the index before formatting and verify only the captured scope.
+# Install Maestro's development tool at the pinned commit, then format the staged crates, re-stage the captured paths and check them.
 pre-commit:
-    python3 scripts/pre_commit.py
+    cargo install --quiet --locked --git https://github.com/Orchestration-Maestro/maestro --rev 5ac4b8926090b5fcf41e33433b8456720bd3569e maestro-tooling --bin development --root target/development
+    target/development/bin/development pre-commit
 
 # Install Maestro's development tool from the pinned commit into `target/development`.
 [private]

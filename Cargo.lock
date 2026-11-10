@@ -4267,6 +4267,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "maestro-packages-conventions"
+version = "0.1.0"
+dependencies = [
+ "maestro-test-directory",
+ "serde",
+ "toml",
+]
+
+[[package]]
 name = "maestro-path"
 version = "0.1.0"
 source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
@@ -4315,14 +4324,6 @@ dependencies = [
  "maestro-dependencies",
  "schemars 1.2.3",
  "serde",
- "serde_json",
-]
-
-[[package]]
-name = "maestro-python-example"
-version = "0.1.0"
-dependencies = [
- "maestro-test-extension-host",
  "serde_json",
 ]
 
@@ -4675,14 +4676,6 @@ dependencies = [
  "rand 0.10.3",
  "rustix",
  "tokio",
-]
-
-[[package]]
-name = "maestro-typescript-example"
-version = "0.1.0"
-dependencies = [
- "maestro-test-extension-host",
- "serde_json",
 ]
 
 [[package]]

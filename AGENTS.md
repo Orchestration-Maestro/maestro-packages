@@ -22,5 +22,6 @@ define the required checks. The organization ruleset attaches CI to repositories
 with `stack=rust`; do not add a caller workflow here. `.github/ci.toml` declares
 this workspace's targets and test tools. `mise.toml` pins just and prek;
 `rust-toolchain.toml` pins Rust. Run `just setup` to install the hooks.
-The pre-commit hook runs `just pre-commit`: capture staged paths, format,
-re-stage only captured files, then check their crates and reverse dependents.
+The pre-commit hook runs `just pre-commit`, which installs Maestro's development tool
+at the pinned commit and runs `development pre-commit`: capture staged paths,
+format, re-stage only captured files, then check their crates with Clippy.

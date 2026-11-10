@@ -37,13 +37,12 @@ point into it by relative path, and Maestro publishes the directory as it is.
 examples/
   README.md              index of every folder
   extensions/            extension sources, each with a usage page
-  sdk/                   SDK examples, the Python RPC client, the interactive RPC client demo
+  sdk/                   SDK examples, the interactive RPC client demo
   rpc_extension_ui.rs    terminal RPC client
   web/                   browser chat example
-  python/  typescript/   extensions in other languages
 ```
 
-`extensions/`, `sdk/`, `rpc_extension_ui.rs`, `python/`, `typescript/` and `web/` are all here, each with its family crate.
+`extensions/`, `sdk/`, `rpc_extension_ui.rs` and `web/` are all here, each with its family crate.
 
 ## Crates
 
@@ -52,7 +51,6 @@ examples/
 | `maestro-extension-examples` | extension examples, as WebAssembly components |
 | `maestro-sdk-examples` | SDK examples, the terminal RPC client and the RPC client demo |
 | `maestro-web-example` | the browser chat example |
-| `maestro-python-example`, `maestro-typescript-example` | the other-language extensions |
 
 ## Browser example
 
