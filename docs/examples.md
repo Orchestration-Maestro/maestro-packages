@@ -43,8 +43,7 @@ examples/
   python/  typescript/   extensions in other languages
 ```
 
-`extensions/`, `sdk/`, `rpc_extension_ui.rs`, `python/`, `typescript/` and `web/` are here today.
-All folders have their family crate.
+`extensions/`, `sdk/`, `rpc_extension_ui.rs`, `python/`, `typescript/` and `web/` are all here, each with its family crate.
 
 ## Crates
 
@@ -54,8 +53,6 @@ All folders have their family crate.
 | `maestro-sdk-examples` | SDK examples, the terminal RPC client and the RPC client demo |
 | `maestro-web-example` | the browser chat example |
 | `maestro-python-example`, `maestro-typescript-example` | the other-language extensions |
-
-All four family crates and the two other-language crates exist today.
 
 ## Browser example
 
