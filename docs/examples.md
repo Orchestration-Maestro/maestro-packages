@@ -19,11 +19,13 @@ Maestro's development tool, the example components and the programs the tests
 start. Later runs reuse the installed tool while the pinned commit stays the
 same.
 
-Run one family's tests after a preparation:
+Run one family's tests after a preparation. `TEST_PREPARE_OUTPUT` names the
+directory the preparation staged, which the `executable` setup reads; `just
+test` sets it:
 
 ```sh
 just prepare-tests
-cargo nextest run --locked -p maestro-extension-examples
+TEST_PREPARE_OUTPUT="$PWD/target/test-setup" cargo nextest run --locked -p maestro-extension-examples
 ```
 
 ## Layout
@@ -109,7 +111,7 @@ Run every SDK and RPC check:
 
 ```sh
 just prepare-tests
-cargo nextest run --locked -p maestro-sdk-examples
+TEST_PREPARE_OUTPUT="$PWD/target/test-setup" cargo nextest run --locked -p maestro-sdk-examples
 ```
 
 `maestro-sdk-examples` builds three groups of sources from `examples/` and runs
@@ -263,7 +265,7 @@ recorded.
    `author-component` setup exports it. Start a `guest` test from
    `tests/guest/hello_example.rs`.
 5. Run `just prepare-tests`, then
-   `cargo nextest run --locked -p maestro-extension-examples`.
+   `TEST_PREPARE_OUTPUT="$PWD/target/test-setup" cargo nextest run --locked -p maestro-extension-examples`.
 
 An example needs no setup filter of its own. The nextest rules select the
 whole crate for the `author-component` and `native-fixture` setups, the

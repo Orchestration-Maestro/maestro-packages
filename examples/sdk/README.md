@@ -44,7 +44,7 @@ are native Rust fixtures, so only `rpc.py` itself runs under Python 3:
 
 ```sh
 just prepare-tests
-cargo nextest run --locked -p maestro-sdk-examples -E 'binary(rpc_extension_ui)'
+TEST_PREPARE_OUTPUT="$PWD/target/test-setup" cargo nextest run --locked -p maestro-sdk-examples -E 'binary(rpc_extension_ui)'
 ```
 
 This command runs all 17 terminal client example tests, including the SDK checks.

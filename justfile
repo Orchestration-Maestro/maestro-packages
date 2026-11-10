@@ -31,7 +31,7 @@ pre-commit:
 # Install Maestro's development tool from the pinned commit into `target/development`.
 [private]
 development:
-    cargo install --quiet --locked --git https://github.com/Orchestration-Maestro/maestro --rev 32388227f40ebc368d6374515056b3287f14cf90 maestro-tooling --bin development --root target/development
+    cargo install --quiet --locked --git https://github.com/Orchestration-Maestro/maestro --rev 49b5935837e684bf13100c9dacb64960c0d7b939 maestro-tooling --bin development --root target/development
 
 # Build the example components and install the programs the tests start into `target/test-setup`.
 prepare-tests: development
@@ -45,9 +45,9 @@ example-index: development
 example-index-check: development
     target/development/bin/development example-index --check
 
-# Run all workspace tests.
+# Run all workspace tests against the bundle that `prepare-tests` staged.
 test *args: prepare-tests
-    cargo nextest run --workspace --locked "$@"
+    TEST_PREPARE_OUTPUT={{quote(justfile_directory() / "target/test-setup")}} cargo nextest run --workspace --locked "$@"
     cargo test --workspace --locked --doc "$@"
 
 # Build the runnable browser chat example for the browser and bind it; the shared browser build runs this recipe.

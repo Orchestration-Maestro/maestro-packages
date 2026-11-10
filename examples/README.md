@@ -8,6 +8,11 @@ has its own index page.
 | [extensions/](extensions/) | Extensions that register tools, commands, event handlers and interface components, built as WebAssembly components. |
 | [python/](python/) | An extension written in Python and compiled to a component. |
 | [typescript/](typescript/) | An extension written in TypeScript and compiled to a component. |
+| [sdk/](sdk/) | In-process SDK samples, the Python RPC client and the interactive RPC client demo. |
+| [rpc_extension_ui.rs](rpc_extension_ui.rs) | A terminal RPC client with streaming output and extension dialogs. |
+| [web/](web/) | A chat built only from the published web components, for the browser. |
+
+The `maestro-sdk-examples` crate builds the SDK samples and the terminal client and runs their checks.
 
 ## Non-Rust guest toolchains
 
@@ -93,12 +98,3 @@ the Python recipe uses it as the linker.
 Build-machine commands in the language reports use the tool CLIs directly.
 Workspace verification used the approved remote wrapper and its artifact
 output directory. All source WIT files remained read-only.
-
-## SDK and RPC clients
-
-| Path | Purpose |
-| --- | --- |
-| [sdk/](sdk/README.md) | In-process SDK samples, the Python RPC client and the interactive RPC client demo. |
-| `rpc_extension_ui.rs` | A terminal RPC client with streaming output and extension dialogs. |
-
-The `maestro-sdk-examples` crate builds them and runs their checks.

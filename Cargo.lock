@@ -3647,7 +3647,7 @@ checksum = "dae608c151f68243f2b000364e1f7b186d9c29845f7d2d85bd31b9ad77ad552b"
 [[package]]
 name = "maestro"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "maestro-app",
  "maestro-chat",
@@ -3665,7 +3665,7 @@ dependencies = [
 [[package]]
 name = "maestro-agent"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "futures-util",
  "maestro-dependencies",
@@ -3682,7 +3682,7 @@ dependencies = [
 [[package]]
 name = "maestro-app"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "base64 0.23.1",
  "chrono",
@@ -3740,7 +3740,7 @@ dependencies = [
 [[package]]
 name = "maestro-brand"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "maestro-dependencies",
  "maestro-json",
@@ -3752,7 +3752,7 @@ dependencies = [
 [[package]]
 name = "maestro-cancellation"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "maestro-dependencies",
  "maestro-listeners",
@@ -3762,7 +3762,7 @@ dependencies = [
 [[package]]
 name = "maestro-catalog"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "indexmap 2.14.2",
  "maestro-credentials",
@@ -3780,7 +3780,7 @@ dependencies = [
 [[package]]
 name = "maestro-chat"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "chrono",
  "indexmap 2.14.2",
@@ -3801,7 +3801,7 @@ dependencies = [
 [[package]]
 name = "maestro-cli"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "base64 0.23.1",
  "clap",
@@ -3822,7 +3822,7 @@ dependencies = [
 [[package]]
 name = "maestro-credentials"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "indexmap 2.14.2",
  "maestro-dependencies",
@@ -3840,7 +3840,7 @@ dependencies = [
 [[package]]
 name = "maestro-daemon"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "chrono",
  "maestro-dependencies",
@@ -3869,7 +3869,7 @@ dependencies = [
 [[package]]
 name = "maestro-dependencies"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "aho-corasick",
  "allocator-api2",
@@ -3961,7 +3961,7 @@ dependencies = [
 [[package]]
 name = "maestro-detection"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "maestro-dependencies",
  "maestro-lock",
@@ -3978,7 +3978,7 @@ dependencies = [
 [[package]]
 name = "maestro-entry"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "indexmap 2.14.2",
  "maestro-dependencies",
@@ -3990,7 +3990,7 @@ dependencies = [
 [[package]]
 name = "maestro-export"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "base64 0.23.1",
  "maestro-dependencies",
@@ -4044,7 +4044,7 @@ dependencies = [
 [[package]]
 name = "maestro-extensions"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "chrono",
  "indexmap 2.14.2",
@@ -4067,7 +4067,7 @@ dependencies = [
 [[package]]
 name = "maestro-extensions-wasm"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "indexmap 2.14.2",
  "maestro-dependencies",
@@ -4086,7 +4086,7 @@ dependencies = [
 [[package]]
 name = "maestro-extensions-wasmtime"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "futures-util",
  "maestro-dependencies",
@@ -4111,7 +4111,7 @@ dependencies = [
 [[package]]
 name = "maestro-ipc"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "interprocess",
  "maestro-dependencies",
@@ -4123,7 +4123,7 @@ dependencies = [
 [[package]]
 name = "maestro-json"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "maestro-dependencies",
  "ryu-js",
@@ -4134,7 +4134,7 @@ dependencies = [
 [[package]]
 name = "maestro-listeners"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "maestro-dependencies",
 ]
@@ -4142,7 +4142,7 @@ dependencies = [
 [[package]]
 name = "maestro-listing"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "maestro-dependencies",
 ]
@@ -4150,7 +4150,7 @@ dependencies = [
 [[package]]
 name = "maestro-lock"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "maestro-dependencies",
  "maestro-path",
@@ -4161,7 +4161,7 @@ dependencies = [
 [[package]]
 name = "maestro-markdown"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "entities",
  "maestro-dependencies",
@@ -4173,7 +4173,7 @@ dependencies = [
 [[package]]
 name = "maestro-models"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "aws-config",
  "aws-credential-types",
@@ -4237,7 +4237,7 @@ dependencies = [
 [[package]]
 name = "maestro-package"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "maestro-dependencies",
  "serde",
@@ -4246,7 +4246,7 @@ dependencies = [
 [[package]]
 name = "maestro-packages"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "maestro-dependencies",
  "maestro-json",
@@ -4269,7 +4269,7 @@ dependencies = [
 [[package]]
 name = "maestro-path"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "maestro-dependencies",
 ]
@@ -4277,7 +4277,7 @@ dependencies = [
 [[package]]
 name = "maestro-pattern"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "brace-expansion",
  "maestro-dependencies",
@@ -4288,7 +4288,7 @@ dependencies = [
 [[package]]
 name = "maestro-process"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "maestro-dependencies",
  "maestro-text",
@@ -4309,7 +4309,7 @@ dependencies = [
 [[package]]
 name = "maestro-protocol"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "bincode 2.0.1",
  "maestro-dependencies",
@@ -4329,7 +4329,7 @@ dependencies = [
 [[package]]
 name = "maestro-realpath"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "maestro-dependencies",
  "maestro-path",
@@ -4338,7 +4338,7 @@ dependencies = [
 [[package]]
 name = "maestro-request"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "indexmap 2.14.2",
  "maestro-dependencies",
@@ -4350,7 +4350,7 @@ dependencies = [
 [[package]]
 name = "maestro-resources"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "maestro-dependencies",
  "maestro-json",
@@ -4369,7 +4369,7 @@ dependencies = [
 [[package]]
 name = "maestro-rpc"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "maestro-app",
  "maestro-dependencies",
@@ -4420,7 +4420,7 @@ dependencies = [
 [[package]]
 name = "maestro-session"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "chrono",
  "futures-util",
@@ -4447,7 +4447,7 @@ dependencies = [
 [[package]]
 name = "maestro-settings"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "maestro-dependencies",
  "maestro-json",
@@ -4464,7 +4464,7 @@ dependencies = [
 [[package]]
 name = "maestro-terminal"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "base64 0.23.1",
  "flate2",
@@ -4481,7 +4481,7 @@ dependencies = [
 [[package]]
 name = "maestro-test-browser"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "base64 0.23.1",
  "chromiumoxide",
@@ -4503,7 +4503,7 @@ dependencies = [
 [[package]]
 name = "maestro-test-directory"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "maestro-dependencies",
  "maestro-realpath",
@@ -4520,7 +4520,7 @@ dependencies = [
 [[package]]
 name = "maestro-test-process"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "maestro-dependencies",
  "maestro-test-directory",
@@ -4532,7 +4532,7 @@ dependencies = [
 [[package]]
 name = "maestro-text"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "fixed_decimal",
  "icu_collator",
@@ -4546,7 +4546,7 @@ dependencies = [
 [[package]]
 name = "maestro-theme"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "indexmap 2.14.2",
  "jsonschema",
@@ -4571,7 +4571,7 @@ dependencies = [
 [[package]]
 name = "maestro-tool"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "maestro-dependencies",
  "maestro-request",
@@ -4581,7 +4581,7 @@ dependencies = [
 [[package]]
 name = "maestro-tooling"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "cargo_metadata",
  "maestro-dependencies",
@@ -4597,7 +4597,7 @@ dependencies = [
 [[package]]
 name = "maestro-tools"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "base64 0.23.1",
  "futures-util",
@@ -4636,7 +4636,7 @@ dependencies = [
 [[package]]
 name = "maestro-tui"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "base64 0.23.1",
  "getrandom 0.4.3",
@@ -4662,7 +4662,7 @@ dependencies = [
 [[package]]
 name = "maestro-tui-crossterm"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "chrono",
  "crossterm_winapi",
@@ -4688,7 +4688,7 @@ dependencies = [
 [[package]]
 name = "maestro-watch"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "maestro-dependencies",
  "notify",
@@ -4698,7 +4698,7 @@ dependencies = [
 [[package]]
 name = "maestro-web"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "base64 0.23.1",
  "chrono",
@@ -4750,7 +4750,7 @@ dependencies = [
 [[package]]
 name = "maestro-workspace"
 version = "0.1.0"
-source = "git+https://github.com/Orchestration-Maestro/maestro?rev=32388227f40ebc368d6374515056b3287f14cf90#32388227f40ebc368d6374515056b3287f14cf90"
+source = "git+https://github.com/Orchestration-Maestro/maestro?rev=49b5935837e684bf13100c9dacb64960c0d7b939#49b5935837e684bf13100c9dacb64960c0d7b939"
 dependencies = [
  "maestro-dependencies",
  "maestro-lock",
