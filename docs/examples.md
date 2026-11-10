@@ -116,7 +116,7 @@ their tests:
 | Source | Example target | Checks |
 |---|---|---|
 | `sdk/*.rs`, with `sdk/support/` and `sdk/tests/` | one per sample, such as `minimal` | each sample's own tests, run in-process |
-| `rpc_extension_ui.rs`, with `sdk/rpc_extension_ui/` | `rpc_extension_ui` | the terminal client's tests, and the checks of `sdk/rpc.py` under Python 3 |
+| `rpc_extension_ui.rs`, with `sdk/rpc_extension_ui/` | `rpc_extension_ui` | the terminal client's tests |
 | `sdk/rpc_client_demo/` | `rpc_client_demo` | the demo's checks, in the crate's `tests/integration.rs` |
 
 The thirteen SDK samples use Maestro's scripted model provider and disposable
@@ -130,9 +130,6 @@ and U+2029, refusals, early end of stream and cleanup. The `native-fixture`
 setup exports `MAESTRO_NATIVE_FIXTURE` for the `rpc_extension_ui` example
 binary and the crate's integration binary. The interactive demo's checks run
 on Unix.
-
-The Python client's checks run the shipped `examples/sdk/rpc.py` with `python3`,
-so Python 3 must be on `PATH`. Every peer is a native Rust program.
 
 Add a sample in three steps:
 

@@ -23,15 +23,14 @@ _check *selection:
     cargo clippy "$@" --all-targets --locked -- -D warnings
     RUSTDOCFLAGS="-D warnings -D missing_docs" cargo doc "$@" --no-deps --locked
 
-# Install Maestro's development tool at the pinned commit, then format the staged crates, re-stage the captured paths and check them.
-pre-commit:
-    cargo install --quiet --locked --git https://github.com/Orchestration-Maestro/maestro --rev 5ac4b8926090b5fcf41e33433b8456720bd3569e maestro-tooling --bin development --root target/development
+# Format the staged crates, re-stage the captured paths and check them with the pinned development tool.
+pre-commit: development
     target/development/bin/development pre-commit
 
 # Install Maestro's development tool from the pinned commit into `target/development`.
 [private]
 development:
-    cargo install --quiet --locked --git https://github.com/Orchestration-Maestro/maestro --rev 49b5935837e684bf13100c9dacb64960c0d7b939 maestro-tooling --bin development --root target/development
+    cargo install --quiet --locked --git https://github.com/Orchestration-Maestro/maestro --rev 5ada20b86f94821d6b7edd8c07030c554b04319d maestro-tooling --bin development --root target/development
 
 # Build the example components and install the programs the tests start into `target/test-setup`.
 prepare-tests: development

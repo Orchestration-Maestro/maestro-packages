@@ -15,9 +15,9 @@ The `maestro-sdk-examples` crate builds the SDK samples and the terminal client 
 
 Maestro's repository carries three more extension examples, each shown here by its tool, hook or message:
 
-- [`hello`](https://github.com/Orchestration-Maestro/maestro/blob/5ac4b8926090b5fcf41e33433b8456720bd3569e/examples/extensions/hello.rs) registers a greeting tool.
-- [`input_transform`](https://github.com/Orchestration-Maestro/maestro/blob/5ac4b8926090b5fcf41e33433b8456720bd3569e/examples/extensions/input_transform.rs) rewrites typed input and passes input from other extensions through unchanged.
-- [`send_user_message`](https://github.com/Orchestration-Maestro/maestro/blob/5ac4b8926090b5fcf41e33433b8456720bd3569e/examples/extensions/send_user_message.rs) sends ordinary, steering and follow-up messages.
+- [`hello`](https://github.com/Orchestration-Maestro/maestro/blob/5ada20b86f94821d6b7edd8c07030c554b04319d/examples/extensions/hello.rs) registers a greeting tool.
+- [`input_transform`](https://github.com/Orchestration-Maestro/maestro/blob/5ada20b86f94821d6b7edd8c07030c554b04319d/examples/extensions/input_transform.rs) rewrites typed input and passes input from other extensions through unchanged.
+- [`send_user_message`](https://github.com/Orchestration-Maestro/maestro/blob/5ada20b86f94821d6b7edd8c07030c554b04319d/examples/extensions/send_user_message.rs) sends ordinary, steering and follow-up messages.
 
 ## Browser example
 
