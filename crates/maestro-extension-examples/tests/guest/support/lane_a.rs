@@ -4,9 +4,9 @@ use maestro_extensions_wasmtime::test_support::maestro_extensions::{
     EventError, ExtensionRunner, ExtensionUIContext, Local, WorkingIndicatorOptions,
     footer_data_provider::{ExtensionStatuses, ReadonlyFooterDataProvider},
     types::{
-        EditorFactory, EditorFactoryOutcome, ExtensionComponent, ExtensionKeybindings,
-        ExtensionUIContextPort, ExtensionUIDialogOptions, ExtensionUIFuture, FooterFactory,
-        NotificationType,
+        CustomClose, CustomComponentFactory, CustomFactoryOutcome, CustomUIOptions, EditorFactory,
+        EditorFactoryOutcome, ExtensionComponent, ExtensionKeybindings, ExtensionUIContextPort,
+        ExtensionUIDialogOptions, ExtensionUIFuture, FooterFactory, NotificationType,
     },
 };
 use maestro_tui::{
@@ -16,8 +16,15 @@ use maestro_tui::{
 };
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
-use std::{cell::RefCell, collections::VecDeque, rc::Rc};
+use std::{
+    cell::{Cell, RefCell},
+    collections::VecDeque,
+    rc::Rc,
+};
 use tokio::sync::Notify;
+
+/// The width custom components are drawn at.
+const CUSTOM_WIDTH: usize = 20;
 
 /// Every UI request an extension made, in order, and the answers its dialogs receive.
 #[derive(Default)]
@@ -38,6 +45,10 @@ pub struct Ui {
     editor: RefCell<Option<EditorFactoryOutcome>>,
     /// The footer factory the extension installed.
     footer: RefCell<Option<FooterFactory>>,
+    /// The key presses a custom component receives, in order.
+    presses: RefCell<VecDeque<String>>,
+    /// The rows of the custom component before the first press and after each one.
+    frames: Rc<RefCell<Vec<Vec<String>>>>,
 }
 
 /// A started terminal on a manual runtime whose scheduled work the test runs.
@@ -133,6 +144,16 @@ impl Ui {
         });
         runner.set_ui_context(Some(ExtensionUIContext::new(ui.clone())));
         ui
+    }
+
+    /// Queues the terminal input the next custom component receives, one entry per press.
+    pub fn press(&self, input: &str) {
+        self.presses.borrow_mut().push_back(input.to_owned());
+    }
+
+    /// The rows of the last custom component: before the first press and after each press.
+    pub fn frames(&self) -> Vec<Vec<String>> {
+        self.frames.take()
     }
 
     /// The terminal the installed components draw on.
@@ -260,6 +281,58 @@ impl ExtensionUIContextPort for Ui {
 
     fn set_title(&self, title: String) -> Result<(), EventError> {
         self.record("setTitle", json!([title]))
+    }
+
+    fn custom_component(
+        &self,
+        factory: CustomComponentFactory,
+        _options: Option<CustomUIOptions>,
+    ) -> ExtensionUIFuture<()> {
+        let closed = Rc::new(Cell::new(false));
+        let flag = closed.clone();
+        let close: CustomClose = Rc::new(move || Ok(!flag.replace(true)));
+        let keybindings = ExtensionKeybindings {
+            manager: maestro_tui::KeybindingsManager::new(
+                maestro_tui::TUI_KEYBINDINGS.clone(),
+                Vec::new(),
+            ),
+            reload: None,
+        };
+        let built = factory.call((self.screen().tui.clone(), self.theme(), keybindings, close));
+        let presses = self.presses.take();
+        let frames = self.frames.clone();
+        Box::pin(async move {
+            let component = match built? {
+                CustomFactoryOutcome::Ready(component) => component,
+                CustomFactoryOutcome::Async(pending) => pending.await?,
+            };
+            let handle = component.component.clone();
+            frames
+                .borrow_mut()
+                .push(handle.try_render(CUSTOM_WIDTH).map_err(|e| e.to_string())?);
+            for press in presses {
+                if closed.get() {
+                    break;
+                }
+                if let Some(input) = handle.input_handler() {
+                    input.try_handle_input(&press).map_err(|e| e.to_string())?;
+                }
+                frames
+                    .borrow_mut()
+                    .push(handle.try_render(CUSTOM_WIDTH).map_err(|e| e.to_string())?);
+            }
+            if let Some(dispose) = component.dispose {
+                dispose.call(())?;
+            }
+            Ok(())
+        })
+    }
+
+    fn add_autocomplete_provider(
+        &self,
+        _factory: maestro_extensions_wasmtime::test_support::maestro_extensions::types::AutocompleteProviderFactory,
+    ) -> Result<(), EventError> {
+        self.record("addAutocompleteProvider", json!([]))
     }
 
     fn set_footer(&self, factory: Option<FooterFactory>) -> Result<(), EventError> {
@@ -534,7 +607,6 @@ fn row_context<'a>(
 /// The unstyled rows, without their trailing padding, the registered tool `name` draws for a
 /// call with `args`.
 pub fn render_call(runner: &ExtensionRunner<Local>, name: &str, args: &Value) -> Vec<String> {
-    use maestro_tui::tui::Component;
     let rows =
         maestro_extensions_wasmtime::test_support::maestro_extensions::ToolRendererState::default();
     let context = row_context(args, &rows, false, false);
@@ -547,7 +619,7 @@ pub fn render_call(runner: &ExtensionRunner<Local>, name: &str, args: &Value) ->
     .try_render(200)
     .unwrap()
     .iter()
-    .map(|row| plain(row).trim_end().to_owned())
+    .map(|row| plain(row).trim_end_matches(' ').to_owned())
     .collect()
 }
 
@@ -562,7 +634,6 @@ pub fn render_result(
     use maestro_extensions_wasmtime::test_support::maestro_extensions::{
         ToolRenderResultLike, ToolRenderResultOptions, ToolRendererState,
     };
-    use maestro_tui::tui::Component;
     let [expanded, partial] = flags;
     let content: Vec<_> = serde_json::from_value(result["content"].clone()).unwrap();
     let like = ToolRenderResultLike {
@@ -592,6 +663,6 @@ pub fn render_result(
         .try_render(200)
         .unwrap()
         .iter()
-        .map(|row| plain(row).trim_end().to_owned())
+        .map(|row| plain(row).trim_end_matches(' ').to_owned())
         .collect()
 }

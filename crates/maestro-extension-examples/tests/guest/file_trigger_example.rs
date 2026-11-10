@@ -105,6 +105,17 @@ impl Watching {
     async fn next(&mut self) -> Value {
         self.sent.recv().await.unwrap()
     }
+
+    /// Waits for the next message the host accepted, passing over refused attempts and further
+    /// deliveries of `repeated`, which one change of the file may announce more than once.
+    async fn next_accepted(&mut self, repeated: &Value) -> Value {
+        loop {
+            let sent = self.next().await;
+            if sent.get("refused").is_none() && sent != *repeated {
+                return sent;
+            }
+        }
+    }
 }
 
 /// The message document the component sends for `content`.
@@ -165,9 +176,11 @@ fn file_trigger_ignores_transient_errors_without_clearing_rejected_text() {
         assert_eq!(std::fs::read_to_string(TRIGGER).unwrap(), "retry me");
         watching.refusing.set(false);
         trigger.write(b"retry me");
-        assert_eq!(watching.next().await, message("retry me"));
+        let retried = watching.next_accepted(&Value::Null).await;
+        assert_eq!(retried, message("retry me"));
         assert_eq!(std::fs::read_to_string(TRIGGER).unwrap(), "");
         trigger.write(b"invalid \xff UTF-8");
-        assert_eq!(watching.next().await, message("invalid \u{fffd} UTF-8"));
+        let decoded = watching.next_accepted(&retried).await;
+        assert_eq!(decoded, message("invalid \u{fffd} UTF-8"));
     });
 }

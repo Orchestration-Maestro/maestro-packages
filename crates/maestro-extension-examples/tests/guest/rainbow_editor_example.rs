@@ -9,10 +9,6 @@ use super::support::{harness, load};
 use maestro_extensions_wasmtime::test_support::{
     Harness, Loaded, maestro_extensions::SessionStartEvent,
 };
-use maestro_tui::{
-    EditorComponent,
-    tui::{Component, InputHandler},
-};
 use serde_json::{Value, json};
 use std::{cell::RefCell, rc::Rc};
 
@@ -125,6 +121,7 @@ fn shows_frame(rows: &[String], frame: usize) -> bool {
 fn rainbow_editor_shine_follows_reference_frames() {
     local_io(async {
         let rainbow = Rainbow::new().await;
+        assert!(rainbow.loaded.runner.has_handlers("session_start"));
         rainbow.start_animation().await;
         for frame in 0..21 {
             let rows = rainbow.rows();

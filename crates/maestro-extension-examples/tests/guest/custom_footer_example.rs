@@ -11,7 +11,6 @@ use maestro_extensions_wasmtime::test_support::{
     },
     unconfigured_context_actions,
 };
-use maestro_tui::tui::Component;
 use serde_json::{Value, json};
 use std::{
     cell::RefCell,
