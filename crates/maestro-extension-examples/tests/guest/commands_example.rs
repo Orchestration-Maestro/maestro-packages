@@ -1,7 +1,9 @@
 //! The shipped command selector loaded into the production engine.
 use super::lane_a::{Ui, failures};
 use super::support::{harness, load, local};
-use maestro_extensions_wasmtime::test_support::maestro_extensions::SlashCommandInfo;
+use maestro_extensions_wasmtime::test_support::maestro_extensions::{
+    AutocompleteItem, SlashCommandInfo,
+};
 use serde_json::{Value, json};
 use std::rc::Rc;
 
@@ -32,6 +34,11 @@ fn completion_cases() -> Vec<(&'static str, Option<Vec<Value>>)> {
         )
     })
     .collect()
+}
+
+/// A completion item as the value, label and description it offers.
+fn labelled(item: &AutocompleteItem) -> Value {
+    json!({"value": item.value, "label": item.label, "description": item.description})
 }
 
 /// One command invocation with the host's inventory and the dialog answers.
@@ -234,14 +241,7 @@ fn commands_registers_metadata_and_completes_sources() {
         let complete = command.get_argument_completions.as_ref().unwrap();
         for (prefix, expected) in completion_cases() {
             let items = complete(prefix.into()).await.unwrap();
-            let items = items.map(|items| {
-                items
-                    .into_iter()
-                    .map(|item| {
-                        json!({"value": item.value, "label": item.label, "description": item.description})
-                    })
-                    .collect::<Vec<_>>()
-            });
+            let items = items.map(|items| items.iter().map(labelled).collect::<Vec<_>>());
             assert_eq!(items, expected, "prefix {prefix:?}");
         }
     });

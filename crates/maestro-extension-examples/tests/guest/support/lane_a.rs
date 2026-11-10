@@ -9,11 +9,6 @@ use maestro_extensions_wasmtime::test_support::maestro_extensions::{
         ExtensionUIDialogOptions, ExtensionUIFuture, FooterFactory, NotificationType,
     },
 };
-use maestro_tui::{
-    TUI, TerminalImage,
-    test_support::{manual_runtime::ManualRuntime, recording_terminal::RecordingTerminal},
-    tui::{LocalFuture, LogContext, RenderCallback, RenderTimer, TuiRuntime},
-};
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
 use std::{
@@ -51,82 +46,15 @@ pub struct Ui {
     frames: Rc<RefCell<Vec<Vec<String>>>>,
 }
 
-/// A started terminal on a manual runtime whose scheduled work the test runs.
-#[derive(Clone)]
-pub struct Screen {
-    /// The terminal factories receive.
-    pub tui: TUI,
-    /// The runtime whose scheduled work `settle` runs.
-    pub runtime: ManualRuntime,
-    /// Wakes a waiter whenever the terminal schedules a redraw.
-    pub redraws: Rc<Notify>,
-}
-
-/// The manual runtime, announcing each redraw it is asked to schedule.
-struct Announcing {
-    /// The runtime that keeps the scheduled work.
-    inner: Rc<dyn TuiRuntime>,
-    /// Wakes the test.
-    redraws: Rc<Notify>,
-}
-
-impl TuiRuntime for Announcing {
-    fn now(&self) -> std::time::Duration {
-        self.inner.now()
-    }
-
-    fn schedule(
-        &self,
-        delay: std::time::Duration,
-        callback: RenderCallback,
-    ) -> Box<dyn RenderTimer> {
-        self.redraws.notify_one();
-        self.inner.schedule(delay, callback)
-    }
-
-    fn spawn_local(&self, future: LocalFuture) {
-        self.inner.spawn_local(future);
-    }
-
-    fn log_context(&self) -> LogContext {
-        self.inner.log_context()
-    }
-}
-
-/// Consumes a redraw announcement that arrived before anyone waited for it.
-pub fn drain(redraws: &Notify) {
-    let mut waiting = std::pin::pin!(redraws.notified());
-    let _ = waiting
-        .as_mut()
-        .poll(&mut std::task::Context::from_waker(std::task::Waker::noop()));
-}
-
-impl Screen {
-    /// Starts an 80 by 24 terminal.
-    pub fn new() -> Self {
-        let terminal = RecordingTerminal::new(80, 24);
-        let runtime = ManualRuntime::new();
-        let redraws = Rc::new(Notify::new());
-        let announcing = Announcing {
-            inner: runtime.handle(),
-            redraws: redraws.clone(),
-        };
-        let tui = TUI::new(
-            terminal.handle(),
-            Rc::new(announcing),
-            TerminalImage::default(),
-            Some(false),
-        );
-        tui.start().unwrap();
-        runtime.settle().unwrap();
-        drain(&redraws);
-        Self {
-            tui,
-            runtime,
-            redraws,
-        }
-    }
-}
+#[path = "lane_a/native.rs"]
+mod native;
+#[path = "lane_a/render.rs"]
+mod render;
+#[path = "lane_a/screen.rs"]
+mod screen;
+pub use native::{load_native, local_native};
+pub use render::{render_call, render_result};
+pub use screen::{Screen, drain};
 
 impl Ui {
     /// Installs a recording UI on `runner` and returns it.
@@ -210,9 +138,11 @@ impl Ui {
 
     /// Records one request and applies a pending rejection of `method`.
     fn record(&self, method: &str, operands: Value) -> Result<(), EventError> {
-        self.seen
-            .borrow_mut()
-            .push(json!({"method": method, "operands": operands}));
+        let request = serde_json::Map::from_iter([
+            ("method".to_owned(), Value::from(method)),
+            ("operands".to_owned(), operands),
+        ]);
+        self.seen.borrow_mut().push(Value::Object(request));
         self.changed.notify_one();
         let mut rejection = self.rejection.borrow_mut();
         match rejection.take_if(|(rejected, _)| rejected == method) {
@@ -301,31 +231,7 @@ impl ExtensionUIContextPort for Ui {
         let built = factory.call((self.screen().tui.clone(), self.theme(), keybindings, close));
         let presses = self.presses.take();
         let frames = self.frames.clone();
-        Box::pin(async move {
-            let component = match built? {
-                CustomFactoryOutcome::Ready(component) => component,
-                CustomFactoryOutcome::Async(pending) => pending.await?,
-            };
-            let handle = component.component.clone();
-            frames
-                .borrow_mut()
-                .push(handle.try_render(CUSTOM_WIDTH).map_err(|e| e.to_string())?);
-            for press in presses {
-                if closed.get() {
-                    break;
-                }
-                if let Some(input) = handle.input_handler() {
-                    input.try_handle_input(&press).map_err(|e| e.to_string())?;
-                }
-                frames
-                    .borrow_mut()
-                    .push(handle.try_render(CUSTOM_WIDTH).map_err(|e| e.to_string())?);
-            }
-            if let Some(dispose) = component.dispose {
-                dispose.call(())?;
-            }
-            Ok(())
-        })
+        Box::pin(drive(built, presses, closed, frames))
     }
 
     fn add_autocomplete_provider(
@@ -362,13 +268,16 @@ impl ExtensionUIContextPort for Ui {
     }
 }
 
+/// A callback the footer registered for branch changes.
+pub type Callback = Rc<dyn Fn()>;
+
 /// Footer metadata a test controls: the branch, and the callbacks to run when it changes.
 #[derive(Default)]
 pub struct Metadata {
     /// The branch the footer shows.
     pub branch: RefCell<Option<String>>,
     /// The branch-change callbacks the footer registered.
-    pub listeners: Rc<RefCell<Vec<Rc<dyn Fn()>>>>,
+    pub listeners: Rc<RefCell<Vec<Callback>>>,
 }
 
 impl ReadonlyFooterDataProvider for Metadata {
@@ -395,17 +304,42 @@ impl ReadonlyFooterDataProvider for Metadata {
     }
 }
 
+/// Opens the built custom component, draws it before and after each press and disposes it.
+async fn drive(
+    built: Result<CustomFactoryOutcome, EventError>,
+    presses: VecDeque<String>,
+    closed: Rc<Cell<bool>>,
+    frames: Rc<RefCell<Vec<Vec<String>>>>,
+) -> Result<(), EventError> {
+    let component = match built? {
+        CustomFactoryOutcome::Ready(component) => component,
+        CustomFactoryOutcome::Async(pending) => pending.await?,
+    };
+    let handle = component.component.clone();
+    let draw = || {
+        handle
+            .try_render(CUSTOM_WIDTH)
+            .map_err(|error| error.to_string())
+    };
+    frames.borrow_mut().push(draw()?);
+    for press in presses.iter().take_while(|_| !closed.get()) {
+        if let Some(input) = handle.input_handler() {
+            input
+                .try_handle_input(press)
+                .map_err(|error| error.to_string())?;
+        }
+        frames.borrow_mut().push(draw()?);
+    }
+    component.dispose.map_or(Ok(()), |dispose| dispose.call(()))
+}
+
 /// Removes the SGR style sequences a theme adds, leaving the text it styled.
 pub fn plain(styled: &str) -> String {
     let mut text = String::new();
     let mut chars = styled.chars();
     while let Some(c) = chars.next() {
         if c == '\u{1b}' {
-            for end in chars.by_ref() {
-                if end == 'm' {
-                    break;
-                }
-            }
+            chars.by_ref().any(|end| end == 'm');
         } else {
             text.push(c);
         }
@@ -444,225 +378,4 @@ pub fn harness_in(cwd: &str) -> maestro_extensions_wasmtime::test_support::Harne
 /// components waiting on the clock or on child processes need.
 pub fn local_io<T>(test: impl Future<Output = T>) -> T {
     maestro_test_process::executor::block_on(test).unwrap()
-}
-
-/// Runs a test body on a local task set it can hand to the application's native effects.
-pub fn local_native<F: Future>(test: impl FnOnce(Rc<tokio::task::LocalSet>) -> F) -> F::Output {
-    let runtime = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap();
-    let local = Rc::new(tokio::task::LocalSet::new());
-    local.block_on(&runtime, test(local.clone()))
-}
-
-/// Loads the component `variable` names into `harness` with the application's native effects
-/// (file watches, child processes, HTTP), which the harness's own loader does not supply.
-pub async fn load_native(
-    harness: &maestro_extensions_wasmtime::test_support::Harness,
-    variable: &str,
-    local: &Rc<tokio::task::LocalSet>,
-) -> maestro_extensions_wasmtime::test_support::Loaded {
-    use maestro_extensions_wasmtime::test_support::{
-        maestro_extensions::{
-            ExtensionCommandContextActions, ExtensionExecution, ExtensionWidgets, LiveTheme,
-            ModuleLoader, load_extensions_with_runtime,
-            runner::ExtensionRunnerSession,
-            test_support::{ToolkitWidgets, diagnostics},
-            types::ProviderActions,
-        },
-        unconfigured_command_operations, unconfigured_context_actions,
-    };
-    let io = maestro_app::extension_native_io::extension_native_io(local);
-    let widgets: Rc<dyn ExtensionWidgets> =
-        Rc::new(ToolkitWidgets::new(LiveTheme::default()).unwrap());
-    let agent_dir = maestro_test_process::run_agent_directory().unwrap_or_default();
-    let loader: ModuleLoader<Local> = Rc::new(move |path: &str| {
-        let factory = maestro_extensions_wasmtime::artifact_factory_with_io(
-            path.to_owned(),
-            widgets.clone(),
-            maestro_extensions_wasmtime::Installation {
-                version: env!("CARGO_PKG_VERSION").into(),
-                agent_dir: agent_dir.clone(),
-            },
-            io.clone(),
-            None,
-        );
-        Box::pin(std::future::ready(Ok(Some(factory))))
-    });
-    let loaded = load_extensions_with_runtime(
-        vec![super::support::component(variable)],
-        &harness.cwd,
-        &harness.bus,
-        &loader,
-        harness.runtime.clone(),
-    )
-    .await
-    .unwrap();
-    let errors: Vec<_> = loaded.errors.iter().map(|error| &error.error).collect();
-    assert!(errors.is_empty(), "{errors:?}");
-    let runner = Rc::new(ExtensionRunner::<Local>::new(
-        Rc::new(std::sync::RwLock::new(loaded.extensions)),
-        loaded.runtime,
-        ExtensionRunnerSession {
-            cwd: harness.cwd.clone(),
-            session_manager: harness.session_manager.clone(),
-            model_registry: harness.model_registry.clone(),
-        },
-        Rc::new(diagnostics::write_stderr),
-        LiveTheme::default(),
-    ));
-    runner
-        .bind_core(
-            Local::unbound_actions(),
-            unconfigured_context_actions(),
-            ProviderActions::default(),
-        )
-        .unwrap();
-    runner.bind_command_context(Some(ExtensionCommandContextActions::new(
-        unconfigured_command_operations(),
-    )));
-    maestro_extensions_wasmtime::test_support::Loaded {
-        runner,
-        errors: loaded.errors,
-    }
-}
-
-/// Supports no language, so rendering never classifies code.
-struct Plain;
-
-impl maestro_theme::SyntaxHighlighter for Plain {
-    fn supports_language(&self, _: &str) -> bool {
-        false
-    }
-
-    fn highlight(
-        &self,
-        _: &str,
-        _: &str,
-    ) -> Result<Vec<maestro_theme::SyntaxSpan>, Box<dyn std::error::Error + Send + Sync>> {
-        Ok(Vec::new())
-    }
-}
-
-/// The dark theme tools render with.
-fn dark() -> maestro_theme::LiveTheme {
-    maestro_theme::LiveTheme::from_theme(
-        maestro_theme::test_support::palette::palette("dark").unwrap(),
-    )
-}
-
-/// The registered tool `name`, which must exist.
-fn registered(
-    runner: &ExtensionRunner<Local>,
-    name: &str,
-) -> maestro_extensions_wasmtime::test_support::maestro_extensions::RegisteredTool<Local> {
-    runner
-        .get_all_registered_tools()
-        .into_iter()
-        .find(|tool| tool.metadata().definition.name == name)
-        .unwrap_or_else(|| panic!("no tool named {name}"))
-}
-
-/// A row's render context: completed arguments, the expansion and whether the call is partial.
-fn row_context<'a>(
-    args: &'a Value,
-    rows: &'a maestro_extensions_wasmtime::test_support::maestro_extensions::ToolRendererState,
-    expanded: bool,
-    partial: bool,
-) -> maestro_extensions_wasmtime::test_support::maestro_extensions::ToolRenderContext<
-    'a,
-    maestro_extensions_wasmtime::test_support::maestro_extensions::ToolRendererState,
-> {
-    use maestro_extensions_wasmtime::test_support::maestro_extensions::{
-        ToolRenderContext, ToolRenderEnvironment, ToolRenderPhase,
-    };
-    let environment = Rc::new(ToolRenderEnvironment {
-        runtime: ManualRuntime::new().handle(),
-        readme_path: String::new(),
-        live_theme: maestro_theme::LiveTheme::default(),
-        highlighter: Rc::new(Plain),
-        terminal_image: TerminalImage::default(),
-    });
-    ToolRenderContext {
-        args: Some(args),
-        tool_call_id: "call".into(),
-        invalidate: Rc::new(|| {}),
-        environment,
-        last_component: None,
-        state: Rc::new(RefCell::new(rows.clone())),
-        renderer_state: Some(rows),
-        cwd: "/work".into(),
-        phase: ToolRenderPhase {
-            execution_started: true,
-            args_complete: true,
-            is_partial: partial,
-        },
-        expanded,
-        show_images: false,
-        is_error: false,
-    }
-}
-
-/// The unstyled rows, without their trailing padding, the registered tool `name` draws for a
-/// call with `args`.
-pub fn render_call(runner: &ExtensionRunner<Local>, name: &str, args: &Value) -> Vec<String> {
-    let rows =
-        maestro_extensions_wasmtime::test_support::maestro_extensions::ToolRendererState::default();
-    let context = row_context(args, &rows, false, false);
-    registered(runner, name)
-        .renderer_binding()
-        .unwrap()
-        .render_call
-        .unwrap()(Some(args), &dark(), &context)
-    .unwrap()
-    .try_render(200)
-    .unwrap()
-    .iter()
-    .map(|row| plain(row).trim_end_matches(' ').to_owned())
-    .collect()
-}
-
-/// The unstyled rows the registered tool `name` draws for a result in the given state.
-pub fn render_result(
-    runner: &ExtensionRunner<Local>,
-    name: &str,
-    args: &Value,
-    result: &Value,
-    flags: [bool; 2],
-) -> Vec<String> {
-    use maestro_extensions_wasmtime::test_support::maestro_extensions::{
-        ToolRenderResultLike, ToolRenderResultOptions, ToolRendererState,
-    };
-    let [expanded, partial] = flags;
-    let content: Vec<_> = serde_json::from_value(result["content"].clone()).unwrap();
-    let like = ToolRenderResultLike {
-        content: &content,
-        details: result.get("details"),
-        terminate: None,
-        is_error: Some(false),
-    };
-    let rows = ToolRendererState::default();
-    let context = row_context(args, &rows, expanded, partial);
-    registered(runner, name)
-        .renderer_binding()
-        .unwrap()
-        .render_result
-        .unwrap()
-        .prepare(like)
-        .unwrap()
-        .render(
-            ToolRenderResultOptions {
-                expanded,
-                is_partial: partial,
-            },
-            &dark(),
-            &context,
-        )
-        .unwrap()
-        .try_render(200)
-        .unwrap()
-        .iter()
-        .map(|row| plain(row).trim_end_matches(' ').to_owned())
-        .collect()
 }

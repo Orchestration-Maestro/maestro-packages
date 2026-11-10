@@ -83,7 +83,7 @@ impl Rainbow {
     }
 
     /// Starts the animation on the recorded text and clears redraws made by typing it.
-    async fn start_animation(&self) {
+    fn start_animation(&self) {
         self.type_text(&typed());
         let screen = self.ui.screen();
         screen.runtime.settle().unwrap();
@@ -122,7 +122,7 @@ fn rainbow_editor_shine_follows_reference_frames() {
     local_io(async {
         let rainbow = Rainbow::new().await;
         assert!(rainbow.loaded.runner.has_handlers("session_start"));
-        rainbow.start_animation().await;
+        rainbow.start_animation();
         for frame in 0..21 {
             let rows = rainbow.rows();
             assert!(shows_frame(&rows, frame), "frame {frame}: {rows:?}");
@@ -162,7 +162,7 @@ fn rainbow_editor_input_starts_animation_on_keyword() {
 fn rainbow_editor_restarted_animation_keeps_its_frame() {
     local_io(async {
         let rainbow = Rainbow::new().await;
-        rainbow.start_animation().await;
+        rainbow.start_animation();
         for _ in 0..3 {
             rainbow.next_frame().await;
         }

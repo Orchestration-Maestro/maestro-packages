@@ -117,11 +117,11 @@ impl Checkpointing {
     }
 }
 
+/// Appends one entry to a session and returns its identity.
+type Append = fn(&mut maestro_session::SessionManager) -> String;
+
 /// One session entry of each of the nine kinds, each appended as the current leaf.
-fn entry_kinds() -> Vec<(
-    &'static str,
-    fn(&mut maestro_session::SessionManager) -> String,
-)> {
+fn entry_kinds() -> Vec<(&'static str, Append)> {
     vec![
         ("message", |s| {
             s.append_message(json!({"role": "user", "content": "q", "timestamp": 0}))

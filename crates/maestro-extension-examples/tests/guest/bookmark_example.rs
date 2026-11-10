@@ -132,6 +132,70 @@ impl Case {
     }
 }
 
+/// Appends the recorded `entry` to `session`, standing in for a label target that is not among
+/// the entries `ids` names, and returns the new entry's identity.
+fn append_entry(
+    session: &mut SessionManager,
+    entry: &Value,
+    ids: &BTreeMap<String, String>,
+) -> String {
+    match entry["type"].as_str().unwrap() {
+        "message" => session.append_message(entry["message"].clone()).unwrap(),
+        "thinking_level_change" => session
+            .append_thinking_level_change(entry["thinkingLevel"].as_str().unwrap())
+            .unwrap(),
+        "model_change" => session
+            .append_model_change(
+                entry["provider"].as_str().unwrap(),
+                entry["modelId"].as_str().unwrap(),
+            )
+            .unwrap(),
+        "compaction" => session
+            .append_compaction(
+                entry["summary"].as_str().unwrap(),
+                "kept",
+                entry["tokensBefore"].as_f64().unwrap(),
+                CompactionOptions::default(),
+            )
+            .unwrap(),
+        "branch_summary" => session
+            .branch_with_summary(
+                None,
+                entry["summary"].as_str().unwrap(),
+                Presence::Missing,
+                Presence::Missing,
+            )
+            .unwrap(),
+        "custom" => session
+            .append_custom_entry(entry["customType"].as_str().unwrap(), Presence::Missing)
+            .unwrap(),
+        "custom_message" => session
+            .append_custom_message_entry(
+                entry["customType"].as_str().unwrap(),
+                UserContent::Text(entry["content"].as_str().unwrap().into()),
+                true,
+                Presence::Missing,
+            )
+            .unwrap(),
+        "label" => {
+            // The recorded target may not be among the entries; any earlier entry stands in.
+            let target = match ids
+                .get(entry["targetId"].as_str().unwrap())
+                .or(ids.values().next())
+            {
+                Some(target) => target.clone(),
+                None => session.append_session_info("target").unwrap(),
+            };
+            session
+                .append_label_change(&target, Presence::Present(entry["label"].as_str().unwrap()))
+                .unwrap()
+        }
+        _ => session
+            .append_session_info(entry["name"].as_str().unwrap())
+            .unwrap(),
+    }
+}
+
 /// Appends the row's entries to `session`, records each real identity under its recorded name and
 /// returns the identities by recorded name.
 fn build_entries(
@@ -141,64 +205,7 @@ fn build_entries(
 ) -> BTreeMap<String, String> {
     let mut ids: BTreeMap<String, String> = BTreeMap::new();
     for entry in row["entries"].as_array().unwrap() {
-        let id = match entry["type"].as_str().unwrap() {
-            "message" => session.append_message(entry["message"].clone()).unwrap(),
-            "thinking_level_change" => session
-                .append_thinking_level_change(entry["thinkingLevel"].as_str().unwrap())
-                .unwrap(),
-            "model_change" => session
-                .append_model_change(
-                    entry["provider"].as_str().unwrap(),
-                    entry["modelId"].as_str().unwrap(),
-                )
-                .unwrap(),
-            "compaction" => session
-                .append_compaction(
-                    entry["summary"].as_str().unwrap(),
-                    "kept",
-                    entry["tokensBefore"].as_f64().unwrap(),
-                    CompactionOptions::default(),
-                )
-                .unwrap(),
-            "branch_summary" => session
-                .branch_with_summary(
-                    None,
-                    entry["summary"].as_str().unwrap(),
-                    Presence::Missing,
-                    Presence::Missing,
-                )
-                .unwrap(),
-            "custom" => session
-                .append_custom_entry(entry["customType"].as_str().unwrap(), Presence::Missing)
-                .unwrap(),
-            "custom_message" => session
-                .append_custom_message_entry(
-                    entry["customType"].as_str().unwrap(),
-                    UserContent::Text(entry["content"].as_str().unwrap().into()),
-                    true,
-                    Presence::Missing,
-                )
-                .unwrap(),
-            "label" => {
-                // The recorded target may not be among the entries; any earlier entry stands in.
-                let target = match ids
-                    .get(entry["targetId"].as_str().unwrap())
-                    .or(ids.values().next())
-                {
-                    Some(target) => target.clone(),
-                    None => session.append_session_info("target").unwrap(),
-                };
-                session
-                    .append_label_change(
-                        &target,
-                        Presence::Present(entry["label"].as_str().unwrap()),
-                    )
-                    .unwrap()
-            }
-            _ => session
-                .append_session_info(entry["name"].as_str().unwrap())
-                .unwrap(),
-        };
+        let id = append_entry(session, entry, &ids);
         let name = entry["id"].as_str().unwrap().to_owned();
         names.borrow_mut().insert(id.clone(), name.clone());
         ids.insert(name, id);
