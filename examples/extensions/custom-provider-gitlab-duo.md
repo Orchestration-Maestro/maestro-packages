@@ -89,6 +89,6 @@ the six tests of this example:
 
 ```sh
 just prepare-tests
-cargo nextest run --locked -p maestro-extension-examples --test integration \
-  -E 'test(custom_gateway_provider_)'
+TEST_PREPARE_OUTPUT="$PWD/target/test-setup" cargo nextest run --locked \
+  -p maestro-extension-examples -E 'test(custom_gateway_provider_)'
 ```

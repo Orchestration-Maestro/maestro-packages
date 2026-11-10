@@ -10,8 +10,6 @@ an application is opt-in.
 
 ## Controlled runs
 
-```sh
-CARGO_BUILD_JOBS=3 ~/.local/bin/capped mise exec -- just prepare-tests
-CARGO_BUILD_JOBS=3 ~/.local/bin/capped mise exec -- cargo nextest run --locked \
-  -p maestro-extensions-wasm --lib -- system_prompt_status
-```
+The controlled runs for this example are not hosted here yet.
+[#75](https://github.com/Orchestration-Maestro/maestro-packages/issues/75) adds
+them.

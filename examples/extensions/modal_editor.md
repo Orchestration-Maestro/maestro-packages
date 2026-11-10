@@ -20,8 +20,6 @@ every session.
 
 ## Controlled runs
 
-```sh
-capped mise exec -- just prepare-tests
-capped mise exec -- cargo nextest run --locked -p maestro-extensions-wasm --lib \
-  -E 'test(modal_editor_example::)'
-```
+The controlled runs for this example are not hosted here yet.
+[#75](https://github.com/Orchestration-Maestro/maestro-packages/issues/75) adds
+them.

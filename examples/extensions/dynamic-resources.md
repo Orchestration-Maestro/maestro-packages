@@ -3,7 +3,7 @@
 Quick start: build the component, install it beside its three resource files, and load it with `maestro -e <path>`. Maestro then lists the `dynamic-resources` skill, the `/dynamic` prompt template and the `dynamic-resources` theme.
 
 ```sh
-CARGO_BUILD_JOBS=3 ~/.local/bin/capped mise exec -- cargo build --locked \
+cargo build --locked \
   -p maestro-extension-examples --example dynamic_resources --target wasm32-wasip2 --release
 ```
 
@@ -28,7 +28,7 @@ Discovery and reload make no model call. Sending the expanded `/dynamic` prompt 
 `dynamic_resources_component_returns_shared_paths` installs the built component at several disposable locations and starts it from unrelated working directories. The locations include one with spaces and a non-ASCII name and, on Unix, one with a backslash in the file name. At startup and after each reload, the component must return the paths beside it. The run needs no live service and no credentials.
 
 ```sh
-CARGO_BUILD_JOBS=3 ~/.local/bin/capped just prepare-tests
-TEST_PREPARE_OUTPUT="$PWD/target/test-setup" CARGO_BUILD_JOBS=3 ~/.local/bin/capped mise exec -- \
-  cargo nextest run --locked -p maestro-extension-examples -E 'test(dynamic_resources)'
+just prepare-tests
+TEST_PREPARE_OUTPUT="$PWD/target/test-setup" cargo nextest run --locked \
+  -p maestro-extension-examples -E 'test(dynamic_resources)'
 ```

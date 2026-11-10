@@ -33,6 +33,6 @@ Prepare the host programs once, then run the page's tests:
 
 ```sh
 just prepare-tests
-TEST_PREPARE_OUTPUT=target/test-setup cargo nextest run --locked \
+TEST_PREPARE_OUTPUT="$PWD/target/test-setup" cargo nextest run --locked \
   -p maestro-extension-examples -E 'test(ssh_example)'
 ```

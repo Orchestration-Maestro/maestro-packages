@@ -19,8 +19,6 @@ Snake and question extractor; each example keeps its own interval and policy.
 
 ## Controlled runs
 
-```sh
-CARGO_BUILD_JOBS=3 ~/.local/bin/capped mise exec -- just prepare-tests
-CARGO_BUILD_JOBS=3 ~/.local/bin/capped mise exec -- cargo nextest run --locked \
-  -p maestro-extensions-wasm --lib -- mac_system_theme_
-```
+The controlled runs for this example are not hosted here yet.
+[#75](https://github.com/Orchestration-Maestro/maestro-packages/issues/75) adds
+them.
