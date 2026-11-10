@@ -21,9 +21,8 @@ no network and no credentials.
 ## Build
 
 ```sh
-CARGO_BUILD_JOBS=3 ~/.local/bin/capped mise exec -- cargo build --locked \
-  -p maestro-extensions-wasm --example custom_provider_gitlab_duo \
-  --target wasm32-wasip2 --release
+cargo build --locked -p maestro-extension-examples \
+  --example custom_provider_gitlab_duo --target wasm32-wasip2 --release
 ```
 
 ## Run a greeting probe
@@ -77,17 +76,19 @@ Refresh uses the stored refresh token.
 
 ## Controlled runs
 
-The first command runs sign-in, refresh and direct access with a movable clock.
-The second loads the built component against the native catalog, with controlled
-GitLab replies and controlled protocols. It covers registration, the route of each
-model, error messages, raw options, sign-in through the host and the probe. The
-probe reads the stored sign-in, asks one model for a three-word greeting with a
-100-token limit, adds low reasoning with `--thinking`, and prints thinking, text,
-errors and the final reason.
+The command loads the built component in Maestro's native host against the
+native catalog, with controlled GitLab replies and controlled protocols. It
+covers registration, the route of each model, error messages, raw options,
+sign-in and refresh through the host, and the probe. The probe reads the stored
+sign-in, asks one model for a three-word greeting with a 100-token limit, adds
+low reasoning with `--thinking`, and prints thinking, text, errors and the final
+reason.
+
+`just prepare-tests` compiles the components once, then the test command selects
+the six tests of this example:
 
 ```sh
-CARGO_BUILD_JOBS=3 ~/.local/bin/capped mise exec -- cargo nextest run --locked \
-  -p maestro-extensions-wasm --lib -- custom_gateway_provider_
-CARGO_BUILD_JOBS=3 ~/.local/bin/capped mise exec -- cargo nextest run --locked \
-  -p maestro-extensions-wasmtime --test integration -- custom_gateway_provider_
+just prepare-tests
+cargo nextest run --locked -p maestro-extension-examples --test integration \
+  -E 'test(custom_gateway_provider_)'
 ```
