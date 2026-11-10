@@ -32,7 +32,7 @@ The tracked-sources check rejects these extensions, in any letter case:
 | JavaScript | `.js`, `.mjs`, `.cjs`, `.jsx` |
 | TypeScript | `.ts`, `.mts`, `.cts`, `.tsx` |
 | Python | `.py`, `.pyi`, `.pyw` |
-| Shell | `.sh`, `.bash`, `.zsh`, `.ps1` |
+| Shell and PowerShell | `.sh`, `.bash`, `.zsh`, `.ps1` |
 
 Member patterns are a path or a directory followed by `/*`. Any other pattern stops
 the check, so a new glob form is a decision and not a silent gap.

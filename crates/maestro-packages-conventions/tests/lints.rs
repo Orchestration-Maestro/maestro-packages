@@ -1,6 +1,6 @@
 //! Lint inheritance of workspace members.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use maestro_packages_conventions::{Violation, check_workspace};
 
@@ -141,7 +141,7 @@ fn glob_over_a_missing_directory_has_no_members() {
 #[test]
 fn unreadable_root_manifest_is_reported_with_its_path() {
     let workspace = Workspace::new();
-    let manifest: PathBuf = workspace.path().join("Cargo.toml");
+    let manifest = workspace.path().join("Cargo.toml");
     std::fs::remove_file(&manifest).unwrap();
 
     let violations = check_workspace(workspace.path()).unwrap_err();

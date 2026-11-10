@@ -1,4 +1,4 @@
-//! Git tracks only Rust sources: no Python, JavaScript, TypeScript or shell file.
+//! Git tracks only Rust sources: no Python, JavaScript, TypeScript, shell or PowerShell file.
 
 use std::io;
 use std::path::Path;
