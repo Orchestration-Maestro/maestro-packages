@@ -76,6 +76,8 @@ resolving conflicts, then regenerate the table.
 | `commands.rs` | Lists the host's slash commands through an opt-in `/commands` selector. |
 | `confirm_destructive.md` | Confirm destructive |
 | `confirm_destructive.rs` | Opt-in confirmation before replacing or forking a session. |
+| `custom-provider-gitlab-duo.md` | Custom gateway provider |
+| `custom-provider-gitlab-duo/main.rs` | A provider for GitLab Duo's Claude and GPT models, with GitLab sign-in and requests delegated to the built-in protocols. |
 | `custom_compaction.md` | Custom compaction |
 | `custom_compaction.rs` | Summarizes the complete prepared conversation with a separately selected model. |
 | `custom_footer.md` | Custom footer |
