@@ -1,5 +1,5 @@
 //! The shipped custom header loaded into the production engine.
-use super::support::{Recorder, TERMINAL, dark, harness, load, local, verdict};
+use super::support::{Failures, Recorder, TERMINAL, dark, harness, load, local, verdict};
 use maestro_extensions::SessionStartEvent;
 use serde_json::{Value, json};
 
@@ -102,7 +102,7 @@ fn custom_header_restores_builtin_header() {
     });
 }
 
-/// A headless start installs nothing.
+/// A headless start installs nothing and reports no failure.
 #[test]
 fn custom_header_skips_headless_startup() {
     local(async {
@@ -110,11 +110,13 @@ fn custom_header_skips_headless_startup() {
         let loaded = load(&harness, COMPONENT).await;
         let ui = Recorder::install_on(&loaded.runner, TERMINAL);
         ui.connect(&loaded.runner, false);
+        let failures = Failures::collect(&loaded.runner);
         let event = json!({"type":"session_start","reason":"new"});
         assert_eq!(
             verdict::<SessionStartEvent>(&loaded.runner, &event).await,
             Ok(Value::Null)
         );
+        assert!(failures.take().is_empty(), "a headless start reports no failure");
         assert!(ui.take().is_empty());
         assert!(ui.header().is_none());
     });
