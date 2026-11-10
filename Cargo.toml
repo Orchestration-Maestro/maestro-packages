@@ -35,6 +35,7 @@ maestro-settings = { git = "https://github.com/Orchestration-Maestro/maestro", r
 maestro-test-browser = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "49b5935837e684bf13100c9dacb64960c0d7b939" }
 maestro-test-directory = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "49b5935837e684bf13100c9dacb64960c0d7b939" }
 maestro-test-extension-host = { path = "crates/maestro-test-extension-host" }
+maestro-text = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "49b5935837e684bf13100c9dacb64960c0d7b939" }
 maestro-test-process = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "49b5935837e684bf13100c9dacb64960c0d7b939" }
 maestro-theme = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "49b5935837e684bf13100c9dacb64960c0d7b939" }
 maestro-tooling = { git = "https://github.com/Orchestration-Maestro/maestro", rev = "49b5935837e684bf13100c9dacb64960c0d7b939" }

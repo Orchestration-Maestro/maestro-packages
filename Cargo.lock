@@ -4030,6 +4030,7 @@ dependencies = [
  "maestro-session",
  "maestro-test-directory",
  "maestro-test-process",
+ "maestro-text",
  "maestro-theme",
  "maestro-tui",
  "num-traits",
