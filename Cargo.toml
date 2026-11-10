@@ -23,6 +23,7 @@ maestro-web = { git = "https://github.com/Orchestration-Maestro/maestro", rev = 
 serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = { version = "=1.0.151", features = ["preserve_order", "float_roundtrip"] }
 tokio = { version = "=1.53.3", features = ["rt", "macros", "net", "io-util", "io-std", "time", "signal"] }
+toml = "=1.1.6"
 wasm-bindgen = "=0.2.129"
 wasm-bindgen-futures = "=0.4.79"
 web-sys = "=0.3.106"
