@@ -145,7 +145,11 @@ fn tls_request(host: &str, port: u16, head: &str, body: &[u8]) -> Result<Respons
     let server_name =
         ServerName::try_from(host.to_string()).map_err(|e| format!("bad tls name {host}: {e}"))?;
     let roots = rustls::RootCertStore::from_iter(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
-    let config = ClientConfig::builder()
+    // A process that links another rustls provider has no single default, so name this crate's own.
+    let provider = std::sync::Arc::new(rustls::crypto::ring::default_provider());
+    let config = ClientConfig::builder_with_provider(provider)
+        .with_safe_default_protocol_versions()
+        .map_err(|e| format!("tls versions: {e}"))?
         .with_root_certificates(roots)
         .with_no_client_auth();
     let session = rustls::ClientConnection::new(std::sync::Arc::new(config), server_name)
