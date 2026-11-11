@@ -24,6 +24,8 @@ pub struct Response {
     /// The server's `Retry-After` header in whole seconds, when present and
     /// integer.
     pub retry_after: Option<u64>,
+    /// The `Location` header of a redirect, when present.
+    pub location: Option<String>,
 }
 
 /// Send one HTTP request with the default retry budget and read the full
@@ -190,6 +192,7 @@ fn parse_response(raw: &[u8]) -> Result<Response, String> {
     let mut content_length: Option<usize> = None;
     let mut chunked = false;
     let mut retry_after: Option<u64> = None;
+    let mut location: Option<String> = None;
     for line in head.lines() {
         if let Some((name, value)) = line.split_once(':') {
             let name = name.trim().to_ascii_lowercase();
@@ -200,6 +203,8 @@ fn parse_response(raw: &[u8]) -> Result<Response, String> {
                 chunked = true;
             } else if name == "retry-after" {
                 retry_after = value.parse::<u64>().ok();
+            } else if name == "location" {
+                location = Some(value.to_owned());
             }
         } else if let Some(code) = line.split_whitespace().nth(1) {
             status = code.parse::<u16>().unwrap_or(0);
@@ -214,6 +219,7 @@ fn parse_response(raw: &[u8]) -> Result<Response, String> {
         status,
         body,
         retry_after,
+        location,
     })
 }
 
@@ -415,6 +421,20 @@ mod tests {
         );
         assert_eq!(resp.status, 404);
         assert_eq!(resp.body, b"{}");
+    }
+
+    #[test]
+    fn reports_redirect_location() {
+        let resp = probe(
+            "HTTP/1.1 302 Found\r\n",
+            "location: https://example.test/next?sig=a:b\r\ncontent-length: 0\r\nconnection: close\r\n",
+            "",
+        );
+        assert_eq!(resp.status, 302);
+        assert_eq!(
+            resp.location.as_deref(),
+            Some("https://example.test/next?sig=a:b")
+        );
     }
 
     #[test]
