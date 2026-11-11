@@ -300,7 +300,11 @@ impl ExtensionUIContextPort for Recorder {
         Box::pin(std::future::ready(answer))
     }
 
-    fn notify(&self, message: String, notification: Option<NotificationType>) -> Result<(), EventError> {
+    fn notify(
+        &self,
+        message: String,
+        notification: Option<NotificationType>,
+    ) -> Result<(), EventError> {
         self.record("notify", json!([message, kind(notification)]))
     }
 
@@ -316,7 +320,10 @@ impl ExtensionUIContextPort for Recorder {
         self.record("setWorkingVisible", json!([visible]))
     }
 
-    fn set_working_indicator(&self, options: Option<WorkingIndicatorOptions>) -> Result<(), EventError> {
+    fn set_working_indicator(
+        &self,
+        options: Option<WorkingIndicatorOptions>,
+    ) -> Result<(), EventError> {
         let operands = options
             .map(|options| json!({"frames": options.frames, "intervalMs": options.interval_ms}));
         self.record("setWorkingIndicator", json!([operands]))

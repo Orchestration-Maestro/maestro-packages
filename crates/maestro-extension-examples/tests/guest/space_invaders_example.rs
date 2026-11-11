@@ -1,6 +1,8 @@
 //! The shipped Space Invaders command loaded into the production engine, driven through the
 //! terminal input its view reads.
-use super::support::{plain_rows, Bindings, Failures, Instance, Log, Recorder, replace_branch, stepped};
+use super::support::{
+    Bindings, Failures, Instance, Log, Recorder, plain_rows, replace_branch, stepped,
+};
 use maestro_extensions_wasmtime::test_support::maestro_extensions::{ExtensionRunner, Local};
 use serde_json::{Value, json};
 use std::{cell::Cell, rc::Rc};

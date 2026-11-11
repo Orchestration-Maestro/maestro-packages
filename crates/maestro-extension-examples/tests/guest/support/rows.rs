@@ -143,7 +143,10 @@ pub fn render_result(runner: &ExtensionRunner<Local>, name: &str, shown: &Shown)
             .unwrap_or_else(|| json!([])),
     )
     .unwrap();
-    let details = shown.result.get("details").filter(|details| !details.is_null());
+    let details = shown
+        .result
+        .get("details")
+        .filter(|details| !details.is_null());
     let view = registered(runner, name)
         .definition
         .renderer_binding()

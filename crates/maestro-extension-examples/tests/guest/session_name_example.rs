@@ -1,5 +1,5 @@
 //! The shipped session-name command loaded into the production engine.
-use super::support::{TERMINAL, Recorder, bind, harness, load, local};
+use super::support::{Recorder, TERMINAL, bind, harness, load, local};
 use serde_json::{Value, json};
 use std::{cell::RefCell, rc::Rc};
 

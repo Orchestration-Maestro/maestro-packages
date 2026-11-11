@@ -139,10 +139,7 @@ fn custom_footer_component_toggles_and_disposes() {
             footer.toggle().await;
             let seen = footer.ui.take();
             assert_eq!(seen[0][1], json!([true]));
-            assert_eq!(
-                seen[1][1],
-                json!(["Custom footer enabled", "Info"])
-            );
+            assert_eq!(seen[1][1], json!(["Custom footer enabled", "Info"]));
             let installed = footer.build();
             assert_eq!(footer.metadata.listeners.borrow().len(), 1);
             let screen = footer.ui.stage();
@@ -154,10 +151,7 @@ fn custom_footer_component_toggles_and_disposes() {
             footer.toggle().await;
             let seen = footer.ui.take();
             assert_eq!(seen[0][1], json!([false]));
-            assert_eq!(
-                seen[1][1],
-                json!(["Default footer restored", "Info"])
-            );
+            assert_eq!(seen[1][1], json!(["Default footer restored", "Info"]));
             (installed.dispose.unwrap()).call(()).unwrap();
             assert!(footer.metadata.listeners.borrow().is_empty());
         }

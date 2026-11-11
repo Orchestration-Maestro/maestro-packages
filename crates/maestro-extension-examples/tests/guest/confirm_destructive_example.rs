@@ -1,5 +1,5 @@
 //! The shipped session confirmations loaded into the production engine.
-use super::support::{TERMINAL, Failures, Recorder, verdict, harness, load, local};
+use super::support::{Failures, Recorder, TERMINAL, harness, load, local, verdict};
 use maestro_extensions::{
     ExtensionRunner, Local, SessionBeforeForkEvent, SessionBeforeSwitchEvent, SessionManager,
 };

@@ -383,10 +383,7 @@ fn bookmark_component_reads_host_clock() {
             let label = sets[0]["label"].as_str().unwrap();
             let millis: u128 = label.strip_prefix("bookmark-").unwrap().parse().unwrap();
             assert!((before..=after).contains(&millis), "{label}");
-            assert_eq!(
-                case.ui.take()[0][1][0],
-                format!("Bookmarked as: {label}")
-            );
+            assert_eq!(case.ui.take()[0][1][0], format!("Bookmarked as: {label}"));
         }
     });
 }

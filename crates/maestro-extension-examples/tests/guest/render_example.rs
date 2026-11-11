@@ -1,5 +1,5 @@
 //! The shipped question tool's call and result rows, rendered through its registered renderers.
-use super::support::{Shown, Instance, local, render_call, render_result};
+use super::support::{Instance, Shown, local, render_call, render_result};
 use serde_json::{Value, json};
 
 /// The variable that names the built question component.
@@ -82,6 +82,13 @@ fn question_results_fall_back_to_the_first_text_block() {
         for details in [Value::Null, json!(false), json!(0), json!("")] {
             assert_eq!(text(Some(details.clone())), ["fallback"], "{details}");
         }
-        assert!(render_result(runner, "question", &Shown::new(&Value::Null, &json!({"content":[]}))).is_empty());
+        assert!(
+            render_result(
+                runner,
+                "question",
+                &Shown::new(&Value::Null, &json!({"content":[]}))
+            )
+            .is_empty()
+        );
     });
 }

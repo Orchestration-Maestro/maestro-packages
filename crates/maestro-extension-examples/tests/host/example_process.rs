@@ -1,10 +1,7 @@
 //! Git fixtures and local executors for native component examples.
 #![cfg(test)]
 
-use std::{
-    path::{Path, PathBuf},
-    process::Command,
-};
+use std::{path::Path, process::Command};
 
 /// Runs Git only inside an exclusively owned disposable repository, with the environment
 /// the example's own Git commands inherit.
@@ -45,12 +42,13 @@ pub use maestro_test_process::executor::run;
 
 /// Installs the prepared native fixture as the program `name` in `directory` and records the
 /// `family` scenario it plays; returns the program's path.
+#[cfg(unix)]
 pub fn install(
     directory: &Path,
     name: &str,
     family: &str,
     scenario: &serde_json::Value,
-) -> PathBuf {
+) -> std::path::PathBuf {
     let artifact = std::env::var_os("MAESTRO_NATIVE_FIXTURE")
         .expect("run just prepare-tests, then run these tests with cargo nextest");
     let program = directory.join(format!("{name}{}", std::env::consts::EXE_SUFFIX));
@@ -61,6 +59,7 @@ pub fn install(
 }
 
 /// Records the `family` scenario the installed fixture `program` plays.
+#[cfg(unix)]
 pub fn record(program: &Path, family: &str, scenario: &serde_json::Value) {
     let mut record = program.as_os_str().to_owned();
     record.push(".fixture");

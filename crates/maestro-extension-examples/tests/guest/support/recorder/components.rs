@@ -10,7 +10,10 @@ use maestro_extensions::{
     },
 };
 use serde_json::json;
-use std::{cell::{Cell, RefCell}, rc::Rc};
+use std::{
+    cell::{Cell, RefCell},
+    rc::Rc,
+};
 
 impl Recorder {
     /// Gives the next custom component these inputs, in order, and runs it to completion.

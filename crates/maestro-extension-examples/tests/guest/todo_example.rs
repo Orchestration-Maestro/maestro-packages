@@ -1,5 +1,8 @@
 //! The shipped todo component loaded into the production engine.
-use super::support::{Shown, Failures, Instance, Recorder, call_tool, driven, emit, render_call, render_result, replace_branch, tool_result_message};
+use super::support::{
+    Failures, Instance, Recorder, Shown, call_tool, driven, emit, render_call, render_result,
+    replace_branch, tool_result_message,
+};
 use maestro_extensions_wasmtime::test_support::maestro_extensions::{
     ExtensionRunner, Local, SessionStartEvent, SessionTreeEvent,
 };

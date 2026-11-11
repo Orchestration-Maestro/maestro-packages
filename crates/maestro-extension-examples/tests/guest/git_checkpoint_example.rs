@@ -181,10 +181,7 @@ fn git_checkpoint_factory_preserves_commands_whitespace_and_entry_kinds() {
             checkpointing.turn().await;
             let shown = checkpointing.fork(&id, Some(YES)).await;
             assert_eq!(shown.len(), 2, "{kind}: {shown:?}");
-            assert_eq!(
-                shown[1][1],
-                json!(["Code restored to checkpoint", "Info"])
-            );
+            assert_eq!(shown[1][1], json!(["Code restored to checkpoint", "Info"]));
             assert_eq!(
                 checkpointing.text(),
                 format!("{kind} checkpoint\n"),

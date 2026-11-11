@@ -4,6 +4,7 @@ mod events;
 mod failures;
 mod footer;
 mod instance;
+#[cfg(target_os = "linux")]
 mod native;
 mod recorder;
 mod rows;
@@ -17,6 +18,7 @@ pub use events::{before_agent_start, emit, event, tool_call, verdict};
 pub use failures::Failures;
 pub use footer::Metadata;
 pub use instance::Instance;
+#[cfg(target_os = "linux")]
 pub use native::{load_native, local_native};
 pub use recorder::{Recorder, TERMINAL, drain};
 pub use rows::{Shown, dark, plain_rows, plain_text, render_call, render_message, render_result};

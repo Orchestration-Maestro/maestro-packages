@@ -1,5 +1,5 @@
 //! The shipped protected-paths hook loaded into the production engine.
-use super::support::{TERMINAL, Recorder, harness, load, local, tool_call};
+use super::support::{Recorder, TERMINAL, harness, load, local, tool_call};
 use serde_json::{Value, json};
 
 /// The variable that names the built protected-paths component.

@@ -1,5 +1,5 @@
 //! The shipped permission hook loaded into the production engine.
-use super::support::{TERMINAL, Recorder, harness, load, local, tool_call};
+use super::support::{Recorder, TERMINAL, harness, load, local, tool_call};
 use maestro_extensions::{ExtensionRunner, Local};
 use serde_json::{Value, json};
 use std::rc::Rc;

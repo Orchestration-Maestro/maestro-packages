@@ -38,11 +38,7 @@ fn inputs(rows: &[(InputSource, &str)], rejecting: Option<&str>) -> Vec<Outcome>
             assert!(matches!(images, Presence::Missing), "{text:?}: images");
             outcomes.push(Outcome {
                 decision: serde_json::to_value(decision).unwrap(),
-                notifications: ui
-                    .take()
-                    .iter()
-                    .map(|request| request[1].clone())
-                    .collect(),
+                notifications: ui.take().iter().map(|request| request[1].clone()).collect(),
                 failures: reported.take(),
             });
         }

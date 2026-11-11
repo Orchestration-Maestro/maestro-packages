@@ -1,5 +1,5 @@
 //! The shipped model-status factory loaded into the production engine.
-use super::support::{TERMINAL, Failures, Recorder, verdict, harness, load, local};
+use super::support::{Failures, Recorder, TERMINAL, harness, load, local, verdict};
 use maestro_extensions::ModelSelectEvent;
 use serde_json::{Value, json};
 

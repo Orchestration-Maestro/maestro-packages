@@ -1,5 +1,8 @@
 //! The shipped game loaded into the production engine over an in-memory session.
-use super::support::{Bindings, Failures, Instance, Log, Recorder, before_agent_start, call_tool, emit, replace_branch, timed, tool_result_message};
+use super::support::{
+    Bindings, Failures, Instance, Log, Recorder, before_agent_start, call_tool, emit,
+    replace_branch, timed, tool_result_message,
+};
 use maestro_extensions_wasmtime::test_support::maestro_extensions::{
     ExtensionRunner, Local, SessionStartEvent, SessionTreeEvent,
 };

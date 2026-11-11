@@ -1,5 +1,5 @@
 //! The shipped timed dialogs loaded into the production engine.
-use super::support::{TERMINAL, Recorder, driven, harness, load, local};
+use super::support::{Recorder, TERMINAL, driven, harness, load, local};
 use serde_json::{Value, json};
 
 /// The variable that names the built timed-dialog component.

@@ -1,5 +1,7 @@
 //! The shipped tool selector loaded into the production engine.
-use super::support::{plain_text, TERMINAL, Recorder, bind, verdict, fail_with, harness, load, local};
+use super::support::{
+    Recorder, TERMINAL, bind, fail_with, harness, load, local, plain_text, verdict,
+};
 use maestro_extensions::{Presence, SessionManager, SessionStartEvent, SessionTreeEvent};
 use maestro_extensions_wasmtime::test_support::{Harness, Loaded};
 use serde_json::{Value, json};

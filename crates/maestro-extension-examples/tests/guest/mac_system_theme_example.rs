@@ -1,5 +1,5 @@
 //! The shipped appearance follower's lifecycle, loaded into the production engine.
-use super::support::{TERMINAL, Recorder, verdict, harness, load, local};
+use super::support::{Recorder, TERMINAL, harness, load, local, verdict};
 use maestro_extensions::SessionShutdownEvent;
 use serde_json::{Value, json};
 

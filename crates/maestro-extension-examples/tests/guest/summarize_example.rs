@@ -1,5 +1,5 @@
 //! The shipped summary command's early exits, loaded into the production engine.
-use super::support::{TERMINAL, Recorder, harness, load, local};
+use super::support::{Recorder, TERMINAL, harness, load, local};
 use maestro_extensions_wasmtime::test_support::{
     Harness, Loaded, maestro_extensions::SessionManager,
 };

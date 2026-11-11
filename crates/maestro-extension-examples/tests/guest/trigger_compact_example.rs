@@ -1,5 +1,5 @@
 //! The shipped compaction-trigger example loaded into the production engine.
-use super::support::{Failures, Recorder, bind, verdict, fail_with, harness, load, local};
+use super::support::{Failures, Recorder, bind, fail_with, harness, load, local, verdict};
 use maestro_extensions_wasmtime::test_support::{
     Harness, Loaded,
     maestro_extensions::{CompactionResult, ContextUsage, TurnEndEvent},

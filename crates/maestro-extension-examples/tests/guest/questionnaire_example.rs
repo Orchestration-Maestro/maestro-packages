@@ -2,7 +2,10 @@
 //!
 //! The recorded frames were drawn with tagged stand-ins for colors and clipping, so each frame
 //! is compared after the tags are removed, at the 20 columns the recording used.
-use super::support::{Shown, plain_text, Recorder, TERMINAL, call_tool, harness, load, local, render_call, render_result};
+use super::support::{
+    Recorder, Shown, TERMINAL, call_tool, harness, load, local, plain_text, render_call,
+    render_result,
+};
 use serde_json::{Value, json};
 
 /// The variable that names the built questionnaire component.
@@ -266,11 +269,7 @@ fn questionnaire_renderers_show_call_and_answer_summaries() {
                 "{}",
                 row["name"]
             );
-            let result = render_result(
-                runner,
-                "questionnaire",
-                &Shown::new(&args, &row["result"]),
-            );
+            let result = render_result(runner, "questionnaire", &Shown::new(&args, &row["result"]));
             assert_eq!(
                 result.join("\n"),
                 untagged(row["rendered"].as_str().unwrap()),
@@ -279,11 +278,7 @@ fn questionnaire_renderers_show_call_and_answer_summaries() {
             );
         }
         let fallback = json!({"content": [{"type": "text", "text": "fallback"}]});
-        let shown = render_result(
-            runner,
-            "questionnaire",
-            &Shown::new(&json!({}), &fallback),
-        );
+        let shown = render_result(runner, "questionnaire", &Shown::new(&json!({}), &fallback));
         assert_eq!(shown, ["fallback"]);
     });
 }

@@ -1,5 +1,5 @@
 //! The shipped user-message factory loaded into the production engine.
-use super::support::{TERMINAL, Recorder, bind, harness, load, local};
+use super::support::{Recorder, TERMINAL, bind, harness, load, local};
 use maestro_extensions_wasmtime::test_support::{Harness, Loaded};
 use serde_json::{Value, json};
 use std::{cell::Cell, rc::Rc};

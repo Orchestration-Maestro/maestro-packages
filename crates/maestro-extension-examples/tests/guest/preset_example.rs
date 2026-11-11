@@ -4,7 +4,10 @@
 //! user's own agent directory, which a test must not write, so the recorded global presets are
 //! supplied as the first entries of the project file; a project entry replaces an earlier one in
 //! place, exactly as it replaces a global one.
-use super::support::{Bindings, Failures, Instance, Log, Recorder, before_agent_start, driven, emit, plain_rows, register_model, replace_branch};
+use super::support::{
+    Bindings, Failures, Instance, Log, Recorder, before_agent_start, driven, emit, plain_rows,
+    register_model, replace_branch,
+};
 use maestro_extensions_wasmtime::test_support::maestro_extensions::{
     SessionStartEvent, SessionTreeEvent, TurnStartEvent, types::FlagValue,
 };

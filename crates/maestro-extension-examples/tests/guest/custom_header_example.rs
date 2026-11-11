@@ -116,7 +116,10 @@ fn custom_header_skips_headless_startup() {
             verdict::<SessionStartEvent>(&loaded.runner, &event).await,
             Ok(Value::Null)
         );
-        assert!(failures.take().is_empty(), "a headless start reports no failure");
+        assert!(
+            failures.take().is_empty(),
+            "a headless start reports no failure"
+        );
         assert!(ui.take().is_empty());
         assert!(ui.header().is_none());
     });

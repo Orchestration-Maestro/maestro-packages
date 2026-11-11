@@ -1,6 +1,7 @@
 //! The overlay demonstrations through the shipped component, the production runner and a real
 //! frame writer on a recording terminal.
 #![cfg(test)]
+use crate::terminal::Stage;
 use maestro_extensions::native_io::{
     ChildProcess, ExitStatus, FsWatcher, IoFuture, NativeIo, Readable, Request, Response,
     SpawnOptions, Writable,
@@ -13,7 +14,6 @@ use maestro_extensions::{
         ExtensionUIContextPort, ExtensionUIFuture, NotificationType, OverlayOptionsSource,
     },
 };
-use crate::terminal::Stage;
 use serde_json::{Value, json};
 use std::{cell::RefCell, rc::Rc, sync::RwLock, time::Duration};
 use tokio::sync::{Mutex, mpsc};
@@ -405,6 +405,11 @@ impl Host {
     async fn shown(&self, count: usize) {
         self.until(|| self.ui.shown.borrow().len() == count).await;
     }
+    /// Waits until the output view's status line reports the exit.
+    async fn exited(&self) {
+        self.until(|| self.shows(0, 80, "│ ✓ Exited | ↑↓ scroll | Esc close"))
+            .await;
+    }
     /// Delivers terminal input through the frame writer's focus.
     fn press(&self, data: &str) {
         self.stage.terminal.send_input(data);
@@ -413,7 +418,8 @@ impl Host {
     fn screen(&self) -> Vec<String> {
         let written = Rc::new(RefCell::new(String::new()));
         let tapped = written.clone();
-        self.stage.terminal
+        self.stage
+            .terminal
             .set_tap(move |data| tapped.borrow_mut().push_str(data));
         self.ui.tui.request_render(true);
         self.ui.tui.render_pending_frame().unwrap();
@@ -712,7 +718,7 @@ fn overlay_qa_tests_overflow_streams_process_output_within_the_width() {
             "errors do not scroll"
         );
         drop((out, err));
-        host.until(|| host.shows(0, 80, "│ ✓ Exited | ↑↓ scroll | Esc close")).await;
+        host.exited().await;
         assert!(
             host.screen()[3].contains("│ ↑8 | ↓1"),
             "closing the pipes keeps the scroll position"
@@ -746,7 +752,7 @@ fn overlay_qa_tests_overflow_joins_lines_split_across_reads() {
             pipe.send(bytes).unwrap();
         }
         drop((out, err));
-        host.until(|| host.shows(0, 80, "│ ✓ Exited | ↑↓ scroll | Esc close")).await;
+        host.exited().await;
         let rows = host.rows(0, 80);
         assert_eq!(received(&rows[0]), 3, "{rows:#?}");
         for line in ["abcd", "failed", "\u{10400} tail"] {
@@ -921,7 +927,8 @@ fn overlay_qa_tests_streaming_routes_typing_to_the_focused_panel() {
         assert_eq!(host.calls(), [json!(["editor", ""])]);
         for count in 1..=9 {
             elapse(Duration::from_millis(500)).await;
-            host.until(|| host.rows(0, 60).iter().any(|row| streamed(row, count))).await;
+            host.until(|| host.rows(0, 60).iter().any(|row| streamed(row, count)))
+                .await;
         }
         let rows = host.rows(0, 60);
         assert_eq!(rows.iter().filter(|row| row.contains("] Line ")).count(), 8);

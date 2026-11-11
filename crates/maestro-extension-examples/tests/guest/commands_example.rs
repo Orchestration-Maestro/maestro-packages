@@ -205,12 +205,7 @@ fn run(cases: &[Case]) {
             let seen: Vec<_> = ui
                 .take()
                 .into_iter()
-                .map(|request| {
-                    (
-                        request[0].as_str().unwrap().to_owned(),
-                        request[1].clone(),
-                    )
-                })
+                .map(|request| (request[0].as_str().unwrap().to_owned(), request[1].clone()))
                 .collect();
             let expected: Vec<_> = case
                 .expected

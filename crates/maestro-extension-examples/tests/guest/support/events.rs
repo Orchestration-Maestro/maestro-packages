@@ -23,7 +23,10 @@ pub async fn try_emit<V: RunnerEmitEvent + DeserializeOwned>(
         object.shift_remove("type");
     }
     let mut event: V = serde_json::from_value(body).map_err(|error| error.to_string())?;
-    runner.emit(&mut event).await.map_err(|error| error.to_string())
+    runner
+        .emit(&mut event)
+        .await
+        .map_err(|error| error.to_string())
 }
 
 /// Delivers an event written as JSON to the runner's handlers and returns their answer.

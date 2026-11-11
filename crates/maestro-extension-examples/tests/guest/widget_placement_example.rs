@@ -1,5 +1,5 @@
 //! The shipped widget-placement factory loaded into the production engine.
-use super::support::{TERMINAL, Failures, Recorder, verdict, harness, load, local};
+use super::support::{Failures, Recorder, TERMINAL, harness, load, local, verdict};
 use maestro_extensions::SessionStartEvent;
 use maestro_extensions::{ExtensionRunner, Local};
 use serde_json::{Value, json};
@@ -67,7 +67,10 @@ fn run(names: &[&str]) {
         let loaded = load(&harness, COMPONENT).await;
         let runner = &loaded.runner;
         let failures = Failures::collect(runner);
-        let uis = [Recorder::install_on(runner, TERMINAL), Recorder::install_on(runner, TERMINAL)];
+        let uis = [
+            Recorder::install_on(runner, TERMINAL),
+            Recorder::install_on(runner, TERMINAL),
+        ];
         let corpus = corpus();
         let cases: Vec<&Value> = corpus["cases"]
             .as_array()
