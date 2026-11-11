@@ -10,11 +10,23 @@ slow-timeout = { period = "30s", terminate-after = 4 }
 [scripts.setup.author-component]
 command = "target/test-setup/development nextest-setup author-component"
 
+[[profile.default.scripts]]
+filter = "package(=maestro-extension-examples)"
+setup = "author-component"
+
 [scripts.setup.cargo-checks]
 command = "target/test-setup/development nextest-setup cargo-checks"
 
+[[profile.default.scripts]]
+filter = "package(=maestro-extension-examples) & test(/^host::extension_guide::/)"
+setup = "cargo-checks"
+
 [scripts.setup.native-fixture]
 command = "target/test-setup/development nextest-setup native-fixture"
+
+[[profile.default.scripts]]
+filter = "package(=maestro-extension-examples)"
+setup = "native-fixture"
 
 [scripts.setup.executable]
 command = "target/test-setup/development nextest-setup executable"
@@ -27,3 +39,21 @@ command = { command-line = "debug/examples/prepare_browser_exports", relative-to
 [[profile.default.scripts]]
 filter = "package(=maestro-web-example) & test(/^browser::chat_example_/)"
 setup = "browser-exports"
+
+[[profile.default.scripts]]
+filter = "package(=maestro-extension-examples) & test(/^executable::/)"
+setup = "executable"
+
+# The file-trigger examples watch one shared kind of file event, so they run one at a time.
+[test-groups.file-trigger]
+max-threads = 1
+
+[[profile.default.overrides]]
+filter = "package(=maestro-extension-examples) & test(file_trigger_)"
+test-group = "file-trigger"
+
+[[profile.default.scripts]]
+# The terminal RPC client's checks and the RPC client demo's checks install Maestro's native
+# test peers.
+filter = "package(=maestro-sdk-examples) & (binary_id(maestro-sdk-examples::example/rpc_extension_ui) | binary_id(maestro-sdk-examples::integration))"
+setup = "native-fixture"

@@ -13,6 +13,7 @@ setup:
 # Formatting, lint, public documentation and the workspace conventions.
 check:
     cargo fmt --all
+    just example-index-check
     just _check --workspace
 
 # Shared checks for explicit Cargo package-selection arguments.
@@ -22,14 +23,30 @@ _check *selection:
     cargo clippy "$@" --all-targets --locked -- -D warnings
     RUSTDOCFLAGS="-D warnings -D missing_docs" cargo doc "$@" --no-deps --locked
 
-# Install Maestro's development tool at the pinned commit, then format the staged crates, re-stage the captured paths and check them.
-pre-commit:
-    cargo install --quiet --locked --git https://github.com/Orchestration-Maestro/maestro --rev 5ac4b8926090b5fcf41e33433b8456720bd3569e maestro-tooling --bin development --root target/development
+# Format the staged crates, re-stage the captured paths and check them with the pinned development tool.
+pre-commit: development
     target/development/bin/development pre-commit
 
-# Run all workspace tests.
-test *args:
-    cargo nextest run --workspace --locked "$@"
+# Install Maestro's development tool from the pinned commit into `target/development`.
+[private]
+development:
+    cargo install --quiet --locked --git https://github.com/Orchestration-Maestro/maestro --rev 5ada20b86f94821d6b7edd8c07030c554b04319d maestro-tooling --bin development --root target/development
+
+# Build the example components and install the programs the tests start into `target/test-setup`.
+prepare-tests: development
+    target/development/bin/development prepare-test-setup prepare target/test-setup "${CARGO_TARGET_DIR:-target/test-prepare}"
+
+# Render the extension index, the example targets and the guide lock.
+example-index: development
+    target/development/bin/development example-index
+
+# Check the rendered extension files without rewriting them.
+example-index-check: development
+    target/development/bin/development example-index --check
+
+# Run all workspace tests against the bundle that `prepare-tests` staged.
+test *args: prepare-tests
+    TEST_PREPARE_OUTPUT={{quote(justfile_directory() / "target/test-setup")}} cargo nextest run --workspace --locked "$@"
     cargo test --workspace --locked --doc "$@"
 
 # Build the runnable browser chat example for the browser and bind it; the shared browser build runs this recipe.
