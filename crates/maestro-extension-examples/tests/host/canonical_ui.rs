@@ -1,4 +1,5 @@
 //! The application UI collaborators the host tests render through.
+#[cfg(unix)]
 use serde_json::Value;
 use std::{cell::RefCell, rc::Rc};
 
@@ -8,17 +9,15 @@ pub(super) struct Metadata {
     /// Current branch.
     branch: RefCell<Option<String>>,
     /// Live extension statuses.
-    statuses: maestro_extensions::footer_data_provider::ExtensionStatuses,
+    statuses: maestro_extensions::footer::ExtensionStatuses,
     /// Branch listeners in registration order.
     listeners: RefCell<Vec<Rc<dyn Fn()>>>,
 }
-impl maestro_extensions::footer_data_provider::ReadonlyFooterDataProvider for Metadata {
+impl maestro_extensions::footer::ReadonlyFooterDataProvider for Metadata {
     fn get_git_branch(&self) -> Option<String> {
         self.branch.borrow().clone()
     }
-    fn get_extension_statuses(
-        &self,
-    ) -> maestro_extensions::footer_data_provider::ExtensionStatuses {
+    fn get_extension_statuses(&self) -> maestro_extensions::footer::ExtensionStatuses {
         self.statuses.clone()
     }
     fn get_available_provider_count(&self) -> f64 {
@@ -46,7 +45,9 @@ pub(super) fn screen() -> (
 }
 
 /// Supports no language, so rendering never classifies code.
+#[cfg(unix)]
 struct Plain;
+#[cfg(unix)]
 impl maestro_theme::SyntaxHighlighter for Plain {
     fn supports_language(&self, _: &str) -> bool {
         false
@@ -61,6 +62,7 @@ impl maestro_theme::SyntaxHighlighter for Plain {
 }
 
 /// A row's render context: completed arguments, an expanded row and a redraw counter.
+#[cfg(unix)]
 pub(super) fn row_context<'a>(
     args: &'a Value,
     rows: &'a maestro_extensions::ToolRendererState,

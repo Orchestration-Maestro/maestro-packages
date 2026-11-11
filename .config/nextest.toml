@@ -63,5 +63,5 @@ test-group = "file-trigger"
 [[profile.default.scripts]]
 # The terminal RPC client's checks and the RPC client demo's checks install Maestro's native
 # test peers.
-filter = "binary_id(maestro-sdk-examples::example/rpc_extension_ui) | binary_id(maestro-sdk-examples::integration)"
+filter = "package(=maestro-sdk-examples) & (binary_id(maestro-sdk-examples::example/rpc_extension_ui) | binary_id(maestro-sdk-examples::integration))"
 setup = "native-fixture"

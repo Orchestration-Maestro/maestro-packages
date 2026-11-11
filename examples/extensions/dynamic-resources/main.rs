@@ -7,7 +7,7 @@
 // maestro-component: MAESTRO_DYNAMIC_RESOURCES_COMPONENT
 use maestro_extensions_wasm::{
     ExtensionAPI, ExtensionEventResult, ExtensionFuture, Presence, ResourcesDiscoverResult,
-    tools::path_utils,
+    registry::path_utils,
 };
 use std::rc::Rc;
 

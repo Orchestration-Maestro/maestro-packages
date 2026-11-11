@@ -22,6 +22,8 @@ through a real model can incur provider charges.
 
 ## Controlled runs
 
-The controlled runs for this example are not hosted here yet.
-[#75](https://github.com/Orchestration-Maestro/maestro-packages/issues/75) adds
-them.
+```sh
+just prepare-tests
+TEST_PREPARE_OUTPUT="$PWD/target/test-setup" cargo nextest run --locked \
+  -p maestro-extension-examples -E 'test(todo_example)'
+```

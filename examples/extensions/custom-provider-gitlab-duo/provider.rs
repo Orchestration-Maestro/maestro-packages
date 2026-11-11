@@ -8,8 +8,8 @@ use super::models::GITLAB_COM_URL;
 use indexmap::IndexMap;
 use maestro_extensions_wasm::{
     ExtensionAPI, ExtensionResult,
+    effects::NativeIo,
     http::{Request, Response},
-    io::NativeIo,
 };
 use serde::Deserialize;
 use serde_json::json;

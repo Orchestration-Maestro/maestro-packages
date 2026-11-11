@@ -4,7 +4,7 @@
     clippy::too_many_arguments,
     clippy::excessive_nesting
 )]
-use maestro_extensions_wasm::{ExtensionAPI, ExtensionResult, http::Request, tools::path_utils};
+use maestro_extensions_wasm::{ExtensionAPI, ExtensionResult, http::Request, registry::path_utils};
 use std::io::Write;
 
 mod checksum;

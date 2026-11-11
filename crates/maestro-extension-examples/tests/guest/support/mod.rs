@@ -1,24 +1,45 @@
 //! Loading a prepared example component into the production engine and calling what it
 //! registered.
-use maestro_extensions_wasmtime::test_support::maestro_extensions::{
-    AgentToolResult, ExtensionRunner, Local, Presence, wrap_registered_tool,
-};
-use maestro_extensions_wasmtime::test_support::{Harness, HarnessOptions, Loaded};
-use serde_json::{Value, json};
-use std::rc::Rc;
+mod events;
+mod failures;
+mod footer;
+mod instance;
+#[cfg(target_os = "linux")]
+mod native;
+mod recorder;
+mod rows;
+mod runtime;
+mod session;
+mod tools;
 
-/// Runs a test body on the local task set that loaded components need.
-pub fn local<T>(test: impl Future<Output = T>) -> T {
-    maestro_extensions_wasmtime::test_support::local(test).unwrap()
-}
+use maestro_extensions_wasmtime::test_support::{Harness, HarnessOptions, Loaded};
+
+pub use events::{before_agent_start, emit, event, tool_call, verdict};
+pub use failures::Failures;
+pub use footer::Metadata;
+pub use instance::Instance;
+#[cfg(target_os = "linux")]
+pub use native::{load_native, local_native};
+pub use recorder::{Recorder, TERMINAL, drain};
+pub use rows::{Shown, dark, plain_rows, plain_text, render_call, render_message, render_result};
+pub use runtime::{driven, local, stepped, timed};
+pub use session::{
+    Bindings, Log, bind, fail_with, register_model, replace_branch, tool_result_message,
+};
+pub use tools::{call_tool, only_tool_metadata, result_value, run_tool};
 
 /// A harness whose engine reuses the code the run compiled.
 pub fn harness() -> Harness {
+    harness_in("/work")
+}
+
+/// A harness whose session reports `cwd`, with the code cache the run compiled.
+pub fn harness_in(cwd: &str) -> Harness {
     let options = HarnessOptions {
         agent_dir: maestro_test_process::run_agent_directory().unwrap_or_default(),
         ..HarnessOptions::default()
     };
-    Harness::new("/work", options).unwrap()
+    Harness::new(cwd, options).unwrap()
 }
 
 /// The built component the setup variable `variable` names.
@@ -34,64 +55,4 @@ pub async fn load(harness: &Harness, variable: &str) -> Loaded {
     let errors: Vec<_> = loaded.errors.iter().map(|error| &error.error).collect();
     assert!(errors.is_empty(), "{errors:?}");
     loaded
-}
-
-/// The caller-visible content and details of one tool result.
-pub fn result_value(result: &AgentToolResult<Value>) -> Value {
-    json!({"content": result.content, "details": result.details})
-}
-
-/// The declaration of the only tool the runner holds.
-pub fn only_tool_metadata(runner: &ExtensionRunner<Local>) -> Value {
-    let tools = runner.get_all_registered_tools();
-    assert_eq!(tools.len(), 1);
-    let metadata = tools[0].metadata();
-    json!({
-        "name": metadata.definition.name,
-        "label": metadata.label,
-        "description": metadata.definition.description,
-        "parameters": serde_json::to_value(&metadata.definition.parameters).unwrap(),
-    })
-}
-
-/// Calls the registered tool `name` as an application does and returns its outcome.
-pub async fn call_tool(
-    runner: &Rc<ExtensionRunner<Local>>,
-    name: &str,
-    input: Value,
-) -> Result<Value, String> {
-    let tools = runner.get_all_registered_tools();
-    let registered = tools
-        .iter()
-        .find(|tool| tool.metadata().definition.name == name)
-        .unwrap_or_else(|| panic!("no tool named {name}"));
-    let tool = wrap_registered_tool(registered, runner.clone());
-    (tool.execute)("call".into(), input, None, None)
-        .await
-        .map(|result| result_value(&result))
-        .map_err(|error| error.to_string())
-}
-
-mod ui;
-pub use ui::Notifications;
-
-/// Delivers a recorded `before_agent_start` event document to the runner as the application does
-/// and returns what the handlers answered: the replacement prompt, or null when none changed it.
-pub async fn before_agent_start(runner: &ExtensionRunner<Local>, event: &Value) -> Value {
-    let options = serde_json::from_value(event["systemPromptOptions"].clone()).unwrap();
-    let mut images = Presence::Missing;
-    let combined = runner
-        .emit_before_agent_start(
-            event["prompt"].as_str().unwrap().to_owned(),
-            &mut images,
-            event["systemPrompt"].as_str().unwrap().to_owned(),
-            options,
-        )
-        .await
-        .unwrap();
-    let Some(combined) = combined else {
-        return Value::Null;
-    };
-    assert!(combined.messages.is_none(), "no custom message is expected");
-    json!({"systemPrompt": combined.system_prompt})
 }

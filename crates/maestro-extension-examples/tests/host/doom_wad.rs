@@ -366,7 +366,7 @@ async fn runner(
     root: &Path,
     bus: &EventBusController<Local>,
     io: Rc<io::Io>,
-    session: &maestro_extensions::runner::ExtensionRunnerSession,
+    session: &maestro_extensions::execution::ExtensionRunnerSession,
 ) -> ExtensionRunner<Local> {
     let path = root
         .join("module/doom_overlay.wasm")
@@ -395,7 +395,7 @@ async fn runner(
     let runner = ExtensionRunner::<Local>::new(
         Rc::new(RwLock::new(vec![owner])),
         runtime,
-        maestro_extensions::runner::ExtensionRunnerSession {
+        maestro_extensions::execution::ExtensionRunnerSession {
             cwd: session.cwd.clone(),
             session_manager: session.session_manager.clone(),
             model_registry: session.model_registry.clone(),

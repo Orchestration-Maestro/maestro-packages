@@ -417,9 +417,5 @@ path = "tests/integration.rs"
 name = "prepare_freedoom"
 path = "tests/prepare_freedoom.rs"
 
-[[bin]]
-name = "ssh-stand-in"
-path = "tests/ssh_stand_in.rs"
-
 [lints]
 workspace = true

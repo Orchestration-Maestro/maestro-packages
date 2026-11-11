@@ -65,7 +65,7 @@ async fn check_installation(directory: &std::path::Path, leaf: &str) {
             .emit_resources_discover(cwd.into(), reason)
             .await
             .unwrap();
-        let paths = |paths: Vec<maestro_extensions::runner::ResourcePath>| {
+        let paths = |paths: Vec<maestro_extensions::execution::ResourcePath>| {
             paths
                 .into_iter()
                 .map(|path| path.path.replace('\\', "/"))

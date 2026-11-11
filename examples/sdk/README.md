@@ -6,7 +6,6 @@ the [Rust client](../../docs/client.md) provides typed subprocess operations.
 
 | File | Purpose |
 |---|---|
-| `rpc.py` | Inspect session state or print one prompted run with an LF-only JSONL reader. |
 | `rpc_client_demo/` | An interactive terminal client of a Maestro child in RPC mode, built on the Rust client. |
 | `minimal.rs` | Prompt a session, receive text deltas and inspect stored messages. |
 | `custom_model.rs` | Find catalog models, select one explicitly and request a thinking level. |
@@ -22,35 +21,19 @@ the [Rust client](../../docs/client.md) provides typed subprocess operations.
 | `full_control.rs` | Select model, thinking, settings, tools and resources without discovery. |
 | `session_runtime.rs` | Create directory-bound services, replace the session and rebind subscriptions. |
 
-## Inspect a session
-
-From the repository root, with Python 3 and Maestro on `PATH`:
-
-```sh
-python3 examples/sdk/rpc.py -- maestro --mode rpc --no-session --no-tools --offline --no-extensions --no-skills --no-prompt-templates --no-context-files
-```
-
-This sends `get_state` without a model request. The example prints protocol
-records to stdout and leaves child diagnostics on stderr. To send plain prompt
-text, add `--prompt TEXT` before `--`; choose a configured provider and model in
-the child arguments. Prompting can incur provider charges. The example cancels
-dialogs and stops after the first run ends; it does not track later automatic
-retries or compaction recovery, or wait for slash commands handled without a run.
-
 ## Check the example
 
-The example's checks are Rust tests beside the terminal client, and their peers
-are native Rust fixtures, so only `rpc.py` itself runs under Python 3:
+The terminal client's checks are Rust tests beside it, and their peers are native
+Rust fixtures:
 
 ```sh
 just prepare-tests
 TEST_PREPARE_OUTPUT="$PWD/target/test-setup" cargo nextest run --locked -p maestro-sdk-examples -E 'binary(rpc_extension_ui)'
 ```
 
-This command runs all 17 terminal client example tests, including the SDK checks.
-The SDK checks cover LF framing with Unicode separators, startup dialogs, response
-correlation, run completion in either order, refusals, end of input and child
-exit status. They need neither Maestro nor credentials.
+This command runs all 11 terminal client example tests. They cover LF framing with
+Unicode separators, dialogs and their replies, terminal start and stop, the
+termination marker and child exit status. They need neither Maestro nor credentials.
 
 ## Run an in-process sample
 
@@ -70,7 +53,7 @@ what each sample shows. The `support/` folder holds their shared setup and
 cargo nextest run -p maestro-sdk-examples
 ```
 
-After `just prepare-tests`, that command also runs the RPC client checks above
+After `just prepare-tests`, that command also runs the terminal client checks above
 and the interactive client demo's checks against a native test peer.
 
 ## Drive an interactive RPC session

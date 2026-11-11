@@ -24,8 +24,8 @@ can expose private data, and writes, edits and shell commands can change or dele
 remote files. Cancellation and bash deadlines terminate the local SSH process;
 they cannot guarantee that work already accepted remotely stops. No connection
 pool or remote rollback is provided. The controlled `ssh_` runs use disposable
-files and a stand-in `ssh` program in a checked child instead of a live server,
-with no provider, credentials or paid service.
+files and the prepared fixture's `ssh` alias in a checked child instead of a live
+server, with no provider, credentials or paid service.
 
 ## Controlled runs
 

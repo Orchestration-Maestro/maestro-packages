@@ -1,7 +1,7 @@
 //! SSH observations supplied to the original native coding-tool owners.
 use maestro_extensions_wasm::{
     BashOperations, DiagnosticErrorInfo, EditOperations, ExtensionAPI, ExtensionResult,
-    OperationFuture, ReadOperations, ToolsOptions, WriteOperations, tools::path_utils,
+    OperationFuture, ReadOperations, ToolsOptions, WriteOperations, registry::path_utils,
 };
 use std::rc::Rc;
 

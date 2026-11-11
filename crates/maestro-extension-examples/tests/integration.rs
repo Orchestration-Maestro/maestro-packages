@@ -7,3 +7,4 @@ mod guest;
 mod host;
 mod shipped_examples;
 mod source;
+mod terminal;

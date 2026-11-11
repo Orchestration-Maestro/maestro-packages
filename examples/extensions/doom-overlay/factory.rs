@@ -10,7 +10,7 @@ use maestro_extensions_wasm::{
     ExtensionCommandContext, ExtensionComponent, ExtensionContext, ExtensionFuture,
     ExtensionResult, ExtensionUIContext, NotificationType, OverlayAnchor, OverlayMargin,
     OverlayMarginValue, OverlayOptions, OverlayOptionsHandle, OverlayOptionsSource, SizeValue,
-    tools::path_utils,
+    registry::path_utils,
 };
 use std::{cell::RefCell, rc::Rc};
 

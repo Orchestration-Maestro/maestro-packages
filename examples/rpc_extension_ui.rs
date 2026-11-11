@@ -51,10 +51,10 @@ mod native {
     use super::client::Client;
     use maestro_app::{
         CapturedChild, Termination, configuration::config,
-        presentation_data::keybindings::KeybindingsManager, rpc_types::RpcExtensionUIResponse,
+        presentation_data::bindings::KeybindingsManager, rpc_types::RpcExtensionUIResponse,
     };
     use maestro_theme::{LiveTheme, ThemeState};
-    use maestro_tui::{TUI, TerminalImage, tui::InputListenerResult};
+    use maestro_tui::{TUI, TerminalImage, interface::InputListenerResult};
     use maestro_tui_crossterm::{ProcessTerminal, ProcessTuiRuntime};
     use serde_json::Value;
     use std::{
@@ -373,43 +373,6 @@ mod tests {
         std::process::Command::new(install(root, scenario))
     }
 
-    /// The repository root, which holds the shipped client example.
-    fn checkout() -> std::path::PathBuf {
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
-    }
-
-    /// Runs the client example against an installed native peer and collects its output.
-    fn run_example(scenario: Scenario, prompt: Option<&str>) -> std::process::Output {
-        let root = Scratch::new().unwrap();
-        let entry = install(&root, scenario);
-        let mut command = std::process::Command::new("python3");
-        command
-            .arg(checkout().join("examples/sdk/rpc.py"))
-            .env("PYTHONDONTWRITEBYTECODE", "1");
-        if let Some(prompt) = prompt {
-            command.args(["--prompt", prompt]);
-        }
-        command.arg("--").arg(entry).output().unwrap()
-    }
-
-    /// Every record the client example printed, in order.
-    fn printed(output: &std::process::Output) -> Vec<serde_json::Value> {
-        String::from_utf8(output.stdout.clone())
-            .unwrap()
-            .lines()
-            .filter(|line| !line.is_empty())
-            .map(|line| serde_json::from_str(line).unwrap())
-            .collect()
-    }
-
-    /// The record types the client example printed, in order.
-    fn kinds(records: &[serde_json::Value]) -> Vec<&str> {
-        records
-            .iter()
-            .map(|record| record["type"].as_str().unwrap_or_default())
-            .collect()
-    }
-
     /// A child's exit status reaches the caller beside the retained terminal lifecycle.
     #[test]
     fn rpc_child_keeps_exit_status_and_terminal_lifecycle() {
@@ -691,87 +654,5 @@ mod tests {
                 assert!(output.contains(expected), "missing {expected}: {output}");
             }
         });
-    }
-
-    /// The client example keeps LF framing, Unicode separators and a cancelled dialog.
-    #[test]
-    fn sdk_example_keeps_records_and_cancels_startup_dialogs() {
-        let output = run_example(Scenario::UnicodeState, None);
-
-        assert!(
-            output.status.success(),
-            "{}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-        let records = printed(&output);
-        assert_eq!(
-            records.last().unwrap()["data"]["sessionName"],
-            "a\u{2028}b\u{2029}c"
-        );
-    }
-
-    /// The client example accepts a prompt and waits for the terminal event it follows.
-    #[test]
-    fn sdk_example_accepts_a_prompt_and_waits_for_agent_end() {
-        let output = run_example(Scenario::PromptAcceptance, Some("Check fixture"));
-
-        assert!(
-            output.status.success(),
-            "{}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-        let records = printed(&output);
-        assert_eq!(records.last().unwrap()["id"], "prompt");
-        assert!(kinds(&records).contains(&"agent_end"));
-    }
-
-    /// Acceptance before the terminal event still reads until the run ends.
-    #[test]
-    fn sdk_example_keeps_reading_until_the_run_ends() {
-        let output = run_example(Scenario::EndAfterAcceptance, Some("Check fixture"));
-
-        assert!(
-            output.status.success(),
-            "{}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-        let records = printed(&output);
-        let kinds = kinds(&records);
-        let ended = kinds.iter().position(|kind| *kind == "agent_end").unwrap();
-        let accepted = kinds.iter().rposition(|kind| *kind == "response").unwrap();
-        assert_eq!(kinds.last(), Some(&"agent_end"));
-        assert!(accepted < ended, "{kinds:?}");
-    }
-
-    /// A run that ends after acceptance fails instead of waiting for the run.
-    #[test]
-    fn sdk_example_fails_when_the_stream_ends_after_acceptance() {
-        let output = run_example(Scenario::AcceptedEof, Some("Check fixture"));
-
-        assert!(!output.status.success());
-        assert!(String::from_utf8_lossy(&output.stderr).contains("EOF"));
-    }
-
-    /// A nonzero child status reaches the client example's caller.
-    #[test]
-    fn sdk_example_reports_a_nonzero_child_status() {
-        let output = run_example(Scenario::ExitAfterReply, None);
-
-        assert!(!output.status.success());
-        assert!(String::from_utf8_lossy(&output.stderr).contains("status 3"));
-    }
-
-    /// Refusal and a stream that ends early fail without waiting for a run.
-    #[test]
-    fn sdk_example_fails_on_refusal_and_premature_end() {
-        for (scenario, expected) in [
-            (Scenario::RefusedState, "refused"),
-            (Scenario::EarlyEof, "EOF"),
-        ] {
-            let output = run_example(scenario, None);
-
-            assert!(!output.status.success(), "{expected}");
-            assert!(String::from_utf8_lossy(&output.stderr).contains(expected));
-        }
     }
 }

@@ -1,11 +1,11 @@
 //! A custom view that runs a scenario against the real overlay before closing it through input.
 use maestro_extensions::{
     EventError,
+    presentation::ExtensionKeybindings,
     types::{
         CustomComponentFactory, CustomFactoryOutcome, CustomUIOptions, ExtensionComponent,
         ExtensionUIContextPort, ExtensionUIFuture, NotificationType,
     },
-    widgets::ExtensionKeybindings,
 };
 use std::{
     cell::{Cell, RefCell},
