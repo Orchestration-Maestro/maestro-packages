@@ -212,10 +212,14 @@ fn git_checkpoint_factory_rejects_failed_restores() {
         assert_eq!(shown[0][0], "select");
         let failures = checkpointing.failures.seen();
         assert_eq!(failures.len(), 1, "{failures:?}");
-        assert!(
-            failures[0].starts_with("Could not restore checkpoint (exit code 1, killed: false): "),
-            "{failures:?}"
-        );
+        let report = failures[0]
+            .strip_prefix("Could not restore checkpoint (exit code ")
+            .unwrap_or_else(|| panic!("unexpected report: {failures:?}"));
+        let (code, explanation) = report
+            .split_once(", killed: false): ")
+            .unwrap_or_else(|| panic!("unexpected report: {failures:?}"));
+        assert_ne!(code.parse::<i32>().unwrap(), 0, "{failures:?}");
+        assert!(!explanation.trim().is_empty(), "{failures:?}");
         assert_eq!(checkpointing.text(), "edited since\n");
     });
 }
