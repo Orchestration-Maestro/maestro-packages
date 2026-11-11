@@ -6,8 +6,7 @@ nothing to build beside it.
 
 ## Quick start
 
-Build the component and load it through the normal
-[extension loading interface](../../docs/extensions/loading.md):
+Build the component and load it through Maestro's normal extension loading:
 
 ```sh
 cargo build --locked --release -p maestro-extension-examples \
@@ -51,7 +50,7 @@ fails the check produces `Failed to load DOOM: <reason>` and starts nothing.
 ## Controls and lifetime
 
 Arrow keys turn and move. WASD moves and strafes, Shift+WASD runs, Space uses,
-F fires and 1 to 7 select weapons. Enter, Escape and the arrow keys operate the
+F or Ctrl fires and 1 to 7 select weapons. Enter, Escape and the arrow keys operate the
 menus. Q pauses the game and closes the overlay.
 
 The overlay keeps one game per session. `/doom-overlay` resumes it when the WAD

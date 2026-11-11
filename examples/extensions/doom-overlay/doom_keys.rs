@@ -32,15 +32,22 @@ const RAW: [(&str, KeyCode); 8] = [
     ("\t", KeyCode::Tab),
 ];
 
+/// Game key code of `A`; `B`..`Z` follow in order.
+const FIRST_LETTER_CODE: i32 = 4;
+/// Game key code of `Num1`; `Num2`..`Num9` follow in order.
+const FIRST_DIGIT_CODE: i32 = 30;
+/// Game key code of `Num0`, which follows `Num9`.
+const ZERO_CODE: i32 = 39;
+
 /// Typed characters the game reads: letters, digits and the two screen-size keys.
 ///
-/// The game key codes run `A`..`Z` from 4, then `Num1`..`Num9` and `Num0`.
+/// The game key codes run `A`..`Z`, then `Num1`..`Num9` and `Num0`.
 fn character_key(character: char) -> Option<KeyCode> {
     let byte = u8::try_from(character.to_ascii_lowercase()).ok()?;
     let code = match byte {
-        b'a'..=b'z' => 4 + i32::from(byte - b'a'),
-        b'1'..=b'9' => 30 + i32::from(byte - b'1'),
-        b'0' => 39,
+        b'a'..=b'z' => FIRST_LETTER_CODE + i32::from(byte - b'a'),
+        b'1'..=b'9' => FIRST_DIGIT_CODE + i32::from(byte - b'1'),
+        b'0' => ZERO_CODE,
         b'-' => return Some(KeyCode::Minus),
         b'+' | b'=' => return Some(KeyCode::Equals),
         _ => return None,

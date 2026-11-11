@@ -10,5 +10,4 @@ pub mod wad_check;
 pub mod wad_finder;
 pub use factory::factory;
 
-#[cfg(target_arch = "wasm32")]
 maestro_extensions_wasm::export_extension!(factory);

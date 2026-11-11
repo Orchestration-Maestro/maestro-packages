@@ -49,7 +49,8 @@ fn lump_names(bytes: &[u8]) -> Result<BTreeSet<String>, String> {
     Ok(names)
 }
 
-/// Accepts an IWAD with a sound directory and the lumps a game start reads.
+/// Accepts an IWAD whose lump directory lies inside the file and that holds the
+/// lumps a game start reads.
 /// # Errors
 /// Names the first problem: a wrong type, a damaged directory or a missing lump.
 pub fn check_iwad(bytes: &[u8]) -> Result<(), String> {

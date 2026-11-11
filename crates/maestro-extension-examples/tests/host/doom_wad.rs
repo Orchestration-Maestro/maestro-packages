@@ -228,7 +228,8 @@ async fn run() {
     );
 }
 
-/// Builds once, then executes each scenario in an exclusive disposable root.
+/// Runs each case in a child process with its own disposable root and the built
+/// component; in the child, runs the scenario itself.
 pub(super) fn checked(name: &str, cases: &[&str]) {
     if maestro_test_process::selection().is_child() {
         super::example_process::run(run());
