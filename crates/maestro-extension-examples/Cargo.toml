@@ -392,9 +392,5 @@ tokio = { workspace = true, features = ["test-util"] }
 name = "integration"
 path = "tests/integration.rs"
 
-[[bin]]
-name = "ssh-stand-in"
-path = "tests/ssh_stand_in.rs"
-
 [lints]
 workspace = true

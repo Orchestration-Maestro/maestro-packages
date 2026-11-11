@@ -85,15 +85,28 @@ fn ssh_unset_keeps_original_local_coding_tools() {
 /// A checked child replaces only SSH; its remote shell works in disposable files.
 #[cfg(unix)]
 fn isolated(name: &str) -> bool {
-    use std::{collections::BTreeMap, os::unix::fs::PermissionsExt as _};
+    use std::collections::BTreeMap;
     if maestro_test_process::selection().is_child() {
         return false;
     }
     let root = maestro_test_directory::Scratch::new().unwrap();
-    std::fs::create_dir(root.path().join("remote")).unwrap();
-    let ssh = root.path().join("ssh");
-    std::fs::copy(env!("CARGO_BIN_EXE_ssh-stand-in"), &ssh).unwrap();
-    std::fs::set_permissions(ssh, std::fs::Permissions::from_mode(0o700)).unwrap();
+    let remote = root.path().join("remote");
+    std::fs::create_dir(&remote).unwrap();
+    let record = json!({
+        "refusal": {
+            "destination": "user@broken",
+            "code": 37,
+            "stderr": "controlled connection failure",
+        },
+        "write": {
+            "command": "early-write.txt",
+            "code": 38,
+            "stderr": "controlled remote write rejection",
+        },
+        "directory": remote,
+    });
+    maestro_test_process::install_family(&root.path().join("ssh"), "ssh", &record.to_string())
+        .unwrap();
     maestro_test_process::install_family(
         &root.path().join("pause"),
         "chat",
