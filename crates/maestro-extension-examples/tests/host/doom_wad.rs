@@ -51,8 +51,7 @@ pub(super) async fn loaded(root: &Path, io: Rc<io::Io>, headless: bool) -> Demo 
         tui,
         notices: RefCell::default(),
         scenarios: RefCell::default(),
-        stopped: Rc::default(),
-        until_stopped: std::cell::Cell::default(),
+        until_closed: std::cell::Cell::default(),
     });
     if !headless {
         runner.set_ui_context(Some(ExtensionUIContext::new(ui.clone())));

@@ -42,25 +42,21 @@ async fn command(
         );
     }
     ui.notify("Loading DOOM...", Some(NotificationType::Info))?;
-    let Some(wad) = selected_wad(&api, &args, &active, &ctx).await? else {
+    let Some(wad) = selected_wad(&api, &args, &ctx).await? else {
         return Ok(());
     };
     report_open(api, background, active, wad, (*ctx).clone()).await
 }
 
-/// Resolves an explicit path, else the retained game's WAD, else discovery or a download.
+/// Resolves an explicit path, else a found or downloaded WAD.
 async fn selected_wad(
     api: &ExtensionAPI,
     args: &str,
-    active: &Active,
     ctx: &ExtensionContext,
 ) -> ExtensionResult<Option<String>> {
     let cwd = ctx.cwd()?;
     if !args.trim().is_empty() {
         return path_utils::resolve_to_cwd(api, args.trim(), &cwd).map(Some);
-    }
-    if let Some(game) = active.borrow().as_ref() {
-        return Ok(Some(game.wad.clone()));
     }
     if let Ok(wad) = wad_finder::ensure_wad_file(api, &cwd).await {
         Ok(Some(wad))
@@ -157,17 +153,11 @@ async fn show(
     ui: ExtensionUIContext,
 ) -> ExtensionResult<()> {
     let placement = overlay_placement()?;
-    let notifications = ui.clone();
     ui.custom(
         Rc::new(move |tui, _, _, done, _| {
-            let (api, background, engine, ui) = (
-                api.clone(),
-                background.clone(),
-                engine.clone(),
-                notifications.clone(),
-            );
+            let (api, background, engine) = (api.clone(), background.clone(), engine.clone());
             Ok(CustomFactoryOutcome::Async(Box::pin(async move {
-                let view = DoomOverlayComponent::new(api, tui, engine, done, ui);
+                let view = DoomOverlayComponent::new(api, tui, engine, done);
                 view.start(&background).await?;
                 let disposal = view.clone();
                 Ok(ExtensionComponent {

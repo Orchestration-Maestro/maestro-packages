@@ -24,19 +24,14 @@ pub struct Ui {
     pub notices: RefCell<Vec<String>>,
     /// One scenario per view the overlay is expected to open.
     pub scenarios: RefCell<VecDeque<Scenario>>,
-    /// Completes when the overlay reports that the game stopped.
-    pub stopped: Rc<tokio::sync::Notify>,
-    /// Whether the next view stays open until the game stops instead of closing at once.
-    pub until_stopped: Cell<bool>,
+    /// Whether the next view stays open until the game closes it instead of the test pressing Q.
+    pub until_closed: Cell<bool>,
 }
 impl ExtensionUIContextPort for Ui {
     fn theme(&self) -> maestro_theme::LiveTheme {
         maestro_theme::LiveTheme::default()
     }
     fn notify(&self, message: String, _: Option<NotificationType>) -> Result<(), EventError> {
-        if message.starts_with("DOOM stopped:") {
-            self.stopped.notify_one();
-        }
         self.notices.borrow_mut().push(message);
         Ok(())
     }
@@ -59,10 +54,7 @@ impl ExtensionUIContextPort for Ui {
         };
         let building = factory.call((self.tui.clone(), self.theme(), keys, close));
         let scenario = self.scenarios.borrow_mut().pop_front();
-        let until_stopped = self
-            .until_stopped
-            .replace(false)
-            .then(|| self.stopped.clone());
+        let until_closed = self.until_closed.replace(false);
         Box::pin(async move {
             let built = match building? {
                 CustomFactoryOutcome::Ready(built) => built,
@@ -71,15 +63,14 @@ impl ExtensionUIContextPort for Ui {
             if let Some(scenario) = scenario {
                 scenario(&built)?;
             }
-            if let Some(stopped) = until_stopped {
-                stopped.notified().await;
+            if !until_closed {
+                built
+                    .component
+                    .input_handler()
+                    .unwrap()
+                    .try_handle_input("q")
+                    .map_err(|e| EventError::from(e.to_string()))?;
             }
-            built
-                .component
-                .input_handler()
-                .unwrap()
-                .try_handle_input("q")
-                .map_err(|e| EventError::from(e.to_string()))?;
             receive.await.map_err(|e| EventError::from(e.to_string()))?;
             if let Some(dispose) = built.dispose {
                 dispose.call(())?;

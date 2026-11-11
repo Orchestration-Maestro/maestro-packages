@@ -8,7 +8,7 @@ use gamestate_traits::KeyCode;
 use maestro_extensions_wasm::{ExtensionAPI, ExtensionResult, matches_key, parse_key};
 
 /// Keys that are named, not typed: decoder name, then the game key.
-const NAMED: [(&str, KeyCode); 22] = [
+const NAMED: [(&str, KeyCode); 9] = [
     ("up", KeyCode::Up),
     ("down", KeyCode::Down),
     ("right", KeyCode::Right),
@@ -18,19 +18,6 @@ const NAMED: [(&str, KeyCode); 22] = [
     ("escape", KeyCode::Escape),
     ("tab", KeyCode::Tab),
     ("backspace", KeyCode::Backspace),
-    ("f1", KeyCode::F1),
-    ("f2", KeyCode::F2),
-    ("f3", KeyCode::F3),
-    ("f4", KeyCode::F4),
-    ("f5", KeyCode::F5),
-    ("f6", KeyCode::F6),
-    ("f7", KeyCode::F7),
-    ("f8", KeyCode::F8),
-    ("f9", KeyCode::F9),
-    ("f10", KeyCode::F10),
-    ("f11", KeyCode::F11),
-    ("f12", KeyCode::F12),
-    ("pause", KeyCode::Pause),
 ];
 
 /// Raw bytes some terminals send for the keys the decoder also names.

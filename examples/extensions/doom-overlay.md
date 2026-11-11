@@ -26,9 +26,8 @@ that interactive mode is required.
 ## WAD files
 
 DOOM needs an IWAD, the game's data file. An explicit path wins:
-`/doom-overlay ~/games/doom1.wad`. Without one, the overlay resumes the game
-already open in this session. With none open, it checks the component's
-directory, `./doom1.wad`, `./DOOM1.WAD`, `~/doom1.wad` and
+`/doom-overlay ~/games/doom1.wad`. Without one, the overlay checks the
+component's directory, `./doom1.wad`, `./DOOM1.WAD`, `~/doom1.wad` and
 `~/.doom/doom1.wad`, in that order. If no file exists, it downloads the
 shareware WAD beside the component.
 
@@ -52,12 +51,13 @@ fails the check produces `Failed to load DOOM: <reason>` and starts nothing.
 ## Controls and lifetime
 
 Arrow keys turn and move. WASD moves and strafes, Shift+WASD runs, Space uses,
-F fires and 1 to 7 select weapons. Enter, Escape, the arrow keys and the F keys
-operate the menus. Q pauses the game and closes the overlay.
+F fires and 1 to 7 select weapons. Enter, Escape and the arrow keys operate the
+menus. Q pauses the game and closes the overlay.
 
-The overlay keeps one game per session. `/doom-overlay` resumes it. A different
-WAD path replaces it, and choosing Quit Game in the menu ends it and closes the
-view; the next `/doom-overlay` starts a new game. Closing the view cancels its
+The overlay keeps one game per session. `/doom-overlay` resumes it when the WAD
+it resolves is the same path as the game's. A different WAD path replaces it,
+and choosing Quit Game in the menu ends it and closes the view without a
+notice; the next `/doom-overlay` starts a new game. Closing the view cancels its
 wait and releases held keys.
 
 The game draws a 640×400 frame at 35 Hz, sampled as two pixels per terminal

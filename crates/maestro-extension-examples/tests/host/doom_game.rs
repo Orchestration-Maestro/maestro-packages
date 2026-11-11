@@ -78,6 +78,8 @@ pub(super) async fn run(root: &Path, case: &str) -> bool {
         }
         "private-root" => private_root(root).await,
         "resume" => resume(root).await,
+        "rediscover" => rediscover(root).await,
+        "function-keys" => function_keys(root).await,
         "switch" => switch(root).await,
         "quit" => quit(root).await,
         _ => return false,
@@ -111,12 +113,12 @@ async fn private_root(root: &Path) {
     assert!(roots(root).is_empty(), "shutdown removes the root");
 }
 
-/// Opening again resumes the same game instead of starting another.
+/// Opening the same WAD again resumes the same game instead of starting another.
 async fn resume(root: &Path) {
     let demo = started(root, Box::new(|_| Ok(()))).await;
     let first = roots(root);
     demo.view(Box::new(|_| Ok(())));
-    demo.command("").await;
+    demo.command(&freedoom()).await;
     assert_eq!(roots(root), first, "the retained game keeps its root");
     let notices = demo.notices();
     assert!(
@@ -131,6 +133,43 @@ async fn resume(root: &Path) {
         1,
         "{notices:?}"
     );
+    demo.shutdown().await;
+}
+
+/// Opening with no path looks for a WAD again; a different one starts a new game.
+async fn rediscover(root: &Path) {
+    let demo = started(root, Box::new(|_| Ok(()))).await;
+    let first = roots(root);
+    std::fs::copy(freedoom(), root.join("project/doom1.wad")).unwrap();
+    demo.view(Box::new(|_| Ok(())));
+    demo.command("").await;
+    let notices = demo.notices();
+    assert!(
+        !notices.contains(&"Resuming DOOM...".to_owned()),
+        "{notices:?}"
+    );
+    assert!(
+        notices
+            .last()
+            .is_some_and(|n| n.starts_with("Loading DOOM from ") && n.ends_with("doom1.wad...")),
+        "{notices:?}"
+    );
+    assert_ne!(roots(root), first, "the found WAD started a new game");
+    demo.shutdown().await;
+}
+
+/// Function keys are not game input, so F1 leaves the title screen as it was.
+async fn function_keys(root: &Path) {
+    let demo = started(
+        root,
+        Box::new(|built| {
+            let title = rows(built)?;
+            key(built, "\x1bOP")?;
+            assert_eq!(title, rows(built)?, "F1 does not open the help screen");
+            Ok(())
+        }),
+    )
+    .await;
     demo.shutdown().await;
 }
 
@@ -159,7 +198,7 @@ async fn switch(root: &Path) {
 /// Quitting from the menu stops the view and the next open starts a new game.
 async fn quit(root: &Path) {
     let demo = super::doom_wad::loaded(root, controlled_io("none"), false).await;
-    demo.ui.until_stopped.set(true);
+    demo.ui.until_closed.set(true);
     demo.view(Box::new(|built| {
         for data in ["\x1b", "\x1b[A", "\r", "y"] {
             key(built, data)?;
@@ -167,16 +206,17 @@ async fn quit(root: &Path) {
         Ok(())
     }));
     demo.command(&freedoom()).await;
-    assert!(
-        demo.notices()
-            .iter()
-            .any(|n| n.starts_with("DOOM stopped:")),
-        "{:?}",
-        demo.notices()
+    assert_eq!(
+        demo.notices(),
+        [
+            "Loading DOOM...".to_owned(),
+            format!("Loading DOOM from {}...", freedoom())
+        ],
+        "the game closes without a notice"
     );
     let ended = roots(root);
     demo.view(Box::new(|_| Ok(())));
-    demo.command("").await;
+    demo.command(&freedoom()).await;
     assert_ne!(roots(root), ended, "the quit game is replaced, not resumed");
     demo.shutdown().await;
 }
@@ -197,10 +237,23 @@ fn doom_overlay_files_are_private_and_deleted_on_shutdown() {
         &["private-root"],
     );
 }
-/// Opening again resumes the retained game.
+/// Opening the same WAD again resumes the retained game.
 #[test]
 fn doom_overlay_resumes_the_retained_game() {
     checked("doom_overlay_resumes_the_retained_game", &["resume"]);
+}
+/// Opening with no path looks for a WAD again instead of reusing the retained one.
+#[test]
+fn doom_overlay_rediscovers_the_wad_without_an_argument() {
+    checked(
+        "doom_overlay_rediscovers_the_wad_without_an_argument",
+        &["rediscover"],
+    );
+}
+/// F1 does not reach the game.
+#[test]
+fn doom_overlay_ignores_function_keys() {
+    checked("doom_overlay_ignores_function_keys", &["function-keys"]);
 }
 /// Opening a different WAD replaces the retained game.
 #[test]

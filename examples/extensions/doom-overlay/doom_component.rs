@@ -12,7 +12,7 @@ use super::{
 use gamestate_traits::KeyCode;
 use maestro_extensions_wasm::{
     Background, BackgroundTask, CallbackEmitter, ComponentView, CustomDone, ExtensionAPI,
-    ExtensionResult, ExtensionUIContext, NotificationType, TUI, is_key_release, matches_key,
+    ExtensionResult, TUI, is_key_release, matches_key,
 };
 use std::{
     cell::RefCell,
@@ -46,26 +46,17 @@ pub struct DoomOverlayComponent {
     engine: Rc<DoomEngine>,
     /// First accepted close completes the custom view.
     done: CustomDone<()>,
-    /// Notification route for an engine failure.
-    ui: ExtensionUIContext,
     /// Shared state of the component, its tail and its disposer.
     state: Rc<RefCell<ViewState>>,
 }
 impl DoomOverlayComponent {
     /// Creates an overlay without starting another engine.
-    pub fn new(
-        api: ExtensionAPI,
-        tui: TUI,
-        engine: Rc<DoomEngine>,
-        done: CustomDone<()>,
-        ui: ExtensionUIContext,
-    ) -> Self {
+    pub fn new(api: ExtensionAPI, tui: TUI, engine: Rc<DoomEngine>, done: CustomDone<()>) -> Self {
         Self {
             api,
             tui,
             engine,
             done,
-            ui,
             state: Rc::default(),
         }
     }
@@ -87,18 +78,10 @@ impl DoomOverlayComponent {
                 return Ok(());
             }
             if !self.engine.tick() {
-                return self.stop("the game ended");
+                return self.close();
             }
             self.tui.request_render(false)?;
         }
-    }
-    /// Closes a view whose game ended and says so; the next open starts a new game.
-    fn stop(&self, reason: &str) -> ExtensionResult<()> {
-        self.close()?;
-        self.ui.notify(
-            &format!("DOOM stopped: {reason}. Run /doom-overlay to start again."),
-            Some(NotificationType::Info),
-        )
     }
     /// Stops the timer and releases held input exactly once.
     /// # Errors
