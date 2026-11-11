@@ -40,6 +40,14 @@ command = { command-line = "debug/examples/prepare_browser_exports", relative-to
 filter = "package(=maestro-web-example) & test(/^browser::chat_example_/)"
 setup = "browser-exports"
 
+# Fetches and checks the Freedoom IWAD that the DOOM overlay's real-engine tests play.
+[scripts.setup.freedoom]
+command = { command-line = "debug/examples/prepare_freedoom", relative-to = "target" }
+
+[[profile.default.scripts]]
+filter = "package(=maestro-extension-examples) & test(/^host::doom_game::/)"
+setup = "freedoom"
+
 [[profile.default.scripts]]
 filter = "package(=maestro-extension-examples) & test(/^executable::/)"
 setup = "executable"

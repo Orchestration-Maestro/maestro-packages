@@ -88,6 +88,8 @@ resolving conflicts, then regenerate the table.
 | `custom_message_provider/main.rs` | Opt-in registration of a custom message-stream provider. |
 | `dirty_repo_guard.md` | Dirty repo guard |
 | `dirty_repo_guard.rs` | Opt-in guard that asks before leaving or forking a repository with uncommitted changes. |
+| `doom-overlay.md` | DOOM overlay |
+| `doom-overlay/main.rs` | Play DOOM in a retained terminal overlay. |
 | `dynamic-resources.md` | Dynamic resources |
 | `dynamic-resources/main.rs` | Contributes a skill, prompt template and theme installed beside the component. |
 | `dynamic_tools.md` | Dynamic tools |

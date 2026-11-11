@@ -75,6 +75,11 @@ path = "../../examples/extensions/dirty_repo_guard.rs"
 crate-type = ["cdylib"]
 
 [[example]]
+name = "doom_overlay"
+path = "../../examples/extensions/doom-overlay/main.rs"
+crate-type = ["cdylib"]
+
+[[example]]
 name = "dynamic_resources"
 path = "../../examples/extensions/dynamic-resources/main.rs"
 crate-type = ["cdylib"]
@@ -365,8 +370,21 @@ regex.workspace = true
 ryu-js.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+doom-ui = { workspace = true, features = ["software25d"] }
+game-config.workspace = true
+gameplay = { workspace = true, features = ["software25d"] }
+gamestate.workspace = true
+gamestate-traits.workspace = true
+input.workspace = true
+math.workspace = true
+pic-data.workspace = true
+render-common.workspace = true
+software25d.workspace = true
+ui-draw.workspace = true
+wad.workspace = true
 wit-bindgen = { workspace = true, features = ["async-spawn"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
@@ -377,6 +395,7 @@ maestro-chat.workspace = true
 maestro-credentials.workspace = true
 maestro-extensions = { workspace = true, features = ["test-support"] }
 maestro-extensions-wasmtime = { workspace = true, features = ["test-support"] }
+maestro-http = { path = "../maestro-http" }
 maestro-lock.workspace = true
 maestro-markdown = { workspace = true, features = ["test-support"] }
 maestro-models.workspace = true
@@ -385,12 +404,18 @@ maestro-session.workspace = true
 maestro-test-directory.workspace = true
 maestro-test-process.workspace = true
 maestro-theme = { workspace = true, features = ["test-support"] }
+maestro-tooling.workspace = true
 maestro-tui = { workspace = true, features = ["test-support"] }
 tokio = { workspace = true, features = ["test-util"] }
+zip.workspace = true
 
 [[test]]
 name = "integration"
 path = "tests/integration.rs"
+
+[[example]]
+name = "prepare_freedoom"
+path = "tests/prepare_freedoom.rs"
 
 [[bin]]
 name = "ssh-stand-in"

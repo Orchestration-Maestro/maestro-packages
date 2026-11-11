@@ -21,4 +21,4 @@ advisory_exceptions = [
   { id = "RUSTSEC-2026-0387", package = "crypto-bigint", version = "0.5.5", reason = "aws-config credentials-login (Bedrock login profiles) signs with p256 0.13; no patched 0.5.x and aws-config 1.13.0 still requires p256 0.13; remove when aws-config moves to p256 0.14" },
 ]
 license_exceptions = []
-git_sources = ["https://github.com/Orchestration-Maestro/maestro", "https://github.com/bytecodealliance/wasmtime"]
+git_sources = ["https://github.com/Orchestration-Maestro/maestro", "https://github.com/bytecodealliance/wasmtime", "https://github.com/FrancoisLDaigneault/room4doom", "https://github.com/not-fl3/nanoserde"]
