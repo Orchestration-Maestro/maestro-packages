@@ -277,3 +277,14 @@ An example needs no setup filter of its own. The nextest rules select the
 whole crate for the `author-component` and `native-fixture` setups, the
 `executable::` tests for the `executable` setup, and `host::extension_guide::`
 for the `cargo-checks` setup.
+
+### Freedoom for the DOOM overlay
+
+The overlay's real-engine tests play Freedoom Phase 1, a free IWAD, and its
+filesystem and menu tests need a game that starts. The IWAD is never committed.
+The `freedoom` setup in `.config/nextest.toml` runs the `prepare_freedoom`
+program once before the `host::doom_game::` tests. The program downloads the
+pinned Freedoom 0.13.0 release archive, refuses it unless its SHA-256 matches,
+extracts `freedoom1.wad` under `target/freedoom` and exports the path as
+`MAESTRO_FREEDOOM_WAD`. A mismatch fails the setup, and a missing variable fails
+the tests. The overlay's page lists the run command.
