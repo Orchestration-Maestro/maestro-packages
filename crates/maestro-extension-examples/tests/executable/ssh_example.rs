@@ -6,6 +6,7 @@ use serde_json::{Value, json};
 use std::path::Path;
 use std::rc::Rc;
 
+mod path_mapping;
 mod resolution_failure;
 
 /// Runs on the same local executor the application's native resources retain.

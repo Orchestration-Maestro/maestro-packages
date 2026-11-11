@@ -12,6 +12,8 @@ use maestro_extensions_wasmtime::native_io::{
 };
 use maestro_models::*;
 use serde_json::{Value, json};
+mod sign_in_and_direct_access;
+
 use std::{
     cell::RefCell,
     collections::VecDeque,
@@ -25,19 +27,23 @@ const DEFAULT_MODEL: &str = "claude-sonnet-4-5-20250929";
 /// What the controlled GitLab answers, and every request it was asked.
 #[derive(Default)]
 struct Gitlab {
-    /// Statuses and texts, consumed in request order.
-    replies: RefCell<VecDeque<(u16, String)>>,
+    /// Statuses and body texts (or the failure that interrupts reading the body), consumed in
+    /// request order.
+    replies: RefCell<VecDeque<(u16, Result<String, String>)>>,
     /// URL, method, headers and body of each request.
     requests: RefCell<Vec<Value>>,
 }
 /// One scripted HTTP response.
-struct Reply(u16, String);
+struct Reply(u16, Result<String, String>);
 impl Response for Reply {
     fn json(&self) -> IoFuture<'_, Value> {
-        Box::pin(async move { serde_json::from_str(&self.1).map_err(|error| error.to_string()) })
+        Box::pin(async move {
+            let text = self.1.clone()?;
+            serde_json::from_str(&text).map_err(|error| error.to_string())
+        })
     }
     fn text(&self) -> IoFuture<'_, String> {
-        Box::pin(async move { Ok(self.1.clone()) })
+        Box::pin(async move { self.1.clone() })
     }
     fn status(&self) -> u16 {
         self.0
@@ -231,7 +237,18 @@ impl Harness {
         let text = body
             .as_str()
             .map_or_else(|| body.to_string(), str::to_owned);
-        self.gitlab.replies.borrow_mut().push_back((status, text));
+        self.gitlab
+            .replies
+            .borrow_mut()
+            .push_back((status, Ok(text)));
+    }
+
+    /// Queues an answer whose body fails while it is read.
+    fn reply_unreadable(&self, status: u16, failure: &str) {
+        self.gitlab
+            .replies
+            .borrow_mut()
+            .push_back((status, Err(failure.to_owned())));
     }
 
     /// The registered model, as the catalog describes it.

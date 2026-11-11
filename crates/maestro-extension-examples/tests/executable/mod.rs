@@ -2,6 +2,7 @@
 mod support;
 
 mod custom_message_provider_example;
+mod dynamic_resources_example;
 mod file_trigger_example;
 mod provider_payload_example;
 mod qna_example;
