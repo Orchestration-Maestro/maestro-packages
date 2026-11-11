@@ -10,10 +10,11 @@ setup:
     mise install
     mise exec -- prek install
 
-# Formatting, lint, public documentation and the workspace conventions.
+# Formatting, lint, public documentation, the workspace conventions and the extension pages' commands.
 check:
     cargo fmt --all
     just example-index-check
+    cargo test -p maestro-extension-examples --locked --test integration -- extension_pages::
     just _check --workspace
 
 # Shared checks for explicit Cargo package-selection arguments.
