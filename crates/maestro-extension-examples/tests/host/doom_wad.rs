@@ -97,6 +97,10 @@ impl Demo {
         for tail in self.tails.take() {
             tail.await.unwrap();
         }
+        assert!(
+            self.ui.scenarios.borrow().is_empty(),
+            "a queued view never opened"
+        );
     }
 }
 
