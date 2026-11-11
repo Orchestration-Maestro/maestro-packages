@@ -27,9 +27,7 @@ file-trigger test commands concurrently.
 ## Controlled runs
 
 ```sh
-CARGO_BUILD_JOBS=3 ~/.local/bin/capped mise exec -- just prepare-tests
-CARGO_BUILD_JOBS=3 ~/.local/bin/capped mise exec -- cargo nextest run --locked \
-  -p maestro-extensions-wasm --lib -- file_trigger_
-CARGO_BUILD_JOBS=3 ~/.local/bin/capped mise exec -- cargo nextest run --locked \
-  -p maestro --test integration -- file_trigger_
+just prepare-tests
+TEST_PREPARE_OUTPUT="$PWD/target/test-setup" cargo nextest run --locked \
+  -p maestro-extension-examples -E 'test(file_trigger)'
 ```

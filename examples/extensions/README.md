@@ -76,6 +76,8 @@ resolving conflicts, then regenerate the table.
 | `commands.rs` | Lists the host's slash commands through an opt-in `/commands` selector. |
 | `confirm_destructive.md` | Confirm destructive |
 | `confirm_destructive.rs` | Opt-in confirmation before replacing or forking a session. |
+| `custom-provider-gitlab-duo.md` | Custom gateway provider |
+| `custom-provider-gitlab-duo/main.rs` | A provider for GitLab Duo's Claude and GPT models, with GitLab sign-in and requests delegated to the built-in protocols. |
 | `custom_compaction.md` | Custom compaction |
 | `custom_compaction.rs` | Summarizes the complete prepared conversation with a separately selected model. |
 | `custom_footer.md` | Custom footer |
@@ -86,6 +88,8 @@ resolving conflicts, then regenerate the table.
 | `custom_message_provider/main.rs` | Opt-in registration of a custom message-stream provider. |
 | `dirty_repo_guard.md` | Dirty repo guard |
 | `dirty_repo_guard.rs` | Opt-in guard that asks before leaving or forking a repository with uncommitted changes. |
+| `dynamic-resources.md` | Dynamic resources |
+| `dynamic-resources/main.rs` | Contributes a skill, prompt template and theme installed beside the component. |
 | `dynamic_tools.md` | Dynamic tools |
 | `dynamic_tools.rs` | Dynamic tools: one echo tool registered when a session starts, and a command that adds more echo tools while the session runs. |
 | `event_bus.md` | Event bus |
@@ -173,6 +177,10 @@ resolving conflicts, then regenerate the table.
 | `space_invaders.rs` | Play Space Invaders in a custom terminal view with session-entry saves. |
 | `space_invaders/game.rs` | Retained game records and one deterministic simulation tick. |
 | `space_invaders/render.rs` | Original terminal sprites, colours, borders and status text. |
+| `ssh.md` | SSH |
+| `ssh.rs` | Opt-in SSH operations for the native coding tools. |
+| `ssh/operations.rs` | SSH observations supplied to the original native coding-tool owners. |
+| `ssh/transport.rs` | Raw child pipes for SSH file observations and writes. |
 | `status_line.md` | Status line |
 | `status_line.rs` | Shows themed turn progress as persistent footer status. |
 | `structured_output.md` | Structured output |
@@ -219,8 +227,8 @@ Authors need the pinned toolchain with the `wasm32-wasip2` target. Each example
 builds to a component library; there is no command-line entry point:
 
 ```sh
-CARGO_BUILD_JOBS=3 ~/.local/bin/capped mise exec -- cargo build --locked \
-  -p maestro-extensions-wasm --example <name> --target wasm32-wasip2 --release
+cargo build --locked -p maestro-extension-examples \
+  --example <name> --target wasm32-wasip2 --release
 ```
 
 The corresponding Markdown page lists its controlled runs and host prerequisites.

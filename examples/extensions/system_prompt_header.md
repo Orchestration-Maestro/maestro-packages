@@ -11,7 +11,7 @@ an application is opt-in.
 ## Controlled runs
 
 ```sh
-CARGO_BUILD_JOBS=3 ~/.local/bin/capped mise exec -- just prepare-tests
-CARGO_BUILD_JOBS=3 ~/.local/bin/capped mise exec -- cargo nextest run --locked \
-  -p maestro-extensions-wasm --lib -- system_prompt_status
+just prepare-tests
+TEST_PREPARE_OUTPUT="$PWD/target/test-setup" cargo nextest run --locked \
+  -p maestro-extension-examples -E 'test(system_prompt_header_example)'
 ```

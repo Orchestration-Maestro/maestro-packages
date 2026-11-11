@@ -28,13 +28,10 @@ or coordinates are rejected before rendering or indexing. Expanded move messages
 tool results show static boards; the final banner highlights the
 winning line. The example writes no file directly and adds no built-in tool.
 
-
 ## Controlled runs
 
 ```sh
-CARGO_BUILD_JOBS=3 ~/.local/bin/capped mise exec -- just prepare-tests
-CARGO_BUILD_JOBS=3 ~/.local/bin/capped mise exec -- cargo nextest run --locked \
-  -p maestro-extensions-wasm --lib -- tic_tac_toe_
-CARGO_BUILD_JOBS=3 ~/.local/bin/capped mise exec -- cargo nextest run --locked \
-  -p maestro --test integration -- tic_tac_toe_
+just prepare-tests
+TEST_PREPARE_OUTPUT="$PWD/target/test-setup" cargo nextest run --locked \
+  -p maestro-extension-examples -E 'test(tic_tac_toe)'
 ```

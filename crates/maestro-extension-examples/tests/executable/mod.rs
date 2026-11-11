@@ -6,6 +6,7 @@ mod file_trigger_example;
 mod provider_payload_example;
 mod qna_example;
 mod rpc_demo_example;
+mod ssh_example;
 mod structured_output_example;
 mod tic_tac_toe_example;
 mod tools_example;

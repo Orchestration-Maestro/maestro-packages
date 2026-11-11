@@ -90,21 +90,25 @@ both under the directory that `MAESTRO_PACKAGE_DIR` names. Without that
 variable it looks in the Maestro sources Cargo fetched for this workspace,
 where neither file is built.
 
-Build both in a Maestro checkout at the
-[revision this repository pins](../../docs/examples.md#the-maestro-pin), with
-the pinned Rust toolchain and the `wasm32-wasip2` target:
+Build both into one target directory: Maestro in a Maestro checkout at the
+[revision this repository pins](../../docs/examples.md#the-maestro-pin), and the
+companion component here, with the pinned Rust toolchain and the `wasm32-wasip2`
+target. Set `MAESTRO` to the checkout's absolute path and run the first build in
+that checkout and the second from this repository's root:
 
 ```sh
 rustup target add wasm32-wasip2
-CARGO_TARGET_DIR=target cargo build --locked -p maestro
-CARGO_TARGET_DIR=target cargo build --locked \
-  -p maestro-extensions-wasm --example rpc_demo --target wasm32-wasip2 --release
+MAESTRO=/absolute/path/to/maestro
+CARGO_TARGET_DIR="$MAESTRO/target" cargo build --locked -p maestro
+CARGO_TARGET_DIR="$MAESTRO/target" cargo build --locked \
+  -p maestro-extension-examples --example rpc_demo --target wasm32-wasip2 --release
 ```
 
-Then run the client from this repository's root, pointing it at that checkout:
+Then run the client from this repository's root, pointing it at that checkout
+with the same absolute path:
 
 ```sh
-MAESTRO_PACKAGE_DIR=path/to/maestro cargo run --locked \
+MAESTRO_PACKAGE_DIR=/absolute/path/to/maestro cargo run --locked \
   -p maestro-sdk-examples --example rpc_extension_ui
 ```
 

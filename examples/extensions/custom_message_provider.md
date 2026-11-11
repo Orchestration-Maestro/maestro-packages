@@ -5,8 +5,8 @@ reasoning models. Building needs the pinned Rust toolchain and `wasm32-wasip2`
 target. Loading needs a component-enabled native host with HTTP access:
 
 ```sh
-CARGO_BUILD_JOBS=3 ~/.local/bin/capped cargo build --locked \
-  -p maestro-extensions-wasm --example custom_message_provider \
+cargo build --locked \
+  -p maestro-extension-examples --example custom_message_provider \
   --target wasm32-wasip2 --release
 maestro --extension target/wasm32-wasip2/release/examples/custom_message_provider.wasm
 ```
@@ -65,9 +65,11 @@ endpoint for the compiled component. They need no provider credentials or paid
 service:
 
 ```sh
-CARGO_BUILD_JOBS=3 ~/.local/bin/capped just prepare-tests
-CARGO_BUILD_JOBS=3 ~/.local/bin/capped cargo nextest run --locked \
-  -p maestro-extensions-wasm --lib -- custom_message_provider_
-CARGO_BUILD_JOBS=3 ~/.local/bin/capped cargo nextest run --locked \
-  -p maestro --test integration -- custom_message_provider_
+just prepare-tests
+TEST_PREPARE_OUTPUT="$PWD/target/test-setup" cargo nextest run --locked \
+  -p maestro-extension-examples -E 'test(custom_message_provider)'
 ```
+
+The guest run for this example is not hosted yet. The public test host has no
+provider stream entry point or HTTP transport; [maestro#4448](https://github.com/Orchestration-Maestro/maestro/issues/4448)
+lists the missing seams.
