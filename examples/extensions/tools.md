@@ -24,5 +24,5 @@ configuration entries.
 ```sh
 just prepare-tests
 TEST_PREPARE_OUTPUT="$PWD/target/test-setup" cargo nextest run --locked \
-  -p maestro-extension-examples -E 'test(tools_component)'
+  -p maestro-extension-examples -E 'test(::tools_example::)'
 ```
