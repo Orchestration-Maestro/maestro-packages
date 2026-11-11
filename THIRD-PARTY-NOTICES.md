@@ -3,7 +3,9 @@
 ## room4doom
 
 The DOOM overlay example links room4doom, a Rust DOOM engine, at the pinned
-revision recorded in `Cargo.toml`.
+revision recorded in `Cargo.toml`. The revision is an exact commit of a fork of
+room4doom that carries five small build changes; the fork keeps the project's
+MIT licence and copyright notice unchanged.
 
 room4doom is distributed under the MIT licence:
 
