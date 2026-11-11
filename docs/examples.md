@@ -37,14 +37,12 @@ point into it by relative path, and Maestro publishes the directory as it is.
 examples/
   README.md              index of every folder
   extensions/            extension sources, each with a usage page
-  sdk/                   SDK examples, the Python RPC client, the interactive RPC client demo
+  sdk/                   SDK examples, the interactive RPC client demo
   rpc_extension_ui.rs    terminal RPC client
   web/                   browser chat example
-  python/  typescript/   extensions in other languages
 ```
 
-`extensions/`, `sdk/`, `rpc_extension_ui.rs`, `python/`, `typescript/` and `web/` are here today.
-All folders have their family crate.
+`extensions/`, `sdk/`, `rpc_extension_ui.rs` and `web/` are all here, each with its family crate.
 
 ## Crates
 
@@ -53,9 +51,6 @@ All folders have their family crate.
 | `maestro-extension-examples` | extension examples, as WebAssembly components |
 | `maestro-sdk-examples` | SDK examples, the terminal RPC client and the RPC client demo |
 | `maestro-web-example` | the browser chat example |
-| `maestro-python-example`, `maestro-typescript-example` | the other-language extensions |
-
-All four family crates and the two other-language crates exist today.
 
 ## Browser example
 
@@ -96,8 +91,9 @@ execute `just browser-build`, which builds the `chat` example for
 `wasm32-unknown-unknown` and binds it. A startup that no longer compiles fails the run.
 
 The program holds the exports and only the browser helpers they read. It reaches
-`maestro-web` through its public API. A helper that needs a private item exposes a gap
-in that API; report the gap.
+`maestro-web` through its public API and reads the brand pack with
+`BrandPack::shipped()`; the repository carries no copy of the pack. A helper that
+needs a private item exposes a gap in that API; report the gap.
 
 ## SDK and RPC examples
 
@@ -120,7 +116,7 @@ their tests:
 | Source | Example target | Checks |
 |---|---|---|
 | `sdk/*.rs`, with `sdk/support/` and `sdk/tests/` | one per sample, such as `minimal` | each sample's own tests, run in-process |
-| `rpc_extension_ui.rs`, with `sdk/rpc_extension_ui/` | `rpc_extension_ui` | the terminal client's tests, and the checks of `sdk/rpc.py` under Python 3 |
+| `rpc_extension_ui.rs`, with `sdk/rpc_extension_ui/` | `rpc_extension_ui` | the terminal client's tests |
 | `sdk/rpc_client_demo/` | `rpc_client_demo` | the demo's checks, in the crate's `tests/integration.rs` |
 
 The thirteen SDK samples use Maestro's scripted model provider and disposable
@@ -134,9 +130,6 @@ and U+2029, refusals, early end of stream and cleanup. The `native-fixture`
 setup exports `MAESTRO_NATIVE_FIXTURE` for the `rpc_extension_ui` example
 binary and the crate's integration binary. The interactive demo's checks run
 on Unix.
-
-The Python client's checks run the shipped `examples/sdk/rpc.py` with `python3`,
-so Python 3 must be on `PATH`. Every peer is a native Rust program.
 
 Add a sample in three steps:
 
@@ -247,6 +240,19 @@ calls: the runner's registered tools and commands, its events and the terminal
 UI the test installs. Nothing in it fakes the extension host. The recorded
 corpora sit beside the tests as `<name>_expected.json`, byte for byte as
 recorded.
+
+The `guest` tests share one set of helpers in `tests/guest/support/`: the
+recording terminal UI, the callback errors a runner reports instead of
+returning them, the paused-clock runtimes and the rows a renderer draws. A
+test that waits on the extension waits on a signal a helper gives, such as the
+next redraw or the next recorded request. It never sleeps or polls.
+
+Some behaviour has no form on the public harness yet: native effects, injected
+clocks and random sources, a signal for the moment a guest arms its next timer
+wait, provider transport, and failures injected at a chosen registration. Those
+cases have no `guest` test, and
+[Orchestration-Maestro/maestro#4448](https://github.com/Orchestration-Maestro/maestro/issues/4448)
+lists each missing seam with the examples that wait on it.
 
 ### Add an extension example
 

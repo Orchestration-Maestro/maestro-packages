@@ -2,8 +2,6 @@
 #![cfg(all(test, target_arch = "wasm32"))]
 
 #[cfg(test)]
-mod brand;
-#[cfg(test)]
 mod browser_fixture_support;
 #[cfg(test)]
 mod chat_example_browser;

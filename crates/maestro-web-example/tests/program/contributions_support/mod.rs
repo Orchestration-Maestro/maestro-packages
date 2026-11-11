@@ -1,7 +1,7 @@
 //! Page operands, the fixture package and browser observations shared by contribution exports.
 #![cfg(all(test, target_arch = "wasm32"))]
 use maestro_app::{SandboxUrlProvider, SharedHandle};
-use maestro_web::{I18n, contributions::ContributionHost, dom::DomView};
+use maestro_web::{I18n, page::DomView, runtime_contributions::ContributionHost};
 use std::rc::Rc;
 use wasm_bindgen::{JsCast as _, JsValue};
 use wasm_bindgen_futures::JsFuture;
@@ -31,7 +31,7 @@ pub(crate) fn view() -> Rc<DomView> {
         document: document(),
         i18n: Rc::new(I18n::new(Rc::new(crate::support::Host::default())).unwrap()),
         highlighter: Rc::new(maestro_theme::SyntectHighlighter::new().unwrap()),
-        pack: Rc::new(crate::brand::pack("brand.json").unwrap()),
+        pack: Rc::new(maestro_theme::BrandPack::shipped().unwrap()),
         mode: maestro_theme::BrandMode::Dark,
         tool_renderers: Rc::default(),
     })

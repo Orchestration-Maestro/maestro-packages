@@ -5,7 +5,7 @@ use indexmap::IndexMap;
 use maestro_extensions_wasm::bindings::maestro::extension::host::{
     FrontmatterDocument, FrontmatterToken, HostOperation,
 };
-use maestro_extensions_wasm::io::NativeIo;
+use maestro_extensions_wasm::effects::NativeIo;
 use maestro_extensions_wasm::{
     AbortSignal, AuthStorage, AuthStorageBackend, AuthStorageData, BashOperations, BashToolOptions,
     CallbackEmitter, CallbackEmitterPort, CommandContextPort, CommandOptions, CompactOptions,

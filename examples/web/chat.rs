@@ -37,10 +37,8 @@ async fn run() -> Result<(), wasm_bindgen::JsValue> {
         .ok_or("missing app element")?;
     let i18n = maestro_web::I18n::new(Rc::new(maestro_web::BrowserLanguageHost))
         .map_err(|error| failure(&error))?;
-    let pack =
-        maestro_theme::BrandPack::parse("brand.json", include_str!("assets/brand/brand.json"))
-            .map_err(|error| failure(&error))?;
-    let view = Rc::new(maestro_web::dom::DomView {
+    let pack = maestro_theme::BrandPack::shipped().map_err(|error| failure(&error))?;
+    let view = Rc::new(maestro_web::page::DomView {
         document,
         i18n: Rc::new(i18n),
         highlighter: Rc::new(

@@ -1,6 +1,7 @@
 //! The overlay demonstrations through the shipped component, the production runner and a real
 //! frame writer on a recording terminal.
 #![cfg(test)]
+use crate::terminal::Stage;
 use maestro_extensions::native_io::{
     ChildProcess, ExitStatus, FsWatcher, IoFuture, NativeIo, Readable, Request, Response,
     SpawnOptions, Writable,
@@ -70,6 +71,8 @@ struct Process {
     child: RefCell<Option<Child>>,
     /// Signals the process received.
     kills: Rc<RefCell<Vec<Option<String>>>>,
+    /// Wakes a waiter when the process is launched.
+    spawned: tokio::sync::Notify,
 }
 impl Process {
     /// A process and the senders of its standard output and error.
@@ -86,8 +89,16 @@ impl Process {
             launched: RefCell::default(),
             child: RefCell::new(Some(child)),
             kills,
+            spawned: tokio::sync::Notify::new(),
         };
         (Rc::new(process), [out, err])
+    }
+
+    /// Waits until the example has launched its process.
+    async fn launch(&self) {
+        while self.launched.borrow().is_empty() {
+            self.spawned.notified().await;
+        }
     }
 }
 impl NativeIo for Process {
@@ -116,6 +127,7 @@ impl NativeIo for Process {
         _: SpawnOptions,
     ) -> IoFuture<'_, Rc<dyn ChildProcess>> {
         self.launched.borrow_mut().push((command, args));
+        self.spawned.notify_one();
         let child = self.child.take().ok_or_else(|| "one launch".to_owned());
         Box::pin(std::future::ready(
             child.map(|child| Rc::new(child) as Rc<dyn ChildProcess>),
@@ -156,6 +168,8 @@ struct Ui {
     shown: RefCell<Vec<Shown>>,
     /// Notifications and editor changes in arrival order.
     calls: RefCell<Vec<Value>>,
+    /// Wakes a waiter when an overlay is shown or the frame writer schedules a redraw.
+    changed: Rc<tokio::sync::Notify>,
 }
 impl Ui {
     /// Builds and shows one view, returning the handle callback's failure.
@@ -165,7 +179,7 @@ impl Ui {
         options: Option<CustomUIOptions>,
         (open, close): (Open, maestro_extensions::types::CustomClose),
     ) -> Result<(), EventError> {
-        let keys = maestro_extensions::widgets::ExtensionKeybindings {
+        let keys = maestro_extensions::presentation::ExtensionKeybindings {
             manager: maestro_tui::KeybindingsManager::new(Vec::new(), Vec::new()),
             reload: None,
         };
@@ -192,6 +206,7 @@ impl Ui {
             placement,
             component,
         });
+        self.changed.notify_one();
         Ok(())
     }
 }
@@ -247,8 +262,8 @@ struct Host {
     runner: ExtensionRunner<Local>,
     /// The bound interactive host.
     ui: Rc<Ui>,
-    /// The terminal under the frame writer.
-    terminal: super::recording_terminal::RecordingTerminal,
+    /// The started terminal under the frame writer.
+    stage: Stage,
     /// Extension errors the runner reported.
     errors: Rc<RefCell<Vec<String>>>,
 }
@@ -293,14 +308,7 @@ async fn runner(io: Option<Rc<Process>>) -> ExtensionRunner<Local> {
 
 /// Loads the example on a started frame writer of `columns` by `rows` with the dark theme.
 async fn host((columns, rows): (usize, usize), io: Option<Rc<Process>>) -> Host {
-    let terminal = super::recording_terminal::RecordingTerminal::new(columns, rows);
-    let tui = maestro_tui::TUI::new(
-        terminal.handle(),
-        super::manual_runtime::ManualRuntime::new().handle(),
-        maestro_tui::TerminalImage::default(),
-        Some(false),
-    );
-    tui.start().unwrap();
+    let stage = Stage::new(columns, rows);
     let theme = super::support::dark();
     let runner = runner(io).await;
     let errors = Rc::new(RefCell::new(Vec::new()));
@@ -310,16 +318,17 @@ async fn host((columns, rows): (usize, usize), io: Option<Rc<Process>>) -> Host 
         Ok(())
     })));
     let ui = Rc::new(Ui {
-        tui,
+        tui: stage.tui.clone(),
         theme: maestro_theme::LiveTheme::from_theme(theme),
         shown: RefCell::default(),
         calls: RefCell::default(),
+        changed: stage.redraws.clone(),
     });
     runner.set_ui_context(Some(ExtensionUIContext::new(ui.clone())));
     Host {
         runner,
         ui,
-        terminal,
+        stage,
         errors,
     }
 }
@@ -345,13 +354,6 @@ fn run(size: (usize, usize), io: Option<Rc<Process>>, case: impl AsyncFnOnce(&Ho
 /// native wait the example armed before this call is due at its own time.
 async fn elapse(duration: Duration) {
     tokio::time::sleep(duration).await;
-}
-
-/// Yields to the runtime until `ready` holds.
-async fn until(mut ready: impl FnMut() -> bool) {
-    while !ready() {
-        tokio::task::yield_now().await;
-    }
 }
 
 /// Text without control sequences.
@@ -391,23 +393,37 @@ impl Host {
         let handler = self.runner.get_command(name).unwrap().command.handler;
         tokio::task::spawn_local(handler(String::new(), self.runner.create_command_context()))
     }
+    /// Waits until `ready` holds, running the frame writer's scheduled work each time the view
+    /// changes, which is when an overlay is shown or a redraw is scheduled.
+    async fn until(&self, mut ready: impl FnMut() -> bool) {
+        while !ready() {
+            self.ui.changed.notified().await;
+            self.stage.settle();
+        }
+    }
     /// Waits until the example has shown `count` custom overlays.
     async fn shown(&self, count: usize) {
-        until(|| self.ui.shown.borrow().len() == count).await;
+        self.until(|| self.ui.shown.borrow().len() == count).await;
+    }
+    /// Waits until the output view's status line reports the exit.
+    async fn exited(&self) {
+        self.until(|| self.shows(0, 80, "│ ✓ Exited | ↑↓ scroll | Esc close"))
+            .await;
     }
     /// Delivers terminal input through the frame writer's focus.
     fn press(&self, data: &str) {
-        self.terminal.send_input(data);
+        self.stage.terminal.send_input(data);
     }
     /// The whole terminal after a full redraw, without control sequences.
     fn screen(&self) -> Vec<String> {
         let written = Rc::new(RefCell::new(String::new()));
         let tapped = written.clone();
-        self.terminal
+        self.stage
+            .terminal
             .set_tap(move |data| tapped.borrow_mut().push_str(data));
         self.ui.tui.request_render(true);
         self.ui.tui.render_pending_frame().unwrap();
-        self.terminal.set_tap(|_| {});
+        self.stage.terminal.set_tap(|_| {});
         let written = written.borrow();
         let frame = written.rsplit("\x1b[?2026h").next().unwrap();
         let frame = frame.split("\x1b[?2026l").next().unwrap();
@@ -565,7 +581,7 @@ fn overlay_qa_tests_margins_and_offsets_place_each_configuration() {
         let width = host.ui.shown.borrow()[0].placement.borrow().width.clone();
         assert_eq!(
             width,
-            Some(maestro_extensions::widgets::SizeValue::Cells(35))
+            Some(maestro_extensions::presentation::SizeValue::Cells(35))
         );
     });
 }
@@ -637,7 +653,7 @@ fn overlay_qa_tests_animation_advances_with_each_native_wait() {
         assert!(host.shows(0, 50, "│ Spinner: ◐ "));
         assert_eq!(bar(host), Some(19));
         elapse(Duration::from_millis(34)).await;
-        until(|| host.shows(0, 50, "│ Frame: 1 ")).await;
+        host.until(|| host.shows(0, 50, "│ Frame: 1 ")).await;
         assert!(host.shows(0, 50, "│ Spinner: ◓ "));
         assert_eq!(bar(host), Some(20));
         assert!(host.shows(0, 50, "│ Each frame comes from one native wait."));
@@ -659,14 +675,14 @@ fn overlay_qa_tests_overflow_streams_process_output_within_the_width() {
     run((80, 24), Some(process.clone()), async |host| {
         let command = host.command("overlay-overflow");
         host.shown(1).await;
-        until(|| !process.launched.borrow().is_empty()).await;
+        process.launch().await;
         let (program, args) = process.launched.borrow()[0].clone();
         assert_eq!((program.as_str(), args[0].as_str()), ("bash", "-c"));
         assert!(args[1].contains("for i in $(seq 1 100); do") && args[1].contains("sleep 0.3"));
         let link = "\x1b]8;;file:///long/path\x07▶ read: /Users/example/Documents/development/maestro/crates/maestro-chat/src/interactive_mode/components/very-long-component-name-that-exceeds-width-1.rs\x1b]8;;\x07";
         out.send(format!("Starting\nThis simulates\n\n{link}\n").into_bytes())
             .unwrap();
-        until(|| received(&host.rows(0, 80)[0]) == 3).await;
+        host.until(|| received(&host.rows(0, 80)[0]) == 3).await;
         let screen = host.screen();
         assert_eq!(
             corner(&screen),
@@ -682,7 +698,7 @@ fn overlay_qa_tests_overflow_streams_process_output_within_the_width() {
         assert!(screen[19].contains("│ ● Running | ↑↓ scroll | Esc close"));
         let lines: Vec<_> = (4..=23).map(|line| format!("line {line}\n")).collect();
         out.send(lines.concat().into_bytes()).unwrap();
-        until(|| received(&host.rows(0, 80)[0]) == 23).await;
+        host.until(|| received(&host.rows(0, 80)[0]) == 23).await;
         assert!(
             host.screen()[3].contains("│ ↑8 | ↓0"),
             "new output scrolls to the end"
@@ -696,13 +712,13 @@ fn overlay_qa_tests_overflow_streams_process_output_within_the_width() {
             "scrolling stops at the end"
         );
         err.send(b"  failed  \n".to_vec()).unwrap();
-        until(|| received(&host.rows(0, 80)[0]) == 24).await;
+        host.until(|| received(&host.rows(0, 80)[0]) == 24).await;
         assert!(
             host.screen()[3].contains("│ ↑8 | ↓1"),
             "errors do not scroll"
         );
         drop((out, err));
-        until(|| host.shows(0, 80, "│ ✓ Exited | ↑↓ scroll | Esc close")).await;
+        host.exited().await;
         assert!(
             host.screen()[3].contains("│ ↑8 | ↓1"),
             "closing the pipes keeps the scroll position"
@@ -736,7 +752,7 @@ fn overlay_qa_tests_overflow_joins_lines_split_across_reads() {
             pipe.send(bytes).unwrap();
         }
         drop((out, err));
-        until(|| host.shows(0, 80, "│ ✓ Exited | ↑↓ scroll | Esc close")).await;
+        host.exited().await;
         let rows = host.rows(0, 80);
         assert_eq!(received(&rows[0]), 3, "{rows:#?}");
         for line in ["abcd", "failed", "\u{10400} tail"] {
@@ -792,10 +808,10 @@ fn overlay_qa_tests_sidepanel_hides_below_one_hundred_columns() {
             host.press(key);
         }
         assert!(host.screen()[11].contains("│→ Sessions"));
-        host.terminal.resize(99, 30);
+        host.stage.terminal.resize(99, 30);
         assert!(!host.ui.tui.has_overlay());
         assert_eq!(corner(&host.screen()), None);
-        host.terminal.resize(100, 30);
+        host.stage.terminal.resize(100, 30);
         assert!(host.ui.tui.has_overlay());
         host.press("\x1b");
         host.finished(command).await;
@@ -817,7 +833,7 @@ fn overlay_qa_tests_toggle_hides_for_one_second_through_its_handle() {
             elapse(Duration::from_millis(999)).await;
             assert!(!host.ui.tui.has_overlay(), "hidden for one second");
             elapse(Duration::from_millis(1)).await;
-            until(|| host.ui.tui.has_overlay()).await;
+            host.until(|| host.ui.tui.has_overlay()).await;
         }
         host.press("\x1b");
         host.finished(command).await;
@@ -849,7 +865,7 @@ fn overlay_qa_tests_passive_timer_leaves_typing_with_the_controller() {
         host.press("\x7f");
         assert!(host.screen()[11].contains("│ > h "));
         elapse(Duration::from_secs(1)).await;
-        until(|| host.screen()[2].contains("│ 00:01")).await;
+        host.until(|| host.screen()[2].contains("│ 00:01")).await;
         host.press("\x1b");
         host.finished(command).await;
     });
@@ -911,7 +927,8 @@ fn overlay_qa_tests_streaming_routes_typing_to_the_focused_panel() {
         assert_eq!(host.calls(), [json!(["editor", ""])]);
         for count in 1..=9 {
             elapse(Duration::from_millis(500)).await;
-            until(|| host.rows(0, 60).iter().any(|row| streamed(row, count))).await;
+            host.until(|| host.rows(0, 60).iter().any(|row| streamed(row, count)))
+                .await;
         }
         let rows = host.rows(0, 60);
         assert_eq!(rows.iter().filter(|row| row.contains("] Line ")).count(), 8);
