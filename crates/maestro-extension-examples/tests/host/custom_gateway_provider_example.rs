@@ -290,7 +290,7 @@ fn replace_protocol(api: &str, thinking: bool) -> Arc<Protocol> {
 
 /// Loads the shipped component over the production host, with GitLab's replies controlled.
 async fn load(
-    session: maestro_extensions::runner::ExtensionRunnerSession,
+    session: maestro_extensions::execution::ExtensionRunnerSession,
     gitlab: Rc<Gitlab>,
 ) -> (
     ExtensionRunner<Local>,
