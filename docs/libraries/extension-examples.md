@@ -13,7 +13,7 @@ resolve one version:
 | `regex` | `=1.13.1` | `built_in_tool_renderer.rs`, `tool_override.rs`, `rpc_demo.rs`, `with-deps/main.rs` | MIT OR Apache-2.0 |
 | `ryu-js` | `=1.0.3` | `custom_footer.rs` number display | Apache-2.0 OR BSL-1.0 |
 | `sha2` | `=0.11.0`, default features off | `doom-overlay/wad_finder/checksum.rs` checks the pinned shareware digest before a cache file is created; `prepare_freedoom` checks the pinned Freedoom archive | MIT OR Apache-2.0 |
-| `zip` | `=9.0.5`, default features off, `deflate-flate2` | `prepare_freedoom` reads `freedoom1.wad` from the checked archive (native development dependency) | MIT |
+| `zip` | `=9.0.5`, default features off, `deflate-flate2` | `prepare_freedoom` reads `freedoom1.wad` from the checked archive (native dependency) | MIT |
 | `wit-bindgen` | `=0.62.0`, default features off, `async-spawn` | background tasks in the components (WebAssembly targets only) | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT |
 
 All are development dependencies of the examples crate; the crate itself has

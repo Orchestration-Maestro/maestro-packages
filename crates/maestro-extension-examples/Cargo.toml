@@ -359,6 +359,12 @@ crate-type = ["cdylib"]
 maestro-extensions-wasm.workspace = true
 maestro-listing.workspace = true
 maestro-text.workspace = true
+sha2.workspace = true
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+maestro-http = { path = "../maestro-http" }
+maestro-tooling.workspace = true
+zip.workspace = true
 
 [dev-dependencies]
 chrono.workspace = true
@@ -370,7 +376,6 @@ regex.workspace = true
 ryu-js.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-sha2.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
 doom-ui = { workspace = true, features = ["software25d"] }
@@ -395,7 +400,6 @@ maestro-chat.workspace = true
 maestro-credentials.workspace = true
 maestro-extensions = { workspace = true, features = ["test-support"] }
 maestro-extensions-wasmtime = { workspace = true, features = ["test-support"] }
-maestro-http = { path = "../maestro-http" }
 maestro-lock.workspace = true
 maestro-markdown = { workspace = true, features = ["test-support"] }
 maestro-models.workspace = true
@@ -404,16 +408,14 @@ maestro-session.workspace = true
 maestro-test-directory.workspace = true
 maestro-test-process.workspace = true
 maestro-theme = { workspace = true, features = ["test-support"] }
-maestro-tooling.workspace = true
 maestro-tui = { workspace = true, features = ["test-support"] }
 tokio = { workspace = true, features = ["test-util"] }
-zip.workspace = true
 
 [[test]]
 name = "integration"
 path = "tests/integration.rs"
 
-[[example]]
+[[bin]]
 name = "prepare_freedoom"
 path = "tests/prepare_freedoom.rs"
 

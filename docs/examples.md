@@ -283,7 +283,7 @@ for the `cargo-checks` setup.
 The overlay's real-engine tests play Freedoom Phase 1, a free IWAD, and its
 filesystem and menu tests need a game that starts. The IWAD is never committed.
 The `freedoom` setup in `.config/nextest.toml` runs the `prepare_freedoom`
-example once before the `host::doom_game::` tests. The example downloads the
+program once before the `host::doom_game::` tests. The program downloads the
 pinned Freedoom 0.13.0 release archive, refuses it unless its SHA-256 matches,
 extracts `freedoom1.wad` under `target/freedoom` and exports the path as
 `MAESTRO_FREEDOOM_WAD`. A mismatch fails the setup, and a missing variable fails
