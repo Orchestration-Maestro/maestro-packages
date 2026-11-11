@@ -70,6 +70,6 @@ TEST_PREPARE_OUTPUT="$PWD/target/test-setup" cargo nextest run --locked \
   -p maestro-extension-examples -E 'test(custom_message_provider)'
 ```
 
-The guest run for this example is not hosted here yet.
-[#75](https://github.com/Orchestration-Maestro/maestro-packages/issues/75) adds
-it.
+The guest run for this example is not hosted yet. The public test host has no provider
+stream entry point or HTTP transport; [maestro#4448](https://github.com/Orchestration-Maestro/maestro/issues/4448)
+lists the missing seams.
