@@ -224,6 +224,12 @@ renders that region, the index table in `examples/extensions/README.md` and
 the guide fixture's lock from the sources. `just example-index-check` checks
 all three without rewriting them, and `just check` runs it.
 
+`just check` also runs the `extension_pages` module, which reads the command
+blocks of every extension page and refuses a command this workspace cannot
+run: a forbidden package or wrapper, a test filter that selects no test, an
+example name that names no target, or a test run with no `just prepare-tests`
+before it.
+
 The crate's one integration program, `tests/integration.rs`, holds these test
 modules:
 

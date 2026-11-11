@@ -14,6 +14,7 @@ setup:
 check:
     cargo fmt --all
     just example-index-check
+    cargo test -p maestro-extension-examples --locked --test integration -- extension_pages::
     just _check --workspace
 
 # Shared checks for explicit Cargo package-selection arguments.

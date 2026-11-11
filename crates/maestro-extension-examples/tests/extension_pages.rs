@@ -134,7 +134,7 @@ fn commands(block: &str) -> Vec<String> {
 /// Whether the nextest filter `test(<argument>)` selects `name`.
 fn selects(argument: &str, name: &str) -> bool {
     if let Some(exact) = argument.strip_prefix('=') {
-        return name == exact || name.ends_with(&format!("::{exact}"));
+        return name == exact;
     }
     if let Some(expression) = argument.strip_prefix('/').and_then(|a| a.strip_suffix('/')) {
         return Regex::new(expression).unwrap().is_match(name);
@@ -316,8 +316,25 @@ fn page_check_refuses_each_command_this_workspace_cannot_run() {
 fn test_filters_select_by_substring_exact_name_and_expression() {
     let name = "guest::hello_example::greets";
     assert!(selects("hello_example", name));
-    assert!(selects("=greets", name));
+    assert!(!selects("=greets", name));
+    assert!(selects("=guest::hello_example::greets", name));
     assert!(!selects("=hello", name));
     assert!(selects("/^guest::.*greets$/", name));
     assert!(!selects("::greets_", name));
+}
+
+#[test]
+fn gitlab_duo_page_loads_the_gateway_component_file() {
+    let page = root().join("examples/extensions/custom-provider-gitlab-duo.md");
+    let text = fs::read_to_string(page).unwrap();
+    let loads = blocks(&text)
+        .iter()
+        .flat_map(|block| commands(block))
+        .any(|command| {
+            command.starts_with("maestro -e ./gateway/custom_provider_gitlab_duo.wasm ")
+        });
+    assert!(
+        loads,
+        "no command loads ./gateway/custom_provider_gitlab_duo.wasm"
+    );
 }
