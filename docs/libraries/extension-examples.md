@@ -16,10 +16,11 @@ resolve one version:
 | `zip` | `=9.0.5`, default features off, `deflate-flate2` | `prepare_freedoom` reads `freedoom1.wad` from the checked archive (native dependency) | MIT |
 | `wit-bindgen` | `=0.62.0`, default features off, `async-spawn` | background tasks in the components (WebAssembly targets only) | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT |
 
-All are development dependencies of the examples crate; the crate itself has
-no production code. `wasmtime` and `wasmtime-wasi` reach the lock through
-Maestro's host crates at the git commit Maestro pins, which is why
-`.github/ci.toml` allows the `bytecodealliance/wasmtime` source.
+`sha2` and `zip` are normal dependencies, because the DOOM overlay and the
+`prepare_freedoom` binary use them. The rest are development dependencies.
+`wasmtime` and `wasmtime-wasi` reach the lock through Maestro's host crates at
+the git commit Maestro pins, which is why `.github/ci.toml` allows the
+`bytecodealliance/wasmtime` source.
 
 The crate also lists Maestro's executable package, `maestro`, as a git development
 dependency at the same pin. The package has no library target, so Cargo ignores the
