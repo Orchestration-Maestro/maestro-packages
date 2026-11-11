@@ -9,7 +9,10 @@ use serde_json::json;
 use std::{path::Path, rc::Rc};
 
 /// The user-shell operations the SSH hook supplies for `cwd`.
-async fn shell(runner: &ExtensionRunner<Local>, cwd: &Path) -> Rc<dyn BashOperations<Local>> {
+pub(super) async fn shell(
+    runner: &ExtensionRunner<Local>,
+    cwd: &Path,
+) -> Rc<dyn BashOperations<Local>> {
     let mut event = UserBashEvent {
         command: "pwd".into(),
         cwd: cwd.to_str().unwrap().into(),
@@ -25,7 +28,7 @@ async fn shell(runner: &ExtensionRunner<Local>, cwd: &Path) -> Rc<dyn BashOperat
 }
 
 /// The directory a remote `pwd` reports when the shell is asked to run in `cwd`.
-async fn remote_pwd(operations: &dyn BashOperations<Local>, cwd: &str) -> String {
+pub(super) async fn remote_pwd(operations: &dyn BashOperations<Local>, cwd: &str) -> String {
     let mut bytes = Vec::new();
     let mut sink = |chunk: &[u8]| bytes.extend_from_slice(chunk);
     let result = operations

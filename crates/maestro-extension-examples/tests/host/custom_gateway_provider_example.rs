@@ -12,14 +12,14 @@ use maestro_extensions_wasmtime::native_io::{
 };
 use maestro_models::*;
 use serde_json::{Value, json};
-mod sign_in_and_direct_access;
-
 use std::{
     cell::RefCell,
     collections::VecDeque,
     rc::Rc,
     sync::{Arc, Mutex, RwLock},
 };
+
+mod sign_in_and_direct_access;
 
 /// The model the probe asks for unless another is named.
 const DEFAULT_MODEL: &str = "claude-sonnet-4-5-20250929";

@@ -4,6 +4,7 @@ use std::{
     collections::BTreeMap,
     fs,
     path::{Path, PathBuf},
+    sync::LazyLock,
 };
 
 /// Words a command block must not contain: packages and wrappers a reader of this workspace
@@ -131,23 +132,32 @@ fn commands(block: &str) -> Vec<String> {
         .collect()
 }
 
-/// Whether the nextest filter `test(<argument>)` selects `name`.
-fn selects(argument: &str, name: &str) -> bool {
+/// The test names the nextest filter `test(<argument>)` selects, compiled once per filter.
+fn filter(argument: &str) -> Box<dyn Fn(&str) -> bool> {
     if let Some(exact) = argument.strip_prefix('=') {
-        return name == exact;
+        let exact = exact.to_owned();
+        return Box::new(move |name| name == exact);
     }
     if let Some(expression) = argument.strip_prefix('/').and_then(|a| a.strip_suffix('/')) {
-        return Regex::new(expression).unwrap().is_match(name);
+        let expression = Regex::new(expression).unwrap();
+        return Box::new(move |name| expression.is_match(name));
     }
-    name.contains(argument)
+    let substring = argument.to_owned();
+    Box::new(move |name| name.contains(&substring))
 }
 
-/// The `-p` package a command selects, if any.
+/// Matches a `test(<filter>)` expression of a command.
+static TEST_FILTER: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"test\(([^)]*)\)").unwrap());
+
+/// Matches the example target a command builds or runs.
+static EXAMPLE_TARGET: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"--example (\S+)").unwrap());
+
+/// The `-p` or `--package` package a command selects, if any.
 fn package(command: &str) -> Option<&str> {
     let words: Vec<&str> = command.split_whitespace().collect();
     words
         .windows(2)
-        .find(|pair| pair[0] == "-p")
+        .find(|pair| pair[0] == "-p" || pair[0] == "--package")
         .map(|pair| pair[1])
 }
 
@@ -159,20 +169,18 @@ fn command_problems(command: &str, workspace: &Workspace) -> Vec<String> {
             problems.push(format!("`{command}` names `{word}`"));
         }
     }
-    let filter = Regex::new(r"test\(([^)]*)\)").unwrap();
     if package(command) == Some(EXAMPLES_PACKAGE) {
-        for captures in filter.captures_iter(command) {
-            if !workspace
-                .tests
-                .iter()
-                .any(|name| selects(&captures[1], name))
-            {
+        for captures in TEST_FILTER.captures_iter(command) {
+            let selects = filter(&captures[1]);
+            if !workspace.tests.iter().any(|name| selects(name)) {
                 problems.push(format!("`test({})` selects no test", &captures[1]));
             }
         }
     }
-    let example = Regex::new(r"--example (\S+)").unwrap();
-    if let Some(captures) = example.captures(command).filter(|c| !c[1].starts_with('<')) {
+    if let Some(captures) = EXAMPLE_TARGET
+        .captures(command)
+        .filter(|c| !c[1].starts_with('<'))
+    {
         let known = match package(command) {
             Some(package) => workspace.examples.get(package).cloned().unwrap_or_default(),
             None => workspace.examples.values().flatten().cloned().collect(),
@@ -315,12 +323,19 @@ fn page_check_refuses_each_command_this_workspace_cannot_run() {
 #[test]
 fn test_filters_select_by_substring_exact_name_and_expression() {
     let name = "guest::hello_example::greets";
-    assert!(selects("hello_example", name));
-    assert!(!selects("=greets", name));
-    assert!(selects("=guest::hello_example::greets", name));
-    assert!(!selects("=hello", name));
-    assert!(selects("/^guest::.*greets$/", name));
-    assert!(!selects("::greets_", name));
+    assert!(filter("hello_example")(name));
+    assert!(!filter("=greets")(name));
+    assert!(filter("=guest::hello_example::greets")(name));
+    assert!(!filter("=hello")(name));
+    assert!(filter("/^guest::.*greets$/")(name));
+    assert!(!filter("::greets_")(name));
+}
+
+#[test]
+fn package_selection_accepts_the_short_and_long_flags() {
+    assert_eq!(package("cargo nextest run -p one"), Some("one"));
+    assert_eq!(package("cargo nextest run --package two"), Some("two"));
+    assert_eq!(package("cargo nextest run"), None);
 }
 
 #[test]

@@ -1,5 +1,5 @@
 //! The dynamic resources example, discovered and reloaded by a real SDK session.
-use crate::executable::support::{Root, session, widgets};
+use crate::executable::support::{Root, run, session, widgets};
 use maestro_app::{AgentSession, ResourceLoader};
 use std::{fs, path::Path, rc::Rc};
 
@@ -165,12 +165,7 @@ async fn discover_and_reload(root: &Root, local: Rc<tokio::task::LocalSet>, name
 /// installed component, never from the session directory.
 #[test]
 fn dynamic_resources_discovery_and_reload_load_shipped_files() {
-    let runtime = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap();
-    let local = Rc::new(tokio::task::LocalSet::new());
-    local.block_on(&runtime, async {
+    run(|local| async move {
         let root = Root::new();
         for name in ["original", "relocated # Ω"] {
             discover_and_reload(&root, local.clone(), name).await;

@@ -1,5 +1,6 @@
 //! Shipped SSH operations through the component runner and original coding tools.
 #![cfg(test)]
+use super::support::run;
 use maestro_app::{ExtensionRunner, Local};
 use serde_json::{Value, json};
 #[cfg(unix)]
@@ -8,16 +9,6 @@ use std::rc::Rc;
 
 mod path_mapping;
 mod resolution_failure;
-
-/// Runs on the same local executor the application's native resources retain.
-fn run<F: Future<Output = ()>>(action: impl FnOnce(Rc<tokio::task::LocalSet>) -> F) {
-    let runtime = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap();
-    let local = Rc::new(tokio::task::LocalSet::new());
-    local.block_on(&runtime, action(local.clone()));
-}
 
 /// Loads the shipped example through the existing embedding composition.
 async fn loaded(
@@ -231,23 +222,12 @@ async fn remote_files(runner: &Rc<ExtensionRunner<Local>>, local: &Path) {
 /// User shell operations retain streaming, numeric exit, cancellation and source deadlines.
 #[cfg(unix)]
 async fn remote_shell(runner: &Rc<ExtensionRunner<Local>>, cwd: &Path) {
-    use maestro_app::{BashExecOptions, BashOperations, BashResult, UserBashEvent};
+    use maestro_app::BashExecOptions;
     assert_eq!(
         call(runner, "bash", json!({"command":"printf shell"})).await[0]["text"],
         "shell"
     );
-    let mut event = UserBashEvent {
-        command: "ignored".into(),
-        cwd: cwd.to_str().unwrap().into(),
-        exclude_from_context: false,
-    };
-    let operations = runner
-        .emit_user_bash::<Rc<dyn BashOperations<Local>>, BashResult>(&mut event)
-        .await
-        .unwrap()
-        .unwrap()
-        .operations
-        .unwrap();
+    let operations = path_mapping::shell(runner, cwd).await;
     let mut bytes = Vec::new();
     let mut sink = |chunk: &[u8]| bytes.extend_from_slice(chunk);
     let result = operations
@@ -278,24 +258,8 @@ async fn remote_only_shell(operations: &dyn maestro_app::BashOperations<Local>, 
     let remote = fixture("remote/remote-only");
     assert!(!local.exists());
     std::fs::create_dir(&remote).unwrap();
-    let mut bytes = Vec::new();
-    let mut sink = |chunk: &[u8]| bytes.extend_from_slice(chunk);
-    let result = operations
-        .exec(
-            "pwd",
-            local.to_str().unwrap(),
-            maestro_app::BashExecOptions {
-                on_data: &mut sink,
-                signal: None,
-                timeout: None,
-                env: None,
-            },
-        )
-        .await
-        .unwrap();
-    assert_eq!(result.exit_code, Some(0.0));
     assert_eq!(
-        String::from_utf8(bytes).unwrap().trim(),
+        path_mapping::remote_pwd(operations, local.to_str().unwrap()).await,
         remote.to_str().unwrap()
     );
     assert!(!local.exists());

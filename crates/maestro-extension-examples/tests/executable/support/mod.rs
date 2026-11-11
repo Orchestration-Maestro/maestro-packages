@@ -94,3 +94,13 @@ pub fn dark() -> std::rc::Rc<maestro_theme::Theme> {
 pub fn theme() -> maestro_theme::LiveTheme {
     maestro_theme::LiveTheme::from_theme(dark())
 }
+
+/// Runs on the same local executor the application's native resources retain.
+pub fn run<F: Future<Output = ()>>(action: impl FnOnce(std::rc::Rc<tokio::task::LocalSet>) -> F) {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    let local = std::rc::Rc::new(tokio::task::LocalSet::new());
+    local.block_on(&runtime, action(local.clone()));
+}
