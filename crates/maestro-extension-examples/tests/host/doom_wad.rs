@@ -12,9 +12,11 @@ use std::{
     sync::RwLock,
 };
 mod io;
+mod tics;
 mod ui;
 
-pub(super) use ui::Scenario;
+pub(super) use tics::Tics;
+pub(super) use ui::{Play, Scenario};
 
 /// The pinned download address the example reads when no local WAD exists.
 const WAD_URL: &str = "https://raw.githubusercontent.com/Daivuk/PureDOOM/355cfbd16fac119718879239336ee2ea408886bd/doom1.wad";
@@ -46,11 +48,20 @@ pub(super) async fn loaded(root: &Path, io: Rc<io::Io>, headless: bool) -> Demo 
         Rc::new(|error| panic!("unexpected background error: {error:?}")),
     );
     let runner = runner(root, &bus, io.clone(), &session).await;
-    let (tui, _terminal) = super::canonical_ui::screen();
+    let tics = Tics::new();
+    let tui = maestro_tui::TUI::new(
+        super::recording_terminal::RecordingTerminal::new(40, 12).handle(),
+        tics.handle(),
+        maestro_tui::TerminalImage::default(),
+        Some(false),
+    );
     let ui = Rc::new(ui::Ui {
         tui,
+        tics,
+        failures: Rc::default(),
         notices: RefCell::default(),
         scenarios: RefCell::default(),
+        plays: RefCell::default(),
         until_closed: std::cell::Cell::default(),
     });
     if !headless {
@@ -83,6 +94,11 @@ impl Demo {
         self.ui.scenarios.borrow_mut().push_back(scenario);
     }
 
+    /// Queues what the next opened view does while the game runs, before it closes.
+    pub fn play(&self, play: Play) {
+        self.ui.plays.borrow_mut().push_back(play);
+    }
+
     /// Every notice so far.
     pub fn notices(&self) -> Vec<String> {
         self.ui.notices.borrow().clone()
@@ -97,7 +113,12 @@ impl Demo {
             tail.await.unwrap();
         }
         assert!(
-            self.ui.scenarios.borrow().is_empty(),
+            self.ui.failures.borrow().is_empty(),
+            "{:?}",
+            self.ui.failures.borrow()
+        );
+        assert!(
+            self.ui.scenarios.borrow().is_empty() && self.ui.plays.borrow().is_empty(),
             "a queued view never opened"
         );
     }
