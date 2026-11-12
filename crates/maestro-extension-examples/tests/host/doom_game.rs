@@ -1,6 +1,8 @@
 //! The overlay playing Freedoom: its frames, menu, retained game and private files.
 #![cfg(test)]
 use super::doom_wad::{Demo, Scenario, checked, controlled_io};
+
+mod level;
 use maestro_extensions::{EventError, types::ExtensionComponent};
 use std::path::Path;
 
@@ -10,7 +12,7 @@ const WIDTH: usize = 80;
 const BLACK_CELL: &str = "\x1b[38;2;0;0;0m\x1b[48;2;0;0;0m▀";
 
 /// The IWAD the test preparation fetched and checked.
-fn freedoom() -> String {
+pub(super) fn freedoom() -> String {
     std::env::var("MAESTRO_FREEDOOM_WAD")
         .expect("MAESTRO_FREEDOOM_WAD is unset: run just prepare-tests, then cargo nextest")
 }
@@ -24,7 +26,7 @@ fn rows(built: &ExtensionComponent) -> Result<Vec<String>, EventError> {
 }
 
 /// Sends one key to the view.
-fn key(built: &ExtensionComponent, data: &str) -> Result<(), EventError> {
+pub(super) fn key(built: &ExtensionComponent, data: &str) -> Result<(), EventError> {
     built
         .component
         .input_handler()
@@ -71,6 +73,9 @@ async fn started(root: &Path, scenario: Scenario) -> Demo {
 
 /// Runs a real-engine scenario; returns whether the case is one of these.
 pub(super) async fn run(root: &Path, case: &str) -> bool {
+    if level::run(root, case).await {
+        return true;
+    }
     match case {
         "title-and-menu" => {
             let demo = started(root, title_then_menu()).await;

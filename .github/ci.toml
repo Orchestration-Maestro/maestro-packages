@@ -7,9 +7,10 @@ test_prepare_setups = ["author-component", "cargo-checks", "executable", "native
 test_prepare_inputs = ["Cargo.toml", "Cargo.lock", "rust-toolchain.toml", ".config/nextest.toml", "examples/**", "crates/**"]
 test_inputs = { "examples/" = ["maestro-extension-examples", "maestro-sdk-examples"] }
 reserved_ports = []
-# Nmap's -Pn flag, the parser term unparseable and the zip feature name
-# deflate-flate2 are intentional.
-spelling_words = ["temH", "Pn", "unparseable", "flate"]
+# Nmap's -Pn flag, the parser term unparseable, the zip feature name
+# deflate-flate2, and the game engine's own `defered_init_new` and `STSTR_*`
+# names are intentional.
+spelling_words = ["temH", "Pn", "unparseable", "flate", "STSTR", "defered"]
 check_targets = [
     "aarch64-unknown-linux-gnu",
     "x86_64-apple-darwin",

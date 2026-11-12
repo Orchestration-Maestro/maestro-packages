@@ -37,7 +37,7 @@ development dependencies of the components for WebAssembly targets only:
 
 | Crate | Used by | Licence |
 | --- | --- | --- |
-| `doom-ui` (feature `software25d`), `game-config`, `gameplay` (feature `software25d`), `gamestate`, `gamestate-traits`, `input`, `math`, `pic-data`, `render-common`, `software25d`, `ui-draw`, `wad` | `doom-overlay/doom_engine.rs`, `doom_screen.rs`, `doom_keys.rs` and `doom_component.rs` | MIT |
+| `doom-ui` (feature `software25d`), `game-config`, `gameplay` (feature `software25d`), `gamestate`, `gamestate-traits`, `input`, `math`, `pic-data`, `render-common`, `software25d`, `ui-draw`, `wad` | `doom-overlay/doom_engine.rs`, `doom_screen.rs`, `doom_automap.rs`, `doom_cheats.rs`, `doom_keys.rs` and `doom_component.rs` | MIT |
 
 Their own dependencies reach the lock through them: `glam` (MIT OR Apache-2.0),
 `nanoserde` and `nanoserde-derive` (a git source pinned by the lock, MIT OR

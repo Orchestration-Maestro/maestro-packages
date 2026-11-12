@@ -5,11 +5,14 @@
     clippy::excessive_nesting
 )]
 use super::{
+    doom_automap::Automap,
+    doom_cheats::Cheats,
     doom_screen::{Painter, Subsystems},
     wad_check::check_iwad,
 };
 use doom_ui::{Finale, GameMenu, Intermission, Messages, Statusbar};
 use game_config::GameOptions;
+use gameplay::PlayerState;
 use gamestate::{Game, prepare_wad, subsystems::GameSubsystem};
 use gamestate_traits::{ConfigKey, ConfigTraits, GameState, KeyCode, SubsystemTrait};
 use input::{InputState, config::InputConfig};
@@ -32,6 +35,40 @@ struct State {
     machines: Subsystems,
     /// Draws the frame.
     painter: Painter,
+    /// The overlay's own automap and cheat codes.
+    additions: Additions,
+}
+
+/// What the overlay adds to the game beside the engine's own screens.
+#[derive(Default)]
+struct Additions {
+    /// The level map Tab opens.
+    automap: Automap,
+    /// The codes typed during a level.
+    cheats: Cheats,
+}
+impl Additions {
+    /// Gives a pressed key to the cheat codes and the map while a level runs.
+    fn responder(&mut self, key: KeyCode, game: &mut Game) -> bool {
+        if game.gamestate != GameState::Level || game.level.is_none() {
+            return false;
+        }
+        if !game.demo.playback {
+            self.cheats.type_key(key, game);
+        }
+        self.automap.responder(key)
+    }
+
+    /// Resets the map and the typed letters once the level is over, and syncs the map with the
+    /// level: it closes on a reload and resets when the episode or map changes.
+    fn sync(&mut self, game: &Game, reloaded: bool) {
+        if game.gamestate == GameState::Level && game.level.is_some() {
+            self.automap.sync(game, reloaded);
+        } else {
+            self.automap.reset();
+            self.cheats.reset();
+        }
+    }
 }
 
 /// One initialized game; a different WAD needs a new engine.
@@ -69,6 +106,7 @@ impl DoomEngine {
                 menu,
                 machines,
                 painter: Painter::new(),
+                additions: Additions::default(),
             }),
         };
         // The first tic puts the title page up, so the first frame is not blank.
@@ -84,11 +122,14 @@ impl DoomEngine {
             input,
             menu,
             machines,
-            ..
+            painter,
+            additions,
         } = &mut *guard;
         if game.demo.advance {
             game.do_advance_demo();
         }
+        // A player who died comes back through a level reload that the game keeps the map across.
+        let reborn = game.players[game.consoleplayer].player_state == PlayerState::Reborn;
         let menu_active = menu.ticker(game);
         if menu_active && game.gamestate == GameState::Level && !game.demo.playback {
             machines.statusbar.ticker(game);
@@ -99,11 +140,15 @@ impl DoomEngine {
             game.frozen = false;
         }
         game.game_tic += 1;
+        // The game marks a level that loads inside a level; a respawn is not a new level.
+        let reloaded = game.wipe_game_state == GameState::ForceWipe && !reborn;
         let console = game.consoleplayer;
         game.netcmds[console][0] = input.events.build_tic_cmd(&input.config);
         // Screen wipes are only visual, and gameplay would wait for one that is never drawn.
         game.wipe_game_state = game.gamestate;
         game.clear_config_dirty();
+        additions.sync(game, reloaded);
+        additions.automap.tick(game, painter.map_rows());
         game.running()
     }
 
@@ -120,10 +165,16 @@ impl DoomEngine {
             machines,
             menu,
             painter,
+            additions,
             ..
         } = &mut *guard;
-        painter.draw(game, machines, menu);
+        painter.draw(game, machines, menu, &additions.automap);
         painter.screen.pixels().to_vec()
+    }
+
+    /// Whether the next typed `character` would carry a cheat code forward.
+    pub fn continues_cheat(&self, character: char) -> bool {
+        self.state.borrow().additions.cheats.expects(character)
     }
 
     /// Delivers a press, which the menu or a finale may take, or a release.
@@ -134,9 +185,13 @@ impl DoomEngine {
             input,
             menu,
             machines,
+            additions,
             ..
         } = &mut *guard;
-        if pressed && !responded(key, game, menu, machines) {
+        if !pressed {
+            additions.automap.release(key);
+        }
+        if pressed && !responded(key, game, menu, machines, additions) {
             input.events.set_kb(key);
         } else {
             input.events.unset_kb(key);
@@ -150,8 +205,12 @@ fn responded(
     game: &mut Game,
     menu: &mut GameMenu,
     machines: &mut Subsystems,
+    additions: &mut Additions,
 ) -> bool {
     if menu.responder(key, game) || machines.hud_msgs.responder(key, game) {
+        return true;
+    }
+    if additions.responder(key, game) {
         return true;
     }
     match game.gamestate {
