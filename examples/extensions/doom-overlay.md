@@ -75,9 +75,10 @@ follows you and draws your position as an arrow that faces the way you look.
 Hold `=` to zoom in and `-` to zoom out: the map scales 2% each game tic while
 the key is down. It stops at the whole level in the widest view and at your own
 size in the closest. The map opens wide enough to hold the level with room to
-spare, and it keeps the scale you left it at. A new game, a loaded save or a warp
-closes the map. When it lands on the same map, the scale stays; a different map
-or the end of the game resets it. Dying and coming back leaves the map open.
+spare, and it keeps the scale you left it at. A new game, a loaded save or a
+warp closes the map. When it lands on the same map, the scale stays; a
+different map or the end of the game resets it. Dying and coming back leaves
+the map open.
 
 The map shows only the lines you have seen. Red is a wall, brown is a change of
 floor height, yellow is a change of ceiling height, and teleporters have their
@@ -102,8 +103,8 @@ The letters keep their meaning in play, so typing `idkfa` also strafes and
 fires. Q closes the overlay except in the middle of a code, which is how `iddqd`
 can be typed. Any key that is not a letter or digit, such as an arrow or Escape,
 starts the code over. Codes do nothing in the menus or in a demo, and on the
-nightmare skill only `idclev` works. `idmus` and `idmypos` are not provided yet; a later
-change adds them.
+nightmare skill only `idclev` works. `idmus` and `idmypos` are not provided
+yet; a later change adds them.
 
 ## Licence
 

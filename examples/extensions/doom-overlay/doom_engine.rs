@@ -59,8 +59,8 @@ impl Additions {
         self.automap.responder(key)
     }
 
-    /// Resets the map and the typed letters once the level is over, and the map when another
-    /// level or the same map loads again.
+    /// Resets the map and the typed letters once the level is over, and syncs the map with the
+    /// level: it closes on a reload and resets when the episode or map changes.
     fn sync(&mut self, game: &Game, reloaded: bool) {
         if game.gamestate == GameState::Level && game.level.is_some() {
             self.automap.sync(game, reloaded);
