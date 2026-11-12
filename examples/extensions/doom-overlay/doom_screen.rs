@@ -4,6 +4,7 @@
     clippy::too_many_arguments,
     clippy::excessive_nesting
 )]
+use super::doom_automap::Automap;
 use doom_ui::{Finale, GameMenu, Intermission, Messages, Statusbar};
 use gameplay::{MapObjFlag, Player};
 use gamestate::{Game, subsystems::GameSubsystem};
@@ -115,11 +116,30 @@ impl Painter {
         }
     }
 
+    /// Pixel rows of the player's view, which the automap fills.
+    pub fn map_rows(&self) -> usize {
+        rows() - self.bar_rows
+    }
+
     /// Draws the current game state, then the menu over it.
-    pub fn draw(&mut self, game: &mut Game, machines: &mut Subsystems, menu: &mut GameMenu) {
+    pub fn draw(
+        &mut self,
+        game: &mut Game,
+        machines: &mut Subsystems,
+        menu: &mut GameMenu,
+        automap: &Automap,
+    ) {
         match game.gamestate {
             GameState::Level => {
-                self.draw_level(game);
+                if automap.is_shown() {
+                    let map_rows = self.map_rows();
+                    self.screen
+                        .pixels
+                        .fill(PixelFmt::from_argb(BLACK, ByteOrder::Argb));
+                    automap.draw(game, &mut self.screen, map_rows);
+                } else {
+                    self.draw_level(game);
+                }
                 machines.statusbar.draw(&mut self.screen);
                 machines.hud_msgs.draw(&mut self.screen);
             }

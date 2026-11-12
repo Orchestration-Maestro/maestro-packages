@@ -145,6 +145,7 @@ impl ComponentView for DoomOverlayComponent {
             && (matches!(data, "q" | "Q")
                 || matches_key(&self.api, data, "q")?
                 || matches_key(&self.api, data, "shift+q")?)
+            && !self.engine.continues_cheat('q')
         {
             return self.close();
         }

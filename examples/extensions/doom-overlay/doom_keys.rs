@@ -86,17 +86,27 @@ pub fn map_key_to_doom(api: &ExtensionAPI, data: &str) -> ExtensionResult<Vec<Ke
         || matches_key(api, data, "f")?
         || matches_key(api, data, "shift+f")?
     {
-        return Ok(vec![KeyCode::RCtrl]);
+        // The letter follows the fire key so that cheat codes see it.
+        return Ok(vec![KeyCode::RCtrl, KeyCode::F]);
     }
-    if parse_key(api, data)?.is_some_and(|key| key.starts_with("ctrl+") && key != "ctrl+c")
+    let named = parse_key(api, data)?;
+    if named
+        .as_deref()
+        .is_some_and(|key| key.starts_with("ctrl+") && key != "ctrl+c")
         || (data.len() == 1 && data.as_bytes()[0] < 32 && data != "\x03")
     {
         return Ok(vec![KeyCode::RCtrl]);
     }
-    let mut characters = data.chars();
-    let typed = characters
-        .next()
-        .filter(|_| characters.next().is_none())
+    // An enhanced release arrives as an escape sequence, so the decoder's name stands in for
+    // the character.
+    let typed = single_character(data)
+        .or_else(|| named.as_deref().and_then(single_character))
         .and_then(character_key);
     Ok(typed.into_iter().collect())
+}
+
+/// The one character of `text`, if it has exactly one.
+fn single_character(text: &str) -> Option<char> {
+    let mut characters = text.chars();
+    characters.next().filter(|_| characters.next().is_none())
 }
